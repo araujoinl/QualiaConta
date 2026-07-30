@@ -11,6 +11,7 @@ credenciales*.json
 empresas/*/hermes/*
 !empresas/*/hermes/libro-de-accion/
 !empresas/*/hermes/memoria/
+!empresas/*/hermes/SOUL.md
 
 # PDFs originales de la DGII: pesados y recuperables desde la fuente.
 # Las reglas destiladas sí van en git.
