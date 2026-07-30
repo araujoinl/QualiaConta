@@ -50,27 +50,27 @@ Si necesitas algo que no está en esta lista —compras, asientos, catálogo de
 cuentas, proveedores— **no lo inventes**. Prueba el recurso y, si responde,
 avisa que encontraste uno nuevo para agregarlo acá.
 
-## La página es de 50 — cuidado con contar
+## La paginación ya está resuelta
 
-La mayoría de los recursos devuelve **50 filas por página**. Eso no es la
-cantidad total: es donde se cortó.
+La API devuelve **50 filas por página**. El script recorre todas las páginas
+solo y te entrega el conjunto completo, así que un conteo sale correcto sin que
+tengas que acordarte de nada.
 
-Verificado: `Items`, `Stock`, `Customers`, `CreditInvoices`, `CashInvoices` y
-`CashReceipts` devuelven 50 de entrada. `Sales/Detailed` devolvió 1500 y `AR`
-132, así que el tope no es igual en todos.
+No lo hagas a mano. Si por algo llamas la API directo y traes una sola página,
+un total de 50 no es un total: es donde se cortó.
 
-**Nunca respondas "tenés 50 clientes" a partir de una sola llamada.** Si te
-preguntan una cantidad o un total, tenés que recorrer las páginas subiendo
-`skip` hasta que una vuelva vacía o con menos filas que la anterior:
+Lee siempre la línea final que imprime el script:
+
+- `(1834 fila(s) desde Customers, 37 página(s), completo)` — podés dar el total.
+- `(⚠ … SE CORTÓ en el tope; hay más)` — hay más de 10.000 filas. Decí "más de
+  X", nunca el número como total.
+
+Si necesitás una página puntual, pasá el `skip` vos y el script respeta esa
+página sola:
 
 ```bash
-scripts/admcloud-get.sh Customers "skip=0"
 scripts/admcloud-get.sh Customers "skip=50"
-scripts/admcloud-get.sh Customers "skip=100"
 ```
-
-Si no recorriste todas las páginas, dilo: *"al menos 50, hay más páginas"*. Un
-total incompleto presentado como total es de los errores que nadie detecta.
 
 ## La respuesta no tiene forma fija
 
