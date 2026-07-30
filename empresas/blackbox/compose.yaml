@@ -16,6 +16,11 @@ services:
     restart: unless-stopped
     env_file: .env
 
+    # Sin esto el contenedor arranca `hermes` a secas — el agente interactivo —
+    # y nunca se conecta a Telegram. `gateway` es el proceso que atiende los
+    # mensajes.
+    command: gateway
+
     # Diferencias contra el compose que trae Hermes, a propósito:
     #
     # 1. SIN `network_mode: host`. Hermes levanta un panel en el 8642 que guarda
