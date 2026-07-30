@@ -1,0 +1,33 @@
+# Compose de referencia para UNA empresa.
+#
+# Agregar una empresa = copiar esta carpeta, cambiar el .env y levantar.
+# Quitarla = borrar la carpeta. Ninguna operación toca a las demás.
+#
+# PENDIENTE DE VERIFICAR AL DESPLEGAR: la referencia de imagen o el contexto de
+# build salen del repo de Hermes (github.com/NousResearch/hermes-agent, que trae
+# Dockerfile y docker-compose.yml). No se inventa acá: se toma del repo en el
+# momento de instalar y se fija a una versión concreta.
+
+services:
+  contable:
+    # image: <ver nota de arriba>   ó   build: ./hermes-agent
+    container_name: qualiaconta-${EMPRESA}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Modelo: GLM de z.AI, endpoint compatible con OpenAI.
+      OPENAI_BASE_URL: https://api.z.ai/api/paas/v4/
+      OPENAI_API_KEY: ${ZAI_API_KEY}
+      HERMES_MODEL: ${HERMES_MODEL}
+      # Telegram: un chat por empresa.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_ALLOWED_CHAT_ID: ${TELEGRAM_ALLOWED_CHAT_ID}
+    volumes:
+      # Estado del contable: memoria, skills, libro de acción.
+      - ./hermes:/root/.hermes
+      # Núcleo DGII compartido, SÓLO LECTURA. Ninguna empresa escribe en él.
+      - ../../nucleo-dgii:/nucleo-dgii:ro
+      # Mapa de cuentas bancarias, sólo lectura.
+      - ../../mapa-cuentas.yaml:/mapa-cuentas.yaml:ro
+    # Sin puertos publicados: sale hacia Telegram, ADM Cloud y el modelo.
+    # Nadie entra. No necesita proxy ni túnel.

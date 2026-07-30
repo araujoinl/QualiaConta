@@ -1,0 +1,28 @@
+# Secretos — nunca, por ningún motivo
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credenciales*.json
+
+# Volúmenes de Hermes: memoria curada y estado del agente.
+# El libro de acción SÍ va en git — ver la excepción abajo.
+empresas/*/hermes/*
+!empresas/*/hermes/libro-de-accion/
+!empresas/*/hermes/memoria/
+
+# PDFs originales de la DGII: pesados y recuperables desde la fuente.
+# Las reglas destiladas sí van en git.
+nucleo-dgii/normas/**/*.pdf
+nucleo-dgii/interpretaciones/**/*.pdf
+
+# Material de liquidaciones: documentos de importación y plantillas con datos
+# reales de proveedores y costos. Se destilan a reglas; el material no se sube.
+empresas/*/liquidaciones/
+*.xlsx
+!plantillas/*.example.xlsx
+
+.DS_Store
+node_modules/
+__pycache__/

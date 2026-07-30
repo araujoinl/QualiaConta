@@ -1,0 +1,22 @@
+# Mapa de cuentas bancarias. Es configuración, no algo que el contable adivine.
+#
+# El colector OpenBanking piensa en logins de banco; QualiaConta piensa en
+# empresas. Este archivo traduce entre los dos y dice, además, en qué cuenta
+# contable de ADM Cloud cae cada cuenta bancaria.
+#
+# Se usa en la entrega 4 (conciliación). Copiar a mapa-cuentas.yaml y llenar.
+
+empresas:
+  blackbox:
+    cuentas:
+      - banco: popular                # coincide con openbanking_accounts.banco
+        numero: "000000000"           # coincide con openbanking_accounts.numero
+        moneda: DOP
+        cuenta_contable: ""           # código de la cuenta en ADM Cloud
+        alias: "Corriente principal"
+
+      # - banco: bhd
+      #   numero: "000000000"
+      #   moneda: USD
+      #   cuenta_contable: ""
+      #   alias: "Dólares"
