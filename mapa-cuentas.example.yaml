@@ -1,22 +1,45 @@
 # Mapa de cuentas bancarias. Es configuración, no algo que el contable adivine.
 #
 # El colector OpenBanking piensa en logins de banco; QualiaConta piensa en
-# empresas. Este archivo traduce entre los dos y dice, además, en qué cuenta
-# contable de ADM Cloud cae cada cuenta bancaria.
+# empresas. Este archivo traduce entre los dos y dice en qué cuenta contable de
+# ADM Cloud cae cada cuenta bancaria.
 #
-# Se usa en la entrega 4 (conciliación). Copiar a mapa-cuentas.yaml y llenar.
+# REGLA DURA: si una cuenta no figura acá bajo una empresa, el contable de esa
+# empresa NO la mira ni la suma. Mezclar cuentas entre empresas es el error más
+# grave que se puede cometer con estos datos, y es silencioso.
+#
+# Copiar a mapa-cuentas.yaml y llenar.
 
 empresas:
   blackbox:
-    cuentas:
-      - banco: popular                # coincide con openbanking_accounts.banco
-        numero: "000000000"           # coincide con openbanking_accounts.numero
-        moneda: DOP
-        cuenta_contable: ""           # código de la cuenta en ADM Cloud
-        alias: "Corriente principal"
+    # Blackbox banca en Banco Santa Cruz. El colector tiene el driver
+    # (`santacruz-empresarial`, ya registrado) pero todavía no está configurado
+    # el login, así que no hay movimientos que leer.
+    #
+    # Hasta que el colector recoja esa cuenta, esta lista queda VACÍA a
+    # propósito: el contable de Blackbox no tiene ninguna cuenta que mirar.
+    cuentas: []
 
-      # - banco: bhd
-      #   numero: "000000000"
-      #   moneda: USD
-      #   cuenta_contable: ""
-      #   alias: "Dólares"
+    # Cuando el colector empiece a recogerla, se agrega así:
+    # cuentas:
+    #   - banco: santacruz
+    #     numero: ""
+    #     moneda: DOP
+    #     cuenta_contable: ""        # código de la cuenta en ADM Cloud
+    #     alias: ""
+
+# ============================================================================
+# NO son de Blackbox
+# ============================================================================
+# El colector recoge hoy seis cuentas que pertenecen a Perfume Labs y a Erick
+# Rodríguez. Quedan anotadas para que se sepa de quién son, y para que nadie las
+# asigne por error:
+#
+#   banreservas  9606348008   Erick Rodriguez
+#   banreservas  9603188308   Perfume Labs
+#   bhd          38500350017  Erick BHD
+#   bhd          17033330027  Perfume Labs
+#   popular      822465308    Erick Rodriguez
+#   popular      823985973    Corriente Principal
+#
+# Cuando esas empresas tengan su propio contable, se listan bajo su nombre acá.

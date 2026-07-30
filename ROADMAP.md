@@ -66,6 +66,15 @@ de venta ni de declarar. Ver [SPEC §5](SPEC.md).
 
 ## Entrega 3 — Conciliación bancaria
 
+**Bloqueada por un pendiente fuera de este repo:** Blackbox banca en Banco Santa
+Cruz y el colector todavía no recoge esa cuenta. El driver ya existe y está
+registrado como `santacruz-empresarial`; falta configurar el login en
+`config/banks.json` del colector, en el server. Hasta entonces no hay
+movimientos de Blackbox que conciliar.
+
+El acceso de lectura ya está hecho y probado: el contable lee la base del
+colector y no puede tocar las credenciales de los bancos.
+
 Alcance:
 
 - Mapa de cuentas bancarias de Blackbox a sus cuentas contables.
