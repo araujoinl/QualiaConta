@@ -1,0 +1,50 @@
+# Compose de Blackbox. Copiado de deploy/compose.example.yaml.
+#
+# Agregar una empresa = copiar esta carpeta, cambiar el .env y levantar.
+# Quitarla = borrar la carpeta. Ninguna operación toca a las demás.
+#
+# La imagen se construye una sola vez desde la fuente de Hermes y la comparten
+# todas las empresas:
+#   cd /home/codebox/qualiaconta/hermes-agent && docker build -t hermes-agent:local .
+#
+# Fijado en Hermes v0.19.0, commit 14abd64.
+
+services:
+  contable:
+    image: hermes-agent:local
+    container_name: qualiaconta-${EMPRESA}
+    restart: unless-stopped
+    env_file: .env
+
+    # Diferencias contra el compose que trae Hermes, a propósito:
+    #
+    # 1. SIN `network_mode: host`. Hermes levanta un panel en el 8642 que guarda
+    #    llaves de API; con red del host, dos empresas pelearían por ese puerto
+    #    y además el panel quedaría alcanzable desde la LAN. En red aislada y
+    #    sin puertos publicados, ninguna de las dos cosas pasa.
+    #
+    # 2. El volumen monta en /opt/data, que es donde Hermes guarda su estado
+    #    dentro del contenedor.
+
+    volumes:
+      # Estado del contable: memoria, skills, libro de acción.
+      # Es la carpeta del repo, así el libro de acción queda en git solo.
+      - ./hermes:/opt/data
+      # Núcleo DGII compartido, SÓLO LECTURA. Ninguna empresa escribe en él.
+      - ../../nucleo-dgii:/nucleo-dgii:ro
+      # Mapa de cuentas bancarias, sólo lectura.
+      - ../../mapa-cuentas.yaml:/mapa-cuentas.yaml:ro
+
+    environment:
+      # Dueño de los archivos que cree el contenedor: el usuario del host,
+      # para que el libro de acción quede legible y commiteable desde afuera.
+      HERMES_UID: "1000"
+      HERMES_GID: "1000"
+
+    # Sin puertos publicados: sale hacia Telegram, ADM Cloud y el modelo.
+    # Nadie entra. No necesita proxy ni túnel.
+    #
+    # Para entrar al panel de Hermes cuando haga falta, túnel por ssh:
+    #   ssh -L 8642:localhost:8642 codebox
+    # y publicar el puerto sólo en loopback en esta empresa:
+    #   ports: ["127.0.0.1:8642:8642"]
