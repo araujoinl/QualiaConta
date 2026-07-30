@@ -4,10 +4,15 @@ La memoria fiscal compartida. Se monta de **sólo lectura** en todas las
 instancias: ninguna empresa escribe acá.
 
 ```
-normas/<año>/<norma>.md              regla destilada (el PDF va al lado, fuera de git)
+normas/<tema>.md                     reglas destiladas (el PDF va al lado, fuera de git)
 interpretaciones/<fuente>/<tema>.md  boletínes de terceros
 INDEX.md                             qué hay, con vigencias
 ```
+
+Se organiza por **tema**, no por año, porque así es como se consulta: el
+contable pregunta "qué retención aplica a este proveedor", no "qué publicó la
+DGII en 2019". Un tema reúne todas las normas que lo gobiernan, cada una con su
+vigencia.
 
 ## Contrato de una regla
 
