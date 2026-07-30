@@ -35,20 +35,45 @@ Todo corre en CodeBox. Nada expone puertos: las instancias salen hacia Telegram,
 hacia ADM Cloud y hacia el modelo, y nadie entra.
 
 ```
-/opt/qualiaconta/
-  nucleo-dgii/                  montado :ro en todas las instancias
-  empresas/
-    blackbox/
-      compose.yaml
-      .env                      credenciales de Blackbox, fuera de git
-      hermes/                   volumen: memoria, skills, libro de acción
-    <otra-empresa>/
-  mapa-cuentas.yaml             cuenta bancaria → empresa → cuenta contable
+/home/codebox/qualiaconta/
+  hermes-agent/                 fuente de Hermes, sólo para construir la imagen
+  repo/                         este repo, clonado
+    nucleo-dgii/                montado :ro en todas las instancias
+    empresas/
+      blackbox/
+        compose.yaml
+        .env                    credenciales de Blackbox, fuera de git
+        hermes/                 volumen del contenedor → /opt/data
+      <otra-empresa>/
+    mapa-cuentas.yaml           cuenta bancaria → empresa → cuenta contable
 ```
+
+Va en `/home/codebox` y no en `/opt` porque `/opt` pide sudo, igual que el
+colector de bancos y radar-ig.
 
 Cada empresa es un contenedor Hermes con su volumen. Agregar una empresa es
 copiar una carpeta y cambiar el `.env`. Quitarla es borrar la carpeta. Ninguna
 operación sobre una empresa toca a las demás.
+
+**El volumen de la empresa es la carpeta del repo.** Hermes escribe todo su
+estado ahí dentro y el `.gitignore` deja versionados sólo el libro de acción y
+la memoria. Así el libro queda en git sin que haya que copiarlo a ningún lado.
+
+### Hermes: versión y ajustes
+
+Fijado en **v0.19.0**, commit `14abd64`. La imagen se construye una vez
+(`hermes-agent:local`) y la comparten todas las empresas; lo que las distingue
+es el volumen y el `.env`.
+
+Dos cambios sobre el `docker-compose.yml` que trae Hermes, y el porqué:
+
+- **Sin `network_mode: host`.** Hermes levanta un panel en el puerto 8642 que
+  guarda llaves de API. Con red del host, dos empresas pelearían por ese puerto.
+  En red aislada y sin puertos publicados el problema no existe, y de paso el
+  panel no queda expuesto en la LAN.
+- **El volumen monta en `/opt/data`**, que es donde Hermes guarda su estado
+  dentro del contenedor. `HERMES_UID` y `HERMES_GID` van en `1000:1000`, el
+  usuario del host, para que los archivos que cree queden legibles fuera.
 
 ### Accesos del contable
 
