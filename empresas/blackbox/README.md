@@ -4,8 +4,8 @@ Empresa piloto. Se prueba el patrón completo acá antes de conectar una segunda
 
 ## Estado
 
-**Entrega 1 — lectura y entrenamiento.** El contable de Blackbox **no escribe
-nada en ADM Cloud**. Lee, responde y destila lo que ya existe.
+**Entrega 1 — lectura.** El contable de Blackbox **no escribe nada en ADM
+Cloud**. Lee y responde.
 
 ## Estructura
 

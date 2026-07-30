@@ -225,3 +225,9 @@ esqueleto de despliegue y estos documentos.
 
 Si algo se puede resolver configurando Hermes en vez de escribiéndolo, se
 configura.
+
+Tampoco construimos los reportes a la DGII. **606, 607, IT-1 y declaraciones
+las hace la empresa contable externa.** El trabajo de QualiaConta termina en
+dejar el libro de ADM Cloud correcto y conciliado, que es de donde ellos sacan
+lo que declaran. Por eso los permisos del usuario del agente no incluyen
+declarar: no es sólo prudencia, es que no es su trabajo.

@@ -28,6 +28,8 @@ queremos.
 | Skill | Qué hace |
 |---|---|
 | `consultar-admcloud` | Traduce una pregunta a SQL, ejecuta y responde con el número **y la consulta que lo produjo** |
-| `destilar-liquidaciones` | Lee las carpetas históricas y saca los criterios de reparto por costo y proveedor |
 | `consultar-nucleo-dgii` | Busca una regla con su rango y su vigencia a la fecha del documento |
 | `escribir-libro-de-accion` | Crea la entrada de una decisión. Archivo nuevo, nunca edición |
+
+`destilar-liquidaciones` se escribe en la entrega 5, junto con el flujo de
+liquidación de mercancía.

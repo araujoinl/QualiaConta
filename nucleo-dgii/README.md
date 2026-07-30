@@ -49,5 +49,5 @@ rompe cuando ellos cambien el sitio. **Si el raspado falla tiene que avisar** �
 un vigilante que falla callado es peor que no tenerlo, porque da la sensación de
 estar al día.
 
-Se construye en la entrega 5. Hasta entonces el núcleo se carga a mano con lo
+Se construye en la entrega 4. Hasta entonces el núcleo se carga a mano con lo
 básico: ITBIS, retenciones, comprobantes fiscales y las obligaciones 606 y 607.
