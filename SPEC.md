@@ -28,6 +28,7 @@ Acordadas en la sesión de definición del 2026-07-30. Cambiar cualquiera de
 | 16 | Liquidación: entregable doble — Excel llena + registro en ADM Cloud | La hoja es lo que se revisa; el ERP es lo que queda oficial |
 | 17 | **Crear artículos siempre pide OK** | Un duplicado parte el inventario y no se arregla borrando |
 | 18 | El histórico se destila **una sola vez** a reglas escritas | Releer el histórico en cada corrida es el gasto que el sistema existe para eliminar |
+| 19 | El contable atiende a **varias personas por empresa, con la misma autoridad** | Carlos y su asistente aprueban precedentes por igual. Por eso el campo **Aprobó** del libro no es decorativo: es lo único que dice de dónde salió un criterio |
 
 ## 2. Arquitectura
 
@@ -152,6 +153,11 @@ Formato de una entrada:
 - **Alcance:** toda factura de Sunix Petroleum por combustible
 - **Deroga:** —
 ```
+
+**Aprobó** lleva siempre a la persona, nunca "el usuario" ni "por Telegram" a
+secas. Varias personas de la misma empresa aprueban precedentes con la misma
+autoridad (decisión 19), así que este campo es lo único que permite reconstruir
+de dónde salió un criterio cuando haga falta revisarlo.
 
 El campo **Alcance** es el que convierte una decisión en precedente: define a
 qué casos futuros aplica. Sin alcance, la entrada documenta pero no automatiza.
