@@ -22,15 +22,15 @@ services:
     # mensajes.
     command: gateway
 
-    # Diferencias contra el compose que trae Hermes, a propósito:
+    # Red del host, como trae Hermes de fábrica. Lo intenté aislado y no
+    # funciona: Supabase resuelve sólo a IPv6 y la red puente de Docker no lo
+    # enruta, así que el contable no podía llegar al banco. El puerto del panel
+    # se resuelve con una variable por empresa; el IPv6 no se resuelve de otra
+    # forma sin tocar el demonio de Docker, que pide sudo.
     #
-    # 1. SIN `network_mode: host`. Hermes levanta un panel en el 8642 que guarda
-    #    llaves de API; con red del host, dos empresas pelearían por ese puerto
-    #    y además el panel quedaría alcanzable desde la LAN. En red aislada y
-    #    sin puertos publicados, ninguna de las dos cosas pasa.
-    #
-    # 2. El volumen monta en /opt/data, que es donde Hermes guarda su estado
-    #    dentro del contenedor.
+    # El panel sigue escuchando sólo en 127.0.0.1, así que no queda expuesto en
+    # la LAN. Para entrar: túnel ssh contra el puerto de esa empresa.
+    network_mode: host
 
     volumes:
       # Estado del contable: memoria, skills, libro de acción.
@@ -49,6 +49,8 @@ services:
       # para que el libro de acción quede legible y commiteable desde afuera.
       HERMES_UID: "1000"
       HERMES_GID: "1000"
+      # Puerto del panel, distinto por empresa para que no choquen.
+      API_SERVER_PORT: ${PUERTO_PANEL:-8642}
 
     # Sin puertos publicados: sale hacia Telegram, ADM Cloud y el modelo.
     # Nadie entra. No necesita proxy ni túnel.
