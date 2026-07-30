@@ -50,6 +50,28 @@ Si necesitas algo que no está en esta lista —compras, asientos, catálogo de
 cuentas, proveedores— **no lo inventes**. Prueba el recurso y, si responde,
 avisa que encontraste uno nuevo para agregarlo acá.
 
+## La página es de 50 — cuidado con contar
+
+La mayoría de los recursos devuelve **50 filas por página**. Eso no es la
+cantidad total: es donde se cortó.
+
+Verificado: `Items`, `Stock`, `Customers`, `CreditInvoices`, `CashInvoices` y
+`CashReceipts` devuelven 50 de entrada. `Sales/Detailed` devolvió 1500 y `AR`
+132, así que el tope no es igual en todos.
+
+**Nunca respondas "tenés 50 clientes" a partir de una sola llamada.** Si te
+preguntan una cantidad o un total, tenés que recorrer las páginas subiendo
+`skip` hasta que una vuelva vacía o con menos filas que la anterior:
+
+```bash
+scripts/admcloud-get.sh Customers "skip=0"
+scripts/admcloud-get.sh Customers "skip=50"
+scripts/admcloud-get.sh Customers "skip=100"
+```
+
+Si no recorriste todas las páginas, dilo: *"al menos 50, hay más páginas"*. Un
+total incompleto presentado como total es de los errores que nadie detecta.
+
 ## La respuesta no tiene forma fija
 
 Según el recurso, ADM Cloud devuelve un arreglo pelado o un objeto que envuelve
