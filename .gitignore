@@ -1,7 +1,7 @@
 # Secretos — nunca, por ningún motivo
 .env
 .env.*
-!.env.example
+# el ejemplo vive en deploy/env.example (sin punto, para no chocar con esta regla)
 *.key
 *.pem
 credenciales*.json

@@ -79,14 +79,32 @@ Dos cambios sobre el `docker-compose.yml` que trae Hermes, y el porqué:
 
 | Recurso | Cómo | Dirección |
 |---|---|---|
-| ADM Cloud — consultas | SQL de sólo lectura | lectura |
-| ADM Cloud — registro | API REST, Basic Auth, `https://api.admcloud.net/api/` | escritura |
+| ADM Cloud | API REST, Basic Auth, `https://api.admcloud.net/api/` | ambas |
+| ADM Cloud — SQL de sólo lectura | **sin verificar**: la documentación lo ofrece, nadie lo ha usado | lectura |
 | Banco — movimientos | SQL sobre `openbanking_transactions` (Supabase Labs_Inv) | lectura |
 | Banco — refresco | insertar en `openbanking_sync_requests` | escritura |
 | Telegram | gateway de Hermes | ambas |
 
+El detalle de cómo se arma cada llamada está en
+[docs/admcloud-conexion.md](docs/admcloud-conexion.md), tomado del cliente que
+Labs_Inv tiene en producción y no de la documentación del proveedor.
+
 El colector OpenBanking no se modifica. QualiaConta es un consumidor más de una
 base que ya existe.
+
+### Por qué no se reutiliza el cliente de Labs_Inv
+
+Labs_Inv ya habla con ADM Cloud —doce Edge Functions, con conciliación y un
+motor de liquidación completo— y su modelo de liquidación es el formato de Excel
+ya traducido a código. **QualiaConta igual construye el suyo, por decisión
+tomada:** queda autónomo y se puede tocar uno sin romper el otro.
+
+El costo hay que tenerlo escrito: son dos clientes que mantener, dos copias de
+las credenciales y el reparto de costos implementado dos veces. Si algún día los
+dos dan números distintos para la misma importación, es acá donde empezó.
+
+Lo que sí se aprovecha es el conocimiento: el patrón de conexión verificado, el
+inventario de endpoints que responden y las fórmulas de reparto.
 
 ## 3. Memoria
 
@@ -212,9 +230,9 @@ por más que lo parezca.
 |---|---|---|
 | Registrar compras y gastos | sí, con precedente | — |
 | Crear artículos | no | permisos del usuario + skill obligada a preguntar |
-| Emitir facturas de venta (e-CF) | no | **el usuario de ADM Cloud no tiene el permiso** |
-| Anular o corregir asientos | no | **el usuario de ADM Cloud no tiene el permiso** |
-| Presentar 606 / 607 / IT-1 | no | **el usuario de ADM Cloud no tiene el permiso** |
+| Emitir facturas de venta (e-CF) | no | **el rol `Contabilidad` no tiene el permiso** |
+| Anular o corregir asientos | no | **el rol `Contabilidad` no tiene el permiso** |
+| Presentar 606 / 607 / IT-1 | no | **el rol `Contabilidad` no tiene el permiso** |
 | Iniciar pagos o mover dinero | nunca | no existe integración de pagos, y no se va a construir |
 
 ### Por qué los límites viven en los permisos y no en el prompt
@@ -228,8 +246,14 @@ alcanza con no darle una herramienta: puede escribirla. **El único control que
 sobrevive es el permiso del lado del servidor.** Si el usuario de ADM Cloud de
 esa empresa no puede anular, no hay script ni frase que lo logre.
 
+El rol viaja como parámetro `role` en **cada** llamada a la API, así que el
+control lo aplica el servidor de ADM Cloud en cada petición — no nuestro código,
+no el prompt. Ése es justamente el punto: es el único control que sobrevive a un
+agente que escribe sus propios scripts.
+
 Recortar ese rol es requisito de puesta en marcha, no una mejora posterior. Una
-empresa sin el rol recortado no debe conectarse.
+empresa sin el rol recortado no debe conectarse. Y el nombre no basta: hay que
+verificar que `Contabilidad` efectivamente no pueda anular, emitir ni declarar.
 
 ## 6. Secretos
 
