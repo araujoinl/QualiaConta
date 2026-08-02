@@ -52,7 +52,11 @@ Alcance:
 
 - Canal e-CF primero: comprobantes electrónicos, datos exactos, sin lectura de
   imagen.
-- Busca precedente, registra si lo hay, propone por Telegram si no.
+- Busca precedente, registra si lo hay, propone en la mesa de trabajo si no.
+- La mesa de trabajo web (Labs_Inv, módulo ADM Cloud) es la superficie del
+  registro: subir, ver desglose, aprobar. Operativa en modo propuesta desde
+  2026-08-02 (ver docs/mesa-de-trabajo.md); registra de verdad cuando esta
+  entrega descubra la escritura en ADM.
 - Cada aprobación escribe su entrada en el libro de acción.
 - Después, correo. Después, foto por WhatsApp. Papel al final.
 

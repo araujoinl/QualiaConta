@@ -59,3 +59,22 @@ services:
     #   ssh -L 8642:localhost:8642 codebox
     # y publicar el puerto sólo en loopback en esta empresa:
     #   ports: ["127.0.0.1:8642:8642"]
+
+  # Poller de la mesa de trabajo: vigila la cola qualia_* en la Supabase de
+  # Labs_Inv y despierta al contable por el webhook local cuando hay trabajo.
+  # Sin LLM: solo psql + curl (misma imagen, ya los trae). Red de host para
+  # alcanzar el panel del gateway en 127.0.0.1 y el IPv6 de Supabase.
+  # Contrato completo: docs/mesa-de-trabajo.md
+  mesa:
+    image: qualiaconta:local
+    container_name: qualiaconta-mesa-${EMPRESA}
+    restart: unless-stopped
+    env_file: .env
+    network_mode: host
+    entrypoint: ["/bin/bash", "/mesa/poller.sh"]
+    environment:
+      # Puerto de platforms.webhook del gateway (config.yaml); si la empresa lo
+      # cambia alla, fijarlo tambien aca en el .env.
+      WEBHOOK_PORT: ${WEBHOOK_PORT:-8644}
+    volumes:
+      - ../../mesa:/mesa:ro

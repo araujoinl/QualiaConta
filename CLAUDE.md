@@ -18,7 +18,8 @@ configura.
   skills en `~/.hermes/`.
 - **Modelo:** GLM de z.AI, endpoint compatible con OpenAI en
   `https://api.z.ai/api/paas/v4/`. Se cambia con `hermes model`, sin tocar código.
-- **Superficie:** Telegram vía `hermes gateway`, un chat por empresa.
+- **Superficie:** mesa de trabajo web en Labs_Inv (módulo ADM Cloud) para el
+  trabajo diario; Telegram vía `hermes gateway` para consultas y avisos.
 - **Libro oficial:** ADM Cloud. Lectura por SQL de sólo lectura, escritura por
   API REST con Basic Auth sobre `https://api.admcloud.net/api/`.
 - **Banco:** tablas `openbanking_*` en la Supabase de Labs_Inv. Sólo se leen; el

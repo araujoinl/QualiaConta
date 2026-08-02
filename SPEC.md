@@ -18,7 +18,7 @@ Acordadas en la sesión de definición del 2026-07-30. Cambiar cualquiera de
 | 6 | **Una instancia de Hermes por empresa** | Aislamiento físico. No depende de que el modelo recuerde de qué empresa habla |
 | 7 | Autonomía **por precedente** | Cada OK se convierte en regla escrita; el agente se calla solo a medida que aprende |
 | 8 | Entradas en orden: e-CF, correo, foto por WhatsApp, papel | El e-CF trae los datos exactos; es el único canal donde no se puede leer mal |
-| 9 | Superficie: **Telegram**, un chat por empresa | Botones para aprobar, documentos sin comprimir, sin teléfono físico de por medio |
+| 9 | Superficie: **mesa de trabajo web en Labs_Inv** (módulo ADM Cloud), con Telegram como canal de consulta y avisos | Enmendada 2026-08-02: arrastrar facturas, ver el desglose y aprobar con auditoría piden pantalla; Telegram sigue para lo móvil. Original: Telegram como única superficie |
 | 10 | Núcleo DGII: normas oficiales + boletínes marcados como interpretación | El texto legal crudo es denso; la explicación práctica ayuda si no se confunde con la ley |
 | 11 | Banco: el colector OpenBanking existente, con mapa cuenta → empresa | Ya deduplica, ya descarta transferencias internas, ya resuelve OTP |
 | 12 | CodeBox con Docker Compose, como WsNotify y el colector | Mismo patrón operativo que ya se sabe operar |
@@ -85,6 +85,7 @@ Dos cambios sobre el `docker-compose.yml` que trae Hermes, y el porqué:
 | Banco — movimientos | SQL sobre `openbanking_transactions` (Supabase Labs_Inv) | lectura |
 | Banco — refresco | insertar en `openbanking_sync_requests` | escritura |
 | Telegram | gateway de Hermes | ambas |
+| Mesa de trabajo (web Labs_Inv) | SQL sobre `qualia_*` con `QUALIA_DSN` + webhook local `mesa` que dispara el poller — ver [docs/mesa-de-trabajo.md](docs/mesa-de-trabajo.md) | ambas |
 
 El detalle de cómo se arma cada llamada está en
 [docs/admcloud-conexion.md](docs/admcloud-conexion.md), tomado del cliente que
