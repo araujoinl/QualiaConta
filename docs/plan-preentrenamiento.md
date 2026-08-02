@@ -47,7 +47,7 @@ Qué se baja (volúmenes reales del explorador):
 | Customers / Employee / PaymentMethods / ExpenseTypes / AccountingPeriods / BankReconciliations | maestros y satélites completos | headers |
 | Satélites AP (VendorCreditNotes 4, Prepayments 8, Receptions 10, CreditApplications 6) | completos con detalle | sí (son pocos) |
 
-Total ≈ **3.000–3.500 requests GET ≈ 60–90 min de reloj**. Banco: `pg_dump --data-only` lógico de `openbanking_accounts` + `openbanking_transactions` vía `psql "$OPENBANKING_DSN"` a CSV en `raw/`. Núcleo DGII ya está montado read-only (`/nucleo-dgii`), no se copia: se referencia.
+Total ≈ **3.000–3.500 requests GET ≈ 60–90 min de reloj**. Banco: `pg_dump --data-only` lógico de `openbanking_accounts` + `openbanking_transactions` vía `psql "$OPENBANKING_DSN"` a CSV en `raw/`. Núcleo DGII ya está montado read-only (`/nucleo-contable/dgii`), no se copia: se referencia.
 
 ### 1.2 Capa B — Agregación determinista (scripts, sin LLM)
 

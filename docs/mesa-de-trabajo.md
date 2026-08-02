@@ -79,7 +79,7 @@ Una fila por documento arrastrado o sugerencia del contable.
   "moneda": "DOP",
   "monto": 45200.00,
   "itbis": 6890.85,
-  "cuenta_destino": "6120-01 Combustibles",
+  "tipo_gasto": { "codigo": "02", "nombre": "Gastos por Trabajos, Suministros y Servicios" },
   "metodo": "precedente",
   "precedente_ref": "libro-de-accion/2026-07-30-sunix-combustible.md",
   "confianza": 0.95,
@@ -90,6 +90,20 @@ Una fila por documento arrastrado o sugerencia del contable.
 `metodo`: `precedente` (aplicó una entrada del libro), `script` (lo resolvió un
 script propio) o `razonado` (caso nuevo, razonado desde el núcleo DGII y la
 memoria). `precedente_ref` sólo cuando `metodo != razonado`.
+
+**`tipo_gasto`** (desde 2026-08-02) es la clasificación DGII del **606** que
+ADM pide en la cabecera: catálogo fijo 01-11 (`raw/expense-types.jsonl`, el
+bill lo trae como `ExpenseTypeID`), **una por documento**. No confundir con la
+cuenta contable, que es por renglón: un restaurante es tipo 05 Representación
+y a la vez 611.17 Dieta y Viáticos + 690.06 Propina Legal en sus líneas.
+
+**La factura NO lleva cuenta de cabecera** (se retiró `cuenta_destino` el
+2026-08-02): la clasificación es POR RENGLÓN, en `lineas[].cuenta`. Una misma
+factura mezcla naturalezas —el consumo de un restaurante va a una cuenta y su
+propina legal a otra, y un mueble comprado al proveedor de siempre va a activo—
+así que una cuenta única para el documento entero sobraba y podía contradecir a
+sus propios renglones. Las sugerencias de cargos bancarios sí llevan cuenta de
+cabecera, en `cuenta_contable`: son un movimiento y una cuenta.
 
 Desde 2026-08-02 la propuesta lleva además **`documento_adm`** (qué entidad se
 creará: VendorBills | Journals | BankCharges | BankBankTransfers) y

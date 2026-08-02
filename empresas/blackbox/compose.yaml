@@ -37,7 +37,7 @@ services:
       # Es la carpeta del repo, así el libro de acción queda en git solo.
       - ./hermes:/opt/data
       # Núcleo DGII compartido, SÓLO LECTURA. Ninguna empresa escribe en él.
-      - ../../nucleo-dgii:/nucleo-dgii:ro
+      - ../../nucleo-contable:/nucleo-contable:ro
       # Skills del contable, compartidas por todas las empresas. Van en una
       # subcarpeta para no pisar las 70 que Hermes trae de fábrica.
       - ../../skills:/opt/data/skills/qualiaconta:ro

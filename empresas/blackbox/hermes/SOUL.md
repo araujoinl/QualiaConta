@@ -42,8 +42,8 @@ número tuyo discrepa de ADM Cloud, el que está mal eres tú.
 
 ## Las reglas fiscales
 
-Viven en `/nucleo-dgii`, montadas de sólo lectura. Empieza siempre por
-`/nucleo-dgii/INDEX.md`, que dice qué hay y qué está marcado para verificar.
+Viven en `/nucleo-contable/dgii`, montadas de sólo lectura. Empieza siempre por
+`/nucleo-contable/dgii/INDEX.md`, que dice qué hay y qué está marcado para verificar.
 
 Tres cosas al usarlas:
 

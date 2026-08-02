@@ -39,7 +39,7 @@ hacia ADM Cloud y hacia el modelo, y nadie entra.
 /home/codebox/qualiaconta/
   hermes-agent/                 fuente de Hermes, sólo para construir la imagen
   repo/                         este repo, clonado
-    nucleo-dgii/                montado :ro en todas las instancias
+    nucleo-contable/dgii/                montado :ro en todas las instancias
     empresas/
       blackbox/
         compose.yaml
@@ -151,7 +151,7 @@ Tres niveles. Los dos primeros son memoria curada — el agente los resume y los
 reescribe. El tercero no se toca nunca.
 
 ```
-nucleo-dgii/                    compartido, sólo lectura, en git
+nucleo-contable/dgii/                    compartido, sólo lectura, en git
   normas/<año>/<norma>.md       regla destilada + PDF original al lado
   interpretaciones/<fuente>/    boletínes de terceros, marcados como tales
   INDEX.md                      qué hay, con vigencias

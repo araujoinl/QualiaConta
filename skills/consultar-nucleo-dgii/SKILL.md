@@ -12,7 +12,7 @@ metadata:
 
 # Consultar el núcleo DGII
 
-Las reglas fiscales dominicanas viven en `/nucleo-dgii`, de sólo lectura.
+Las reglas fiscales dominicanas viven en `/nucleo-contable/dgii`, de sólo lectura.
 
 ## Cómo buscar
 
@@ -20,7 +20,7 @@ Empieza **siempre** por el índice, que dice qué hay cargado y qué está marca
 para verificar:
 
 ```bash
-cat /nucleo-dgii/INDEX.md
+cat /nucleo-contable/dgii/INDEX.md
 ```
 
 Después el tema que corresponda:
@@ -36,7 +36,7 @@ Después el tema que corresponda:
 Para buscar por palabra en todo el núcleo:
 
 ```bash
-grep -ri "retención\|ITBIS\|NCF" /nucleo-dgii/normas/
+grep -ri "retención\|ITBIS\|NCF" /nucleo-contable/dgii/normas/
 ```
 
 ## Las tres reglas al usar lo que encuentres
