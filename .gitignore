@@ -13,6 +13,11 @@ empresas/*/hermes/*
 !empresas/*/hermes/memoria/
 !empresas/*/hermes/SOUL.md
 
+# Salidas de preentrenamiento (raw y agregados): datos crudos sensibles.
+# Ya lo tapa el patron general de arriba, pero queda explicito a proposito:
+# si algun dia se afloja empresas/*/hermes/*, esto sigue fuera de git.
+empresas/*/hermes/preentrenamiento/
+
 # PDFs originales de la DGII: pesados y recuperables desde la fuente.
 # Las reglas destiladas sí van en git.
 nucleo-dgii/normas/**/*.pdf
