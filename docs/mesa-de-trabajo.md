@@ -91,6 +91,14 @@ Una fila por documento arrastrado o sugerencia del contable.
 script propio) o `razonado` (caso nuevo, razonado desde el núcleo DGII y la
 memoria). `precedente_ref` sólo cuando `metodo != razonado`.
 
+Desde 2026-08-02 la propuesta lleva además **`documento_adm`** (qué entidad se
+creará: VendorBills | Journals | BankCharges | BankBankTransfers) y
+**`lineas[]`** — el asiento en partida doble tal cual quedará en ADM: cada
+línea `{cuenta, cuenta_nombre, descripcion, debito, credito}` con cuentas
+EXACTAS del plan, débitos = créditos (la web verifica el cuadre y lo marca),
+ITBIS aprovechable como línea propia. La web las muestra como tabla estilo ADM
+y serán el payload del registro real en la Entrega 2.
+
 ## qualia_eventos
 
 El hilo del trabajo. La web lo muestra en vivo (Realtime).

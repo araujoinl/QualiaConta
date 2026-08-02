@@ -61,10 +61,28 @@ update qualia_trabajos set estado='analizando'
  where id='<trabajo_id>' and estado='pendiente' returning id;
 ```
 
-2. **Bajá el documento** con la URL firmada de la fila:
-   `curl -sL "<archivo_url>" -o /tmp/mesa-<trabajo_id>.<ext>`. Si la URL venció
-   (HTTP 400/403), dejá el trabajo en `error` con
-   `error_detalle='URL firmada vencida'` y un evento `nota` pidiendo re-subirla.
+2. **Bajá el documento con el script** — NUNCA manejes la URL a mano (es larga,
+   lleva un JWT y varios `&`; cada vez que la copiaste de tu contexto o la
+   pasaste sin comillas la rompiste y culpaste al vencimiento):
+
+   ```bash
+   ruta=$(bash /opt/data/memoria/scripts/bajar-documento.sh <trabajo_id>) || {
+       # el script ya explico el motivo por stderr; dejá el trabajo en error con eso
+   }
+   ```
+
+   Devuelve la ruta local del archivo por stdout y un resumen (tamaño y qué
+   herramienta usar) por stderr. Si falla, usá SU mensaje como `error_detalle`
+   — no inventes "URL vencida" sin haberlo comprobado.
+
+   **Trampa que ya te comió un turno:** no encadenes el script con comandos que
+   quizá no existan en la imagen (`file` NO está instalado; `&& file ...` te
+   devuelve exit 127 y vas a creer que la descarga falló cuando en realidad
+   salió bien). Corré el script SOLO. Si imprimió una ruta, el archivo está ahí.
+
+   **Y si en el hilo hay notas tuyas anteriores diciendo que la URL venció:
+   ignoralas.** Fueron errores tuyos de manejo, no del archivo. Comprobá siempre
+   con el script antes de repetir ese diagnóstico.
 
 3. **Extraé los datos**: proveedor, RNC, NCF, fecha, moneda, monto, ITBIS.
    e-CF (XML) es dato exacto; PDF/foto se lee con cuidado y confianza menor.
@@ -80,26 +98,125 @@ update qualia_trabajos set estado='analizando'
    uv run --with pillow-heif python -c "import pillow_heif, PIL.Image as I; pillow_heif.register_heif_opener(); I.open('/tmp/mesa-<id>.heic').convert('RGB').save('/tmp/mesa-<id>.jpg')"
    ```
 
-4. **Buscá precedente** en tu memoria y tu libro (`memoria/proveedores.md`,
+4. **Chequeá duplicados ANTES de proponer** (el NCF es unico por emisor):
+   - En la mesa: otro trabajo con el mismo NCF —
+     `psql ... "select id, estado from qualia_trabajos where empresa_id='$QUALIA_EMPRESA_ID' and propuesta->>'ncf' = '<NCF>' and id != '<trabajo_id>'"` —
+     si existe y no esta rechazada/error: este trabajo va a `error` con
+     `error_detalle='Duplicada: mismo NCF que el trabajo <id>'` y un evento nota.
+   - Contra ADM: busca el NCF en el historico local
+     (`grep <NCF> /opt/data/preentrenamiento/raw/vendor-bills*.jsonl`) y, si no
+     aparece, en las paginas recientes de VendorBills por API (GET). Si YA esta
+     registrada: propuesta con `"posible_duplicado": {"docid": "FPxxxxx", "donde": "ADM"}`
+     y confianza baja — la web lo muestra en rojo y el humano decide.
+
+5. **Verificá el comprobante contra DGII — SIEMPRE llená el campo `dgii`**, aun
+   cuando no aplique. Nunca lo dejes vacío: quien mira la propuesta no puede
+   distinguir "no aplica" de "se me olvidó".
+
+   **(a) NCF impreso (B01, B02, B04, B14, B15...): consultá si está autorizado.**
+   No tiene QR ni timbre — eso es solo de los electrónicos. Se consulta con el
+   script (verificado 2026-08-02 contra NCF reales; devuelve JSON):
+
+   ```bash
+   python3 /opt/data/memoria/scripts/consultar-ncf-dgii.py --rnc <rnc_emisor> --ncf <ncf>
+   ```
+
+   Guardá su salida tal cual en `"dgii"`. Devuelve `estado` VIGENTE (con
+   `razon_social_emisor`, `tipo_comprobante` y `vigencia`), NO VALIDO con su
+   `mensaje`, o `no verificable` con `motivo`. **Jamás inventes el resultado.**
+
+   Dos comprobaciones que SÍ tenés que hacer con esa respuesta:
+   - **`estado` distinto de VIGENTE** → un NCF no autorizado **no sirve como
+     crédito fiscal**. Bajá la confianza, decilo en `detalle`, y hacé dos cosas
+     más:
+     1. **Traé el contacto del proveedor** para que puedan llamarlo y pedir la
+        factura corregida. Buscalo en ADM (`/api/Vendors`, match por RNC o
+        nombre) y guardalo en la propuesta:
+        `"proveedor_contacto": {"contacto":"...","telefono":"...","email":"..."}`.
+        Si no lo encontrás, dejá el campo fuera — no inventes teléfonos.
+     2. **Proponé el tratamiento alternativo** en `detalle`: si deciden
+        registrarla igual, va como **gasto no admitido** — ITBIS NO aprovechable
+        y el total a una cuenta de gasto no deducible. La web solo deja aprobarla
+        por esa vía; el humano decide.
+     Y si al aprobarla ves en el hilo una nota que dice **GASTO NO ADMITIDO**,
+     respetalo: al escribir el libro, el ITBIS no se toma como crédito fiscal.
+   - **`razon_social_emisor` de DGII contra el proveedor que leíste**: si no
+     coinciden, probablemente leíste mal el RNC o el NCF (pasa con las fotos).
+     Volvé al documento antes de proponer.
+
+   **(b) e-NCF (E31/E32/E34...): verificá el timbre.** La representacion
+   impresa trae Fecha de Firma y Codigo de Seguridad (6 chars) — extraelos del
+   texto del PDF. Construi la URL publica de consulta (la misma del QR):
+
+   `https://ecf.dgii.gov.do/ecf/ConsultaTimbre?RncEmisor=<rnc>&RncComprador=<rnc_blackbox>&ENCF=<encf>&FechaEmision=DD-MM-AAAA&MontoTotal=<total>&FechaFirma=DD-MM-AAAA%20HH:MM:SS&CodigoSeguridad=<code>`
+
+   (para facturas de consumo la variante es /ecf/ConsultaTimbreFC). Hace curl
+   y parsea la tabla HTML. Guarda el resultado en la propuesta:
+   `"dgii": {"estado":"Aceptado","rnc_emisor":"...","razon_social_emisor":"...","rnc_comprador":"...","razon_social_comprador":"...","encf":"...","fecha_emision":"...","total_itbis":11.96,"monto_total":163.26,"verificado_en":"<ISO timestamp>"}`.
+   - Estado != Aceptado, o los montos de DGII no cuadran con lo que extrajiste
+     del PDF → baja la confianza y decilo en `detalle` (posible factura
+     adulterada o mal leida).
+   - Sin codigo de seguridad legible o DGII inaccesible → `"dgii": {"estado":"no verificable","motivo":"..."}` — nunca inventes el resultado.
+
+6. **Buscá precedente** en tu memoria y tu libro (`memoria/proveedores.md`,
    `memoria/criterios.md`, `libro-de-accion/`). El Alcance de cada entrada dice
    si aplica. Con precedente → `metodo='precedente'` y su `precedente_ref`. Si
    lo resolvió un script tuyo → `metodo='script'`. Caso nuevo →
    `metodo='razonado'`, apoyado en el núcleo DGII (citá la norma en `detalle`).
 
-5. **Andá contando lo que hacés** — la web lo muestra en vivo:
+7. **Andá contando lo que hacés** — la web lo muestra en vivo:
 
 ```sql
 insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
 values ('<trabajo_id>', 'contable', 'progreso', 'Leí la factura: Sunix, RD$45,200');
 ```
 
-6. **Cerrá con la propuesta** (jsonb con la forma del contrato) y el `resumen`:
+8. **Cerrá con la propuesta** (jsonb con la forma del contrato) y el `resumen`:
 
 ```sql
 update qualia_trabajos
    set estado='propuesta',
        resumen='Factura Sunix — RD$45,200 gasoil',
-       propuesta='{"proveedor":"Sunix Petroleum SRL","rnc":"101-89755-2","ncf":"E310000012345","fecha":"2026-08-01","moneda":"DOP","monto":45200.00,"itbis":6890.85,"cuenta_destino":"6120-01 Combustibles","metodo":"precedente","precedente_ref":"libro-de-accion/2026-07-30-sunix-combustible.md","confianza":0.95,"detalle":"Gasoil flotilla. ITBIS no aprovechable (NG 07-2007 art. 3)."}'::jsonb
+       propuesta='{"proveedor":"Sunix Petroleum SRL","rnc":"101-89755-2","ncf":"E310000012345","fecha":"2026-08-01","moneda":"DOP","monto":45200.00,"itbis":6890.85,"cuenta_destino":"6120-01 Combustibles","documento_adm":"VendorBills","lineas":[{"cuenta":"6120-01","cuenta_nombre":"Combustibles","descripcion":"Gasoil flotilla","debito":38309.15,"credito":0},{"cuenta":"1180-02","cuenta_nombre":"ITBIS adelantado","descripcion":"ITBIS 18% credito fiscal","debito":6890.85,"credito":0},{"cuenta":"2110-01","cuenta_nombre":"CxP Sunix Petroleum","descripcion":"Total factura a credito 30d","debito":0,"credito":45200.00}],"metodo":"precedente","precedente_ref":"libro-de-accion/2026-07-30-sunix-combustible.md","confianza":0.95,"detalle":"Gasoil flotilla. ITBIS no aprovechable (NG 07-2007 art. 3)."}'::jsonb
+
+   **`lineas` es obligatorio en toda propuesta** y su forma depende de
+   `documento_adm` (VendorBills | Journals | BankCharges | BankBankTransfers),
+   imitando la pantalla REAL de ADM:
+
+   - **VendorBills (facturas de proveedor): lineas de ITEMS**, como la pestaña
+     "Articulos y Servicios" de ADM.
+
+     **REGLA QUE NO SE ROMPE: TODO renglon que sume al total va como item, con
+     su propia cuenta contable.** No solo los productos/servicios: tambien la
+     **propina legal del 10%** (restaurantes, Ley 16-92), recargos por servicio,
+     impuesto selectivo al consumo, tasas, seguros, gastos administrativos,
+     cargos varios y **cualquier impuesto adicional, sean los que sean**. Cada
+     uno es una linea propia porque cada uno se clasifica distinto — nunca los
+     sumes al precio de otro renglon ni los omitas.
+
+     **La suma de items DEBE dar el total del documento.** Antes de cerrar la
+     propuesta, verificalo vos: `sum(precio*cantidad) + sum(itbis) == monto`.
+     Si no cuadra, te falta un renglon (casi siempre la propina legal o un
+     impuesto): volve al documento y encontralo. NO cierres una propuesta que
+     no cuadra — la web la marca en rojo y no sirve para registrar.
+
+     Ejemplo restaurante (asi debe quedar): items de comida con su ITBIS + una
+     linea "Propina legal 10%" con su precio y `itbis: 0` (la propina no se
+     grava) y la cuenta que corresponda. Cada item:
+     `{"descripcion":"FLETE AEREO PRIORITY","cantidad":1,"precio":429.41,"grupo_impuesto":"ITBIS","itbis":77.29,"cuenta":"620.10","cuenta_nombre":"Envios y Correspondencias"}`
+     — un item por renglon del documento (si la factura desglosa flete, airport
+     fee, combustible, DGA, van SEPARADOS, no sumados); `precio` sin ITBIS;
+     `grupo_impuesto` "ITBIS" o "Exento"; `cuenta` = la clasificacion contable
+     de ESE item (pueden diferir entre items). La web muestra Subtotal =
+     suma(precio*cantidad), Impuesto = suma(itbis) y Total, y valida que
+     cuadren con `monto`/`itbis` de la propuesta.
+   - **Journals / BankCharges / BankBankTransfers: partida doble**. Cada linea
+     `{"cuenta","cuenta_nombre","descripcion","debito","credito"}` con cuentas
+     EXACTAS del plan; total debitos = total creditos (la web lo marca en rojo
+     si no cuadra); el ITBIS aprovechable como linea propia.
+
+   Estas lineas seran el payload del registro real cuando la escritura se
+   encienda: escribilas como si ya estuvieras llenando la pantalla de ADM.
  where id='<trabajo_id>' and estado='analizando';
 ```
 
@@ -112,7 +229,7 @@ update qualia_trabajos set estado='esperando_respuesta'
  where id='<id>' and estado='analizando';
 ```
 
-7. Si algo revienta: `estado='error'` + `error_detalle` legible + evento `nota`.
+9. Si algo revienta: `estado='error'` + `error_detalle` legible + evento `nota`.
 
 ## Si el motivo es `accion_usuario`
 
@@ -190,6 +307,17 @@ hay un borrador pendiente de mesa que sugiere X», y tratá el caso como nuevo
 - Nada de credenciales ni URLs firmadas en el libro, en la memoria ni en logs.
 - Los montos son `numeric`: nada de redondeos inventados; lo que dice el
   documento es lo que va.
+- **`archivo_url` es SOLO LECTURA para vos** (la base ya te lo impide a nivel
+  de columna): leela con psql y usala en el curl ENTRE COMILLAS, jamas la
+  incluyas en un UPDATE ni la copies de tu contexto — los strings largos se
+  te abrevian con "..." y romperias la URL. En todo UPDATE, SET unicamente
+  los campos que cambias (estado, resumen, propuesta, error_detalle).
+- **La mesa recibe CUALQUIER documento, no solo facturas**: nómina en Excel,
+  estado de cuenta, contrato, cotización, soporte. Identificá qué es, decilo en
+  el `resumen`, y proponé el tratamiento propio de su tipo (una nómina → su
+  asiento; un estado de cuenta → conciliación/cargos; un soporte → adjuntarlo a
+  su transacción). Si el tipo no tiene tratamiento claro, pregunta por evento
+  `pregunta` — nunca lo fuerces al molde de factura.
 - La memoria con `estado: borrador` no es precedente: regla dura de la
   seccion de criterios de arriba. Aplica en TODO analisis, no solo en los
   trabajos tipo `criterio`.
