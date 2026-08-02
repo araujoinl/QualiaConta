@@ -525,7 +525,10 @@ mime = {"png": "image/png", "webp": "image/webp"}.get(ext, "image/jpeg")
 b64 = base64.b64encode(open(img, "rb").read()).decode()
 prompt = (
     "Lee esta imagen de un comprobante fiscal dominicano y responde SOLO un JSON "
-    "(sin markdown, sin texto extra) con esta forma exacta: "
+    "(sin markdown, sin texto extra). DATO CLAVE: si es de restaurante/bar, en "
+    "Republica Dominicana el consumo lleva SIEMPRE DOS cargos: ITBIS 18% Y "
+    "propina legal 10% (Ley 16-92) — busca AMBOS renglones, los dos estan "
+    "impresos. Forma exacta: "
     '{"proveedor": str|null, "rnc": str|null (solo digitos del RNC del emisor), '
     '"ncf": str|null, "fecha": "YYYY-MM-DD"|null, "moneda": "DOP"|"USD"|null, '
     '"monto": number|null (total del documento), "itbis": number|null, '
@@ -536,7 +539,9 @@ prompt = (
     "(unitario sin ITBIS), "
     '"itbis": number (ITBIS de ese renglon, 0 si exento)}] '
     "(un item por renglon de consumo del documento; null si no se leen), "
-    '"propina": number|null (propina legal 10% si aparece como renglon), '
+    '"propina": number|null (propina legal 10%: puede decir Propina, 10% Ley, '
+    "Ley 16-92, Servicio, Service o Prop. — cualquier renglon de ~10% sobre el "
+    "consumo), "
     '"confianza": "alta"|"media"|"baja"}. '
     "Usa null en lo que no puedas leer. No inventes valores ni renglones."
 )
@@ -645,10 +650,24 @@ if items:
         base = round(sum(i["precio"] * i["cantidad"] for i in items), 2)
         itbis_items = round(sum(i["itbis"] for i in items), 2)
         calc = round(base + itbis_items + (prop or 0), 2)
+        diff = round(out["monto"] - calc, 2)
+        # La visión a veces pierde el renglón de la propina aunque esté
+        # IMPRESO: si el descuadre calza EXACTO con el 10% de la base (±1
+        # peso), eso ES la propina legal — se infiere acá, determinista,
+        # para que el contable proponga a la primera sin preguntar (regla
+        # del dueño 2026-08-02: lo obvio se resuelve solo).
+        if prop is None and diff > 0 and abs(diff - round(0.10 * base, 2)) <= 1.0:
+            prop = diff
+            out["propina"] = prop
+            out["propina_inferida"] = True
+            calc = round(base + itbis_items + prop, 2)
         out["aritmetica"] = {"base_items": base, "itbis_items": itbis_items,
                             "propina": prop or 0, "calculado": calc,
                             "monto_documento": out["monto"],
                             "cuadra": abs(calc - out["monto"]) <= 1.0}
+        if out.get("propina_inferida"):
+            out["aritmetica"]["nota"] = ("propina legal 10% inferida del "
+                                         "descuadre exacto; verificable en el documento")
 json.dump(out, open(outp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 PY
   then

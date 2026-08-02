@@ -82,15 +82,25 @@ cat /tmp/mesa/<trabajo_id>/dossier.json
     **La aritmética correcta** (corrección del dueño, 2026-08-02): el ITBIS es
     18% de la BASE GRAVADA, JAMÁS del total. La verificación es:
     `base = itbis/0.18` y `base + itbis + exentos + propina/cargos == monto`.
-    En restaurantes SIEMPRE hay propina legal 10% (exenta) y suele haber
-    renglones exentos: que `monto != base*1.18` NO es incoherencia — es lo
-    normal.
-    **Y si NO cuadra: NO te pongas a releer la imagen — releer casi nunca lo
-    resuelve y quema minutos (regla del dueño, 2026-08-02). PREGUNTALE al
-    humano** con evento `pregunta` + `esperando_respuesta`, diciendo la
-    diferencia EXACTA y tu mejor hipótesis de qué renglón falta o sobra
-    (casi siempre propina, un impuesto o un dígito mal leído). Él tiene el
-    documento a un click y resuelve en segundos. Con su respuesta, cerrás.
+    **Restaurantes: los cargos son DOS, siempre** (regla del dueño): ITBIS 18%
+    + propina legal 10% (Ley 16-92), ambos impresos. Esperalos de ENTRADA como
+    estructura del documento — si solo ves uno, el otro existe y está en los
+    números; no lo "descubras" por descuadre ni lo verifiques dos veces. Que
+    `monto != base*1.18` NO es incoherencia — es la anatomía normal (y suele
+    haber renglones exentos además).
+    **Y si NO cuadra, en este orden (regla del dueño, 2026-08-02: lo obvio se
+    resuelve a la primera, sin releer y sin preguntar):**
+    1. Si el dossier trae `propina` (capturada o `propina_inferida`: el prep
+       ya infiere la propina cuando el descuadre calza exacto con el 10% de
+       la base) → proponé DIRECTO con ese renglón, explicándolo en `detalle`.
+    2. Si la diferencia calza vos mismo con un patrón conocido de este
+       mercado (propina 10% de la base ±1 peso, un ISC de bebidas, un
+       recargo impreso) → renglón inferido + explicación en `detalle`, y
+       proponé. La aprobación del humano ES la confirmación.
+    3. SOLO si la diferencia no calza con ningún patrón: NO reeleas la
+       imagen — PREGUNTALE al humano con evento `pregunta` +
+       `esperando_respuesta`, con la diferencia exacta y tu mejor hipótesis.
+       Él tiene el documento a un click. Con su respuesta, cerrás.
   - `dgii` del dossier → va a tu propuesta TAL CUAL. No re-consultes DGII.
   - `duplicados` del dossier → decidís con eso. No re-busques.
   - `extraccion.items` (fotos): esa ES tu tabla de líneas — mapeale la cuenta
