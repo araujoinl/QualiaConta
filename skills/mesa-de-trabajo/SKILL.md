@@ -98,16 +98,28 @@ cat /tmp/mesa/<trabajo_id>/dossier.json
     `extraccion.aritmetica.cuadra` es true, no busques renglones que falten;
     si es false, aplicá la regla de arriba: pregunta al humano con la
     diferencia exacta — nada de relecturas.
-  - **La cuenta contable se busca en el plan destilado**
-    `/opt/data/preentrenamiento/agg/plan-cuentas.json` — un solo turno.
-    PROHIBIDO buscar cuentas greppeando `preentrenamiento/raw/`. Su forma
-    EXACTA (no la redescubras a tropezones, ya te costó 3 turnos):
-    `{"_meta": {...}, "cuentas": [{"codigo", "nombre", "tipo", "clase", ...}]}`.
-    Receta lista de un turno (cambiá el término de búsqueda):
+  - **La cuenta contable, en este orden y en UN turno cada intento**
+    (PROHIBIDO greppear `preentrenamiento/raw/` para cuentas):
+    1. **Precedente del proveedor**: `/opt/data/preentrenamiento/agg/proveedor-cuentas.json`
+       — con qué cuenta registró la contabilidad REAL las facturas de ESE
+       proveedor (1,050 facturas destiladas). Si el proveedor está y su
+       cuenta dominante tiene ≥70% de usos: esa es tu cuenta,
+       `metodo='precedente'` citando "N de M facturas históricas". Forma:
+       `{"_meta", "proveedores": [{"nombre", "rnc", "facturas", "cuentas": [{"codigo","nombre","usos","pct"}]}]}`.
+       Receta (buscá por nombre o RNC):
 
-    ```bash
-    python3 -c "import json; [print(c['codigo'],'|',c['nombre'],'|',c['tipo']) for c in json.load(open('/opt/data/preentrenamiento/agg/plan-cuentas.json'))['cuentas'] if 'represent' in (c['nombre'] or '').lower()]"
-    ```
+       ```bash
+       python3 -c "import json; [print(p['nombre'],'|',p['facturas'],'facturas:',[(c['codigo'],c['nombre'],str(c['pct'])+'%') for c in p['cuentas'][:3]]) for p in json.load(open('/opt/data/preentrenamiento/agg/proveedor-cuentas.json'))['proveedores'] if 'tupaq' in p['nombre'].lower() or p.get('rnc')=='132942248']"
+       ```
+    2. **Tu memoria curada** (`memoria/proveedores.md`, criterios ratificados)
+       si matiza o contradice el precedente crudo.
+    3. **Proveedor nuevo sin precedente**: recién ahí razonás con el plan
+       `/opt/data/preentrenamiento/agg/plan-cuentas.json` — forma
+       `{"_meta": {...}, "cuentas": [{"codigo", "nombre", "tipo", "clase", ...}]}`:
+
+       ```bash
+       python3 -c "import json; [print(c['codigo'],'|',c['nombre'],'|',c['tipo']) for c in json.load(open('/opt/data/preentrenamiento/agg/plan-cuentas.json'))['cuentas'] if 'represent' in (c['nombre'] or '').lower()]"
+       ```
 
   Después trabajá. Los campos que vengan AUSENTES del dossier son lo que el
   prep NO pudo hacer: completá SOLO esos con el protocolo normal. Con campos
