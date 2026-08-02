@@ -4,6 +4,10 @@
 # empresas. Este archivo traduce entre los dos y dice, además, en qué cuenta
 # contable de ADM Cloud cae cada cuenta bancaria.
 #
+# REGLA DURA: si una cuenta no figura acá bajo una empresa, el contable de esa
+# empresa NO la mira ni la suma. Mezclar cuentas entre empresas es el error más
+# grave que se puede cometer con estos datos, y es silencioso.
+#
 # `cuentas` se usa en la conciliación y en las sugerencias (contrapartida del
 # asiento). `cargos` es el mapa de las sugerencias de conciliación:
 # descripción del movimiento → cuenta contable de ADM. Sembrarlo desde el
@@ -41,3 +45,19 @@ empresas:
         direccion: credito
         cuenta: "700.01"
         cuenta_nombre: "Intereses Bancarios"
+
+# ============================================================================
+# NO son de Blackbox
+# ============================================================================
+# El colector recoge además cuentas que pertenecen a Perfume Labs y a Erick
+# Rodríguez. Quedan anotadas para que se sepa de quién son, y para que nadie las
+# asigne por error:
+#
+#   banreservas  9606348008   Erick Rodriguez
+#   banreservas  9603188308   Perfume Labs
+#   bhd          38500350017  Erick BHD
+#   bhd          17033330027  Perfume Labs
+#   popular      822465308    Erick Rodriguez
+#   popular      823985973    Corriente Principal
+#
+# Cuando esas empresas tengan su propio contable, se listan bajo su nombre acá.
