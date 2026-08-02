@@ -67,8 +67,39 @@ cat /tmp/mesa/<trabajo_id>/dossier.json
 - **Si existe**: el documento YA está local en `archivo.path` (convertido a jpg
   si era HEIC, con `texto.txt` si hubo texto), y la extracción, la verificación
   DGII y el chequeo de duplicados YA están hechos. **SALTATE los pasos 2-5** y
-  andá DIRECTO al precedente y la propuesta (pasos 6-8), verificando coherencia
-  por el camino: si `extraccion.confianza` es `media` o `baja`, si los montos
+  andá DIRECTO al precedente y la propuesta (pasos 6-8). **Tu PRIMER movimiento
+  tras leer el dossier es UN evento `progreso` corto anunciando tu plan** — en
+  el MISMO comando psql del claim si podés — p.ej. «Dossier recibido: GUAN LAN,
+  RD$4,520.47, NCF inválido en DGII → preparo la propuesta de gasto no
+  admitido». Sin ese aviso la mesa queda muda minutos y el humano no sabe si
+  estás vivo.
+
+  **NO repitas lo que el dossier ya hizo** (medido 2026-08-02: re-hacer la
+  visión + re-consultar DGII quemó ~80s de una corrida que ya los traía):
+  - `extraccion` con campos y confianza alta → esos son tus datos. Verificá
+    coherencia contra `texto.txt` o contra la aritmética, NUNCA re-leyendo la
+    imagen con `vision_analyze` salvo incoherencia REAL (abajo).
+    **La aritmética correcta** (corrección del dueño, 2026-08-02): el ITBIS es
+    18% de la BASE GRAVADA, JAMÁS del total. La verificación es:
+    `base = itbis/0.18` y `base + itbis + exentos + propina/cargos == monto`.
+    En restaurantes SIEMPRE hay propina legal 10% (exenta) y suele haber
+    renglones exentos: que `monto != base*1.18` NO es incoherencia — es lo
+    normal. Incoherencia REAL (única licencia para re-leer la imagen):
+    `base + itbis > monto`, un RNC que no casa con la razón social de DGII,
+    o confianza media/baja del dossier.
+  - `dgii` del dossier → va a tu propuesta TAL CUAL. No re-consultes DGII.
+  - `duplicados` del dossier → decidís con eso. No re-busques.
+  - `extraccion.items` (fotos): esa ES tu tabla de líneas — mapeale la cuenta
+    a cada item y armá la propuesta con ellos, SIN re-leer la imagen. Si
+    `extraccion.aritmetica.cuadra` es true, no busques renglones que falten;
+    si es false, la diferencia te dice qué falta (casi siempre propina o un
+    impuesto) y AHÍ sí mirá el documento.
+  - **La cuenta contable se busca en el plan destilado**
+    `/opt/data/preentrenamiento/agg/plan-cuentas.json` (215 cuentas: codigo,
+    nombre, tipo, clase, GUID) — un solo grep/python ahí. PROHIBIDO buscar
+    cuentas greppeando `preentrenamiento/raw/`.
+
+  Después trabajá y verificá coherencia por el camino: si `extraccion.confianza` es `media` o `baja`, si los montos
   no cuadran (`monto` = subtotal + `itbis` + cargos) o si el
   `razon_social_emisor` de DGII no coincide con el proveedor extraído, volvé al
   documento (ya lo tenés en disco) antes de proponer. Los campos que vengan
@@ -163,11 +194,16 @@ update qualia_trabajos set estado='analizando'
    - **`estado` distinto de VIGENTE** → un NCF no autorizado **no sirve como
      crédito fiscal**. Bajá la confianza, decilo en `detalle`, y hacé dos cosas
      más:
-     1. **Traé el contacto del proveedor** para que puedan llamarlo y pedir la
-        factura corregida. Buscalo en ADM (`/api/Vendors`, match por RNC o
-        nombre) y guardalo en la propuesta:
+     1. **El contacto del proveedor sale del DOCUMENTO y de ningún otro lado**
+        (regla del dueño, 2026-08-02): las facturas casi siempre traen el
+        teléfono/dirección del emisor impresos en el encabezado o el pie —
+        revisá el texto extraído o la imagen (el dossier del preparador puede
+        traerlo ya en `extraccion.telefono`). Si se lee, guardalo en la
+        propuesta:
         `"proveedor_contacto": {"contacto":"...","telefono":"...","email":"..."}`.
-        Si no lo encontrás, dejá el campo fuera — no inventes teléfonos.
+        Si el documento no lo trae o no se lee, dejá el campo FUERA y seguí.
+        **PROHIBIDO buscarlo en ADM, en tu memoria o en internet** — además el
+        `search` de `/api/Vendors` ni siquiera filtra (verificado 2026-08-02).
      2. **Proponé el tratamiento alternativo** en `detalle`: si deciden
         registrarla igual, va como **gasto no admitido** — ITBIS NO aprovechable
         y el total a una cuenta de gasto no deducible. La web solo deja aprobarla
@@ -285,6 +321,16 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
   **NO registres en ADM Cloud.** El registro real llega en la Entrega 2; hoy el
   trabajo queda en `aprobada` y eso es correcto. Cerrá con un evento `nota`:
   «Anotado en el libro. Queda pendiente de registro en ADM Cloud.»
+
+  **Contrato para cuando la Entrega 2 encienda el registro real**: al crear el
+  documento en ADM, su DocID queda enlazado en DOS lugares, siempre —
+  (1) en la fila: `update qualia_trabajos set propuesta = propuesta ||
+  jsonb_build_object('registro_adm', jsonb_build_object('docid', '<DocID>',
+  'fecha', now()::date)) where id='<id>'` (la web lo muestra como "Documento
+  ADM" en la bandeja y en el libro); (2) en el TEXTO de la entrada del libro
+  (archivo canónico en git y espejo en `qualia_libro.entrada`), p.ej.
+  «Registrada en ADM como PI20250921». Una entrada de libro sin el DocID del
+  documento que generó está incompleta.
 
 - **`rechazada`**: evento `nota` reconociéndolo («Entendido, descartada»). Sin
   libro, sin precedente. Si el usuario explicó por qué, guardá el criterio en

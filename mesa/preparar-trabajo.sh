@@ -130,6 +130,27 @@ if [ -z "$URL" ]; then
   exit 0
 fi
 
+# GC del cache: cuando un trabajo se borra desde la web, su carpeta en
+# /tmp/mesa sobrevive y su dossier se vuelve un FANTASMA que contamina el
+# dedup (pasó el 2026-08-02: "2 duplicados en mesa" que eran carpetas de
+# trabajos ya borrados). Antes de trabajar, se barren las carpetas cuyo
+# trabajo ya no existe en la base. Nunca la del trabajo actual.
+for d in /tmp/mesa/*/; do
+  otro=$(basename "$d")
+  [ "$otro" = "$ID" ] && continue
+  [[ "$otro" =~ ^[0-9a-f-]{36}$ ]] || continue
+  existe=$(sql -v oid="$otro" <<'SQL'
+select 1 from qualia_trabajos where id = :'oid';
+SQL
+  ) || existe="?"
+  # Solo se borra con un "no existe" POSITIVO (query ok y vacía); si la base
+  # no respondió, no se toca nada.
+  if [ "$existe" = "" ]; then
+    rm -rf "$d"
+    log "GC: carpeta huérfana $otro barrida (trabajo borrado en la web)"
+  fi
+done
+
 # Workdir limpio: los fragmentos de una corrida anterior no deben contaminar
 # esta (updated_at cambió = petición nueva). El dossier viejo queda hasta que
 # el nuevo lo reemplace de forma atómica. .prep queda al final como diagnóstico.
@@ -319,6 +340,14 @@ dop = bool(re.search(r"RD\$|\bDOP\b", texto))
 if dop != usd:
     out["moneda"] = "DOP" if dop else "USD"
 
+# Teléfono del emisor, SOLO si viene impreso (regla del dueño: el contacto
+# sale del documento o de ningún lado).
+m = re.search(r"(?:Tel[eé]?f?o?n?o?|TEL)\.?\s*:?\s*(\+?[\d\- \(\)\.]{7,20}\d)", texto, re.I)
+if m:
+    tel = re.sub(r"[^\d+]", "", m.group(1))
+    if 10 <= len(tel) <= 14:
+        out["telefono"] = tel
+
 # Extras del e-CF: sirven para verificar el timbre (SPEC 7)
 m = re.search(r"C[oó]digo\s+de\s+Seguridad[^A-Za-z0-9+/=]{0,15}([A-Za-z0-9+/=]{6})", texto, re.I)
 if m:
@@ -448,6 +477,14 @@ extraccion_imagen() {
   # UNA llamada a glm-4.6v (SPEC 6): imagen en data URL base64, prompt fijo
   # pidiendo SOLO JSON, temperatura 0, timeout 60s por intento, 1 reintento.
   # Tope duro de 90s alrededor de todo. Si falla, el agente hará visión.
+  #
+  # Las fotos son el único camino lento del prep (~20-30s): se avisa al hilo
+  # que ya se está leyendo, para que la espera no parezca cola muerta. Los
+  # PDF/XML terminan en segundos y no necesitan este aviso.
+  sql -v id="$ID" <<'SQL' || true
+insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
+values (:'id', 'contable', 'progreso', '⚙️ Preparador: leyendo la foto…');
+SQL
   local IMG="$SALIDA"
   if [ "$ES_HEIC" = "si" ]; then
     local JPG="${SALIDA%.*}.jpg"
@@ -494,13 +531,25 @@ prompt = (
     '"monto": number|null (total del documento), "itbis": number|null, '
     '"codigo_seguridad": str|null (6 caracteres, solo si es e-CF y se lee), '
     '"fecha_firma": "DD-MM-YYYY HH:MM:SS"|null (solo si se lee), '
+    '"telefono": str|null (telefono del emisor IMPRESO en el documento), '
+    '"items": [{"descripcion": str, "cantidad": number, "precio": number '
+    "(unitario sin ITBIS), "
+    '"itbis": number (ITBIS de ese renglon, 0 si exento)}] '
+    "(un item por renglon de consumo del documento; null si no se leen), "
+    '"propina": number|null (propina legal 10% si aparece como renglon), '
     '"confianza": "alta"|"media"|"baja"}. '
-    "Usa null en lo que no puedas leer. No inventes valores."
+    "Usa null en lo que no puedas leer. No inventes valores ni renglones."
 )
 cuerpo = json.dumps({
     "model": modelo,
     "temperature": 0,
-    "max_tokens": 800,
+    # glm-4.6v es un modelo pensante: pensando, el prompt de items se pasaba
+    # del timeout (2 visiones paralelas murieron a los 90s el 2026-08-02) o
+    # gastaba el tope en reasoning_content y entregaba content vacio.
+    # Extraer renglones no requiere razonamiento profundo: thinking APAGADO
+    # -> respuesta directa en ~15s (medido con factura real).
+    "thinking": {"type": "disabled"},
+    "max_tokens": 3000,
     "messages": [{"role": "user", "content": [
         {"type": "image_url", "image_url": {"url": "data:%s;base64,%s" % (mime, b64)}},
         {"type": "text", "text": prompt},
@@ -520,11 +569,21 @@ for intento in (1, 2):   # 1 reintento (SPEC)
 if resp is None:
     print("vision fallo (%s)" % ultimo, file=sys.stderr)
     sys.exit(1)
-try:
-    contenido = resp["choices"][0]["message"]["content"]
+datos = None
+mensaje = resp.get("choices", [{}])[0].get("message", {})
+# El JSON puede venir en content o — si el modelo agoto el tope pensando —
+# solo en reasoning_content: se buscan ambos, en ese orden.
+for origen in ("content", "reasoning_content"):
+    contenido = mensaje.get(origen) or ""
     m = re.search(r"\{.*\}", contenido, re.S)
-    datos = json.loads(m.group(0))
-except Exception:
+    if not m:
+        continue
+    try:
+        datos = json.loads(m.group(0))
+        break
+    except ValueError:
+        continue
+if datos is None:
     print("vision: la respuesta no trajo JSON parseable", file=sys.stderr)
     sys.exit(1)
 out = {"metodo": "vision-glm4.6v", "nota": NOTA}
@@ -553,6 +612,43 @@ if re.fullmatch(r"[A-Za-z0-9+/=]{6}", cs):
 ff = str(datos.get("fecha_firma") or "").strip().replace("/", "-")
 if re.fullmatch(r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}", ff):
     out["fecha_firma"] = ff
+# Teléfono del emisor: SOLO el impreso en el documento (regla del dueño) —
+# es lo único que la propuesta puede ofrecer como contacto.
+tel = re.sub(r"[^\d+]", "", str(datos.get("telefono") or ""))
+if 10 <= len(tel) <= 14:
+    out["telefono"] = tel
+
+# Items del documento: la tabla que el contable necesita para las líneas.
+# Validados uno a uno; ante cualquier cosa rara el renglón se descarta (mejor
+# tabla incompleta que inventada — el agente nota el faltante por aritmética).
+def numero(v):
+    return round(float(v), 2) if isinstance(v, (int, float)) and v >= 0 and v < 10**9 else None
+
+items = []
+for it in (datos.get("items") or [])[:40]:
+    if not isinstance(it, dict):
+        continue
+    desc = str(it.get("descripcion") or "").strip()[:80]
+    cant = numero(it.get("cantidad"))
+    prec = numero(it.get("precio"))
+    itb = numero(it.get("itbis"))
+    if desc and cant and prec is not None:
+        items.append({"descripcion": desc, "cantidad": cant,
+                      "precio": prec, "itbis": itb if itb is not None else 0})
+prop = numero(datos.get("propina"))
+if items:
+    out["items"] = items
+    if prop:
+        out["propina"] = prop
+    # Aritmética verificada acá, determinista: base + ITBIS + propina vs total.
+    if isinstance(out.get("monto"), (int, float)):
+        base = round(sum(i["precio"] * i["cantidad"] for i in items), 2)
+        itbis_items = round(sum(i["itbis"] for i in items), 2)
+        calc = round(base + itbis_items + (prop or 0), 2)
+        out["aritmetica"] = {"base_items": base, "itbis_items": itbis_items,
+                            "propina": prop or 0, "calculado": calc,
+                            "monto_documento": out["monto"],
+                            "cuadra": abs(calc - out["monto"]) <= 1.0}
 json.dump(out, open(outp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 PY
   then
