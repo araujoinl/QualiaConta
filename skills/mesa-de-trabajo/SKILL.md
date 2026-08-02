@@ -84,27 +84,37 @@ cat /tmp/mesa/<trabajo_id>/dossier.json
     `base = itbis/0.18` y `base + itbis + exentos + propina/cargos == monto`.
     En restaurantes SIEMPRE hay propina legal 10% (exenta) y suele haber
     renglones exentos: que `monto != base*1.18` NO es incoherencia — es lo
-    normal. Incoherencia REAL (única licencia para re-leer la imagen):
-    `base + itbis > monto`, un RNC que no casa con la razón social de DGII,
-    o confianza media/baja del dossier.
+    normal.
+    **Y si NO cuadra: NO te pongas a releer la imagen — releer casi nunca lo
+    resuelve y quema minutos (regla del dueño, 2026-08-02). PREGUNTALE al
+    humano** con evento `pregunta` + `esperando_respuesta`, diciendo la
+    diferencia EXACTA y tu mejor hipótesis de qué renglón falta o sobra
+    (casi siempre propina, un impuesto o un dígito mal leído). Él tiene el
+    documento a un click y resuelve en segundos. Con su respuesta, cerrás.
   - `dgii` del dossier → va a tu propuesta TAL CUAL. No re-consultes DGII.
   - `duplicados` del dossier → decidís con eso. No re-busques.
   - `extraccion.items` (fotos): esa ES tu tabla de líneas — mapeale la cuenta
     a cada item y armá la propuesta con ellos, SIN re-leer la imagen. Si
     `extraccion.aritmetica.cuadra` es true, no busques renglones que falten;
-    si es false, la diferencia te dice qué falta (casi siempre propina o un
-    impuesto) y AHÍ sí mirá el documento.
+    si es false, aplicá la regla de arriba: pregunta al humano con la
+    diferencia exacta — nada de relecturas.
   - **La cuenta contable se busca en el plan destilado**
-    `/opt/data/preentrenamiento/agg/plan-cuentas.json` (215 cuentas: codigo,
-    nombre, tipo, clase, GUID) — un solo grep/python ahí. PROHIBIDO buscar
-    cuentas greppeando `preentrenamiento/raw/`.
+    `/opt/data/preentrenamiento/agg/plan-cuentas.json` — un solo turno.
+    PROHIBIDO buscar cuentas greppeando `preentrenamiento/raw/`. Su forma
+    EXACTA (no la redescubras a tropezones, ya te costó 3 turnos):
+    `{"_meta": {...}, "cuentas": [{"codigo", "nombre", "tipo", "clase", ...}]}`.
+    Receta lista de un turno (cambiá el término de búsqueda):
 
-  Después trabajá y verificá coherencia por el camino: si `extraccion.confianza` es `media` o `baja`, si los montos
-  no cuadran (`monto` = subtotal + `itbis` + cargos) o si el
-  `razon_social_emisor` de DGII no coincide con el proveedor extraído, volvé al
-  documento (ya lo tenés en disco) antes de proponer. Los campos que vengan
-  AUSENTES del dossier son lo que el prep NO pudo hacer: completá SOLO esos con
-  el protocolo normal. El `dgii` del dossier va a tu propuesta como siempre
+    ```bash
+    python3 -c "import json; [print(c['codigo'],'|',c['nombre'],'|',c['tipo']) for c in json.load(open('/opt/data/preentrenamiento/agg/plan-cuentas.json'))['cuentas'] if 'represent' in (c['nombre'] or '').lower()]"
+    ```
+
+  Después trabajá. Los campos que vengan AUSENTES del dossier son lo que el
+  prep NO pudo hacer: completá SOLO esos con el protocolo normal. Con campos
+  presentes NO hay relectura de imagen bajo NINGUNA condición — confianza
+  media/baja, montos que no cierran o razón social que no casa se resuelven
+  con las reglas de arriba (aritmética sobre la base gravada; y si de verdad
+  no cuadra, PREGUNTA al humano), jamás con `vision_analyze`. El `dgii` del dossier va a tu propuesta como siempre
   (nunca lo dejes vacío), y si `duplicados` trae filas, decidís vos con la
   regla del paso 4 — el prep nunca marca error por duplicado. El prep ya dejó
   un evento de progreso con el resumen: no lo repitas, contá solo tu juicio.
@@ -267,8 +277,11 @@ update qualia_trabajos
      **La suma de items DEBE dar el total del documento.** Antes de cerrar la
      propuesta, verificalo vos: `sum(precio*cantidad) + sum(itbis) == monto`.
      Si no cuadra, te falta un renglon (casi siempre la propina legal o un
-     impuesto): volve al documento y encontralo. NO cierres una propuesta que
-     no cuadra — la web la marca en rojo y no sirve para registrar.
+     impuesto): en el protocolo completo (sin dossier) volve al documento y
+     encontralo; si venis del dossier del preparador, aplica SU regla —
+     pregunta al humano con la diferencia exacta, sin releer. NO cierres una
+     propuesta que no cuadra — la web la marca en rojo y no sirve para
+     registrar.
 
      Ejemplo restaurante (asi debe quedar): items de comida con su ITBIS + una
      linea "Propina legal 10%" con su precio y `itbis: 0` (la propina no se
