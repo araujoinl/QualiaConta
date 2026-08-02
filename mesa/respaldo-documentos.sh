@@ -26,8 +26,18 @@ LOG="${DESTINO}/respaldo.log"
 
 mkdir -p "$DESTINO"
 
+# Inicio y ruta del helper: al cerrar, la corrida queda en qualia_actualizaciones
+# para verse desde la web (Configuracion > Bancos > QualiaConta).
+INICIO=$(date -u +%FT%TZ)
+AQUI=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+# Buffer con SOLO esta corrida: es lo que se guarda como detalle en la
+# bitacora. El log de por vida sigue recibiendo todo igual.
+CORRIDA=$(mktemp)
+trap 'rm -f "$CORRIDA"' EXIT
+
 log() {
-  echo "[respaldo-docs] $(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "$LOG"
+  echo "[respaldo-docs] $(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "$CORRIDA" | tee -a "$LOG"
 }
 
 # Pares con documento respaldable: hace falta nombre y URL. OJO: no se filtra
@@ -75,4 +85,14 @@ while IFS='|' read -r empresa trabajo nombre url; do
 done <<< "$filas"
 
 log "resumen: ${nuevos} nuevos, ${fallidos} fallidos, ${existentes} ya respaldados"
+
+resumen=$(printf '{"documentos":{"nuevos":%s,"fallidos":%s,"ya_estaban":%s,"total":%s}}' \
+    "$nuevos" "$fallidos" "$existentes" "$((nuevos + existentes))")
+
+# Un documento que no se pudo bajar es una falla real: su unica copia sigue
+# estando solo en el bucket.
+if [ "$fallidos" -eq 0 ]; then ok=true; else ok=false; fi
+"$AQUI/registrar-corrida.sh" respaldo_documentos "$INICIO" "$(date -u +%FT%TZ)" \
+    "$ok" "$fallidos" "$resumen" "$CORRIDA"
+
 exit 0
