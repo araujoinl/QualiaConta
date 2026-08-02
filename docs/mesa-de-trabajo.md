@@ -44,7 +44,7 @@ Una fila por documento arrastrado o sugerencia del contable.
 | Columna | Quién la escribe | Qué es |
 |---|---|---|
 | `empresa_id` | web | UUID en `admcloud_empresas` |
-| `tipo` | web/cron | `factura` (arrastrada) o `sugerencia` (detectada por el contable) |
+| `tipo` | web/cron | `factura` (arrastrada), `sugerencia` (detectada por el contable) o `criterio` (bloque de reglas del preentrenamiento para ratificar; nace en `propuesta`, sin archivo) |
 | `origen` | web/cron | `web` o `cron_conciliacion` |
 | `estado` | ver tabla de estados | máquina de estados del trabajo |
 | `archivo_path` / `archivo_nombre` | web | archivo en el bucket `qualia-conta` (null en sugerencias) |
@@ -93,11 +93,21 @@ memoria). `precedente_ref` sólo cuando `metodo != razonado`.
 
 Desde 2026-08-02 la propuesta lleva además **`documento_adm`** (qué entidad se
 creará: VendorBills | Journals | BankCharges | BankBankTransfers) y
-**`lineas[]`** — el asiento en partida doble tal cual quedará en ADM: cada
-línea `{cuenta, cuenta_nombre, descripcion, debito, credito}` con cuentas
-EXACTAS del plan, débitos = créditos (la web verifica el cuadre y lo marca),
-ITBIS aprovechable como línea propia. La web las muestra como tabla estilo ADM
-y serán el payload del registro real en la Entrega 2.
+**`lineas[]`**, cuya forma depende del documento — imitando la pantalla real
+de ADM (la web auto-detecta la forma por la presencia de `precio`/`cantidad`):
+
+- **VendorBills: líneas de ITEMS** — cada renglón del documento como
+  `{descripcion, cantidad, precio, grupo_impuesto, itbis, cuenta, cuenta_nombre}`;
+  `precio` sin ITBIS; TODO renglón que sume al total va como item (incluida la
+  propina legal 10% de restaurantes, exenta) con su propia cuenta; la web
+  valida `sum(precio*cantidad) + sum(itbis)` contra `monto` (umbral 0.05).
+- **Journals | BankCharges | BankBankTransfers: partida doble** — cada línea
+  `{cuenta, cuenta_nombre, descripcion, debito, credito}` con cuentas EXACTAS
+  del plan, débitos = créditos (la web verifica el cuadre y lo marca), ITBIS
+  aprovechable como línea propia.
+
+La web las muestra como tabla estilo ADM y serán el payload del registro real
+en la Entrega 2.
 
 ## qualia_eventos
 

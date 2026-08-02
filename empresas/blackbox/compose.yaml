@@ -83,6 +83,15 @@ services:
       # Tick corto: la subida en la web dispara al contable en ~4s (la consulta
       # es indexada y trivial; la latencia dominante es el analisis del modelo).
       MESA_INTERVALO: ${MESA_INTERVALO:-4}
+    # Latido: el poller escribe epoch en /tmp/latido en cada tick; si envejece
+    # más de 2 minutos, el loop está congelado (aunque el proceso viva) y
+    # Docker lo reinicia. Complemento del monitoreo, no su reemplazo.
+    healthcheck:
+      test: ["CMD-SHELL", "test $$(( $$(date +%s) - $$(cat /tmp/latido 2>/dev/null || echo 0) )) -lt 120"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     volumes:
       - ../../mesa:/mesa:ro
       # Workdir compartido con el contable (mismo mount de arriba): acá escribe

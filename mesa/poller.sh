@@ -38,17 +38,24 @@ corriendo=1
 trap 'corriendo=0' TERM INT
 
 sql() {
-  # -q silencia notices; timeout de conexión corto para no colgar el loop
-  PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -t -A -q -c "$1" 2>/dev/null
+  # -q silencia notices; PGCONNECT_TIMEOUT corto + timeout DURO alrededor:
+  # una conexión TCP colgada a mitad de query congelaba el loop entero con
+  # el contenedor "Up" (hallazgo de auditoría 2026-08-02).
+  timeout 30 env PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -t -A -q -c "$1" 2>/dev/null
 }
 
 poke() {
-  # $1 = trabajo_id, $2 = motivo
-  curl -s -m 15 -X POST "$WEBHOOK" \
+  # $1 = trabajo_id, $2 = motivo. Devuelve el rc REAL del curl: el llamador
+  # decide qué hacer con un gateway caído (los eventos de usuario NO pueden
+  # perderse — ver el loop de accion_usuario).
+  if curl -s -m 15 -X POST "$WEBHOOK" \
     -H 'Content-Type: application/json' \
-    -d "{\"trabajo_id\":\"$1\",\"motivo\":\"$2\"}" > /dev/null 2>&1 \
-    && log "desperté al contable: $2 $1" \
-    || log "no pude tocar el webhook ($2 $1) — ¿gateway abajo?"
+    -d "{\"trabajo_id\":\"$1\",\"motivo\":\"$2\"}" > /dev/null 2>&1; then
+    log "desperté al contable: $2 $1"
+    return 0
+  fi
+  log "no pude tocar el webhook ($2 $1) — ¿gateway abajo?"
+  return 1
 }
 
 # Watermark de eventos de usuario: arranca en el máximo actual para no
@@ -66,6 +73,10 @@ log "arrancó (empresa=$QUALIA_EMPRESA_ID, webhook=$WEBHOOK, watermark=$wm)"
 declare -A avisado
 
 while [ "$corriendo" -eq 1 ]; do
+  # Latido para el healthcheck del compose: si este archivo envejece, el
+  # loop está congelado y Docker lo marca unhealthy (y el restart lo revive).
+  date +%s > /tmp/latido 2>/dev/null
+
   # 1) trabajos nuevos
   # La clave del anti-spam incluye updated_at: si el trabajo VUELVE a pendiente
   # (tras un error, o porque el humano pidió otra revisión) es una petición
@@ -87,7 +98,10 @@ while [ "$corriendo" -eq 1 ]; do
       avisado[$clave]=$ahora
       (
         t0=$(date +%s)
-        timeout 120 bash /mesa/preparar-trabajo.sh "$id"
+        # 180s: la suma de topes internos del camino foto (descarga + visión
+        # + timbre) supera los 120 originales; -k 10 = KILL de respaldo si el
+        # TERM no alcanza (el prep atrapa TERM para el chown de entrega).
+        timeout -k 10 180 bash /mesa/preparar-trabajo.sh "$id"
         rc=$?
         dur=$(( $(date +%s) - t0 ))
         if [ "$rc" -eq 0 ]; then
@@ -100,11 +114,17 @@ while [ "$corriendo" -eq 1 ]; do
     fi
   done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='pendiente' order by created_at limit 3")
 
-  # 2) acciones del usuario en la web
+  # 2) acciones del usuario en la web. El watermark SOLO avanza si el aviso
+  # llegó: una aprobación con el gateway caído se reintenta el próximo tick
+  # en vez de perderse para siempre (antes wm avanzaba incondicional y el
+  # evento se consumía sin entregarse).
   while IFS='|' read -r eid tid; do
     [ -z "${eid:-}" ] && continue
-    poke "$tid" "accion_usuario"
-    wm=$eid
+    if poke "$tid" "accion_usuario"; then
+      wm=$eid
+    else
+      break
+    fi
   done < <(sql "select e.id, e.trabajo_id from qualia_eventos e join qualia_trabajos t on t.id = e.trabajo_id where t.empresa_id='${QUALIA_EMPRESA_ID}' and e.autor='usuario' and e.id > ${wm} order by e.id limit 10")
 
   sleep "$INTERVALO" &

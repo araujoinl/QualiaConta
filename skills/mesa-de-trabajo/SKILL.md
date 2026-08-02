@@ -48,8 +48,11 @@ nada más: **la base es la única verdad**. Lo primero es leer la fila y decidir
 según su estado real, no según el mensaje que te despertó.
 
 ```bash
-psql "$QUALIA_DSN" -t -A -c "select estado, tipo, archivo_url, archivo_nombre, resumen from qualia_trabajos where id='<trabajo_id>' and empresa_id='$QUALIA_EMPRESA_ID'"
+psql "$QUALIA_DSN" -t -A -c "select estado, tipo, archivo_url, archivo_nombre, resumen, updated_at from qualia_trabajos where id='<trabajo_id>' and empresa_id='$QUALIA_EMPRESA_ID'"
 ```
+
+**Guardá ese `updated_at`**: es tu referencia PRE-claim para juzgar si el
+dossier del preparador está vigente (el claim lo va a cambiar).
 
 ## Si está `pendiente`: analizalo
 
@@ -68,17 +71,18 @@ cat /tmp/mesa/<trabajo_id>/dossier.json
   si era HEIC, con `texto.txt` si hubo texto), y la extracción, la verificación
   DGII y el chequeo de duplicados YA están hechos. **SALTATE los pasos 2-5** y
   andá DIRECTO al precedente y la propuesta (pasos 6-8). **Tu PRIMER movimiento
-  tras leer el dossier es UN evento `progreso` corto anunciando tu plan** — en
-  el MISMO comando psql del claim si podés — p.ej. «Dossier recibido: GUAN LAN,
-  RD$4,520.47, NCF inválido en DGII → preparo la propuesta de gasto no
-  admitido». Sin ese aviso la mesa queda muda minutos y el humano no sabe si
-  estás vivo.
+  tras leer el dossier es UN evento `progreso` corto anunciando SOLO tu plan y
+  tu juicio** — sin repetir proveedor/monto/DGII, que ya están en el evento del
+  preparador — p.ej. «→ NCF inválido: preparo la propuesta de gasto no
+  admitido» o «→ proveedor conocido, aplico precedente 620.10 y propongo».
+  Sin ese aviso la mesa queda muda minutos y el humano no sabe si estás vivo.
 
   **NO repitas lo que el dossier ya hizo** (medido 2026-08-02: re-hacer la
   visión + re-consultar DGII quemó ~80s de una corrida que ya los traía):
   - `extraccion` con campos y confianza alta → esos son tus datos. Verificá
     coherencia contra `texto.txt` o contra la aritmética, NUNCA re-leyendo la
-    imagen con `vision_analyze` salvo incoherencia REAL (abajo).
+    imagen con `vision_analyze`; si algo de verdad no cierra, aplicá la regla
+    de abajo (patrón conocido → renglón inferido; sin patrón → preguntá).
     **La aritmética correcta** (corrección del dueño, 2026-08-02): el ITBIS es
     18% de la BASE GRAVADA, JAMÁS del total. La verificación es:
     `base = itbis/0.18` y `base + itbis + exentos + propina/cargos == monto`.
@@ -102,41 +106,17 @@ cat /tmp/mesa/<trabajo_id>/dossier.json
        `esperando_respuesta`, con la diferencia exacta y tu mejor hipótesis.
        Él tiene el documento a un click. Con su respuesta, cerrás.
   - `dgii` del dossier → va a tu propuesta TAL CUAL. No re-consultes DGII.
+    EXCEPCIÓN: un `dgii` con estado "no verificable" cuenta como AUSENTE —
+    intentá el paso 5 vos (desde `texto.txt`, sin visión); si tampoco podés,
+    queda "no verificable" con el motivo.
   - `duplicados` del dossier → decidís con eso. No re-busques.
   - `extraccion.items` (fotos): esa ES tu tabla de líneas — mapeale la cuenta
     a cada item y armá la propuesta con ellos, SIN re-leer la imagen. Si
     `extraccion.aritmetica.cuadra` es true, no busques renglones que falten;
     si es false, aplicá la regla de arriba: pregunta al humano con la
     diferencia exacta — nada de relecturas.
-  - **La cuenta contable, en este orden y en UN turno cada intento**
-    (PROHIBIDO greppear `preentrenamiento/raw/` para cuentas):
-    1. **Precedente del proveedor**: `/opt/data/preentrenamiento/agg/proveedor-cuentas.json`
-       — con qué cuenta registró la contabilidad REAL las facturas de ESE
-       proveedor (1,050 facturas destiladas). Si el proveedor está y su
-       cuenta dominante tiene ≥70% de usos: ese es tu punto de partida,
-       `metodo='precedente'` citando "N de M facturas históricas".
-       **El precedente es un default POR ITEM, jamás un sello a ciegas**
-       (regla del dueño, 2026-08-02): leé la descripción de CADA renglón —
-       si un item contradice la naturaleza de la cuenta dominante (un mueble,
-       un equipo, algo capitalizable = activo depreciable; mercancía para
-       revender = inventario), ESE item se clasifica por su naturaleza, con
-       la explicación en `detalle`. La misma factura puede mezclar cuentas
-       por item — eso es lo correcto, no una anomalía. Forma:
-       `{"_meta", "proveedores": [{"nombre", "rnc", "facturas", "cuentas": [{"codigo","nombre","usos","pct"}]}]}`.
-       Receta (buscá por nombre o RNC):
-
-       ```bash
-       python3 -c "import json; [print(p['nombre'],'|',p['facturas'],'facturas:',[(c['codigo'],c['nombre'],str(c['pct'])+'%') for c in p['cuentas'][:3]]) for p in json.load(open('/opt/data/preentrenamiento/agg/proveedor-cuentas.json'))['proveedores'] if 'tupaq' in p['nombre'].lower() or p.get('rnc')=='132942248']"
-       ```
-    2. **Tu memoria curada** (`memoria/proveedores.md`, criterios ratificados)
-       si matiza o contradice el precedente crudo.
-    3. **Proveedor nuevo sin precedente**: recién ahí razonás con el plan
-       `/opt/data/preentrenamiento/agg/plan-cuentas.json` — forma
-       `{"_meta": {...}, "cuentas": [{"codigo", "nombre", "tipo", "clase", ...}]}`:
-
-       ```bash
-       python3 -c "import json; [print(c['codigo'],'|',c['nombre'],'|',c['tipo']) for c in json.load(open('/opt/data/preentrenamiento/agg/plan-cuentas.json'))['cuentas'] if 'represent' in (c['nombre'] or '').lower()]"
-       ```
+  - **La cuenta contable**: seguí la sección «Cómo clasificás la cuenta»
+    (más abajo — aplica CON y SIN dossier).
 
   Después trabajá. Los campos que vengan AUSENTES del dossier son lo que el
   prep NO pudo hacer: completá SOLO esos con el protocolo normal. Con campos
@@ -149,7 +129,51 @@ cat /tmp/mesa/<trabajo_id>/dossier.json
   un evento de progreso con el resumen: no lo repitas, contá solo tu juicio.
 
 - **Si NO existe** (o no parsea, o su `row_updated_at` no coincide con el
-  `updated_at` actual de la fila): protocolo completo, pasos 2-9, como siempre.
+  `updated_at` que leíste ANTES del claim — ojo: tu claim cambia el
+  `updated_at` de la fila, por eso la comparación es contra el valor
+  pre-claim del primer SELECT, jamás contra el actual): protocolo completo,
+  pasos 2-9, como siempre.
+
+### Cómo clasificás la cuenta (con o sin dossier)
+
+En este orden y en UN turno cada intento (PROHIBIDO greppear
+`preentrenamiento/raw/` para cuentas). El paso 6 del protocolo completo usa
+ESTA misma jerarquía:
+
+1. **Precedente del proveedor**: `/opt/data/preentrenamiento/agg/proveedor-cuentas.json`
+   — con qué cuenta registró la contabilidad REAL las facturas de ESE
+   proveedor (1,050 facturas destiladas). Si el proveedor está y su cuenta
+   dominante tiene ≥70% de usos: ese es tu punto de partida,
+   `metodo='precedente'` con `precedente_ref='agg:proveedor-cuentas.json#<rnc-o-nombre>'`
+   citando "N de M facturas históricas" en `detalle`. **Excepción explícita a
+   la REGLA DURA del borrador**: este agg NO es memoria en borrador — es
+   destilado determinista de la contabilidad REAL registrada en ADM, y por
+   eso SÍ vale como precedente con esa referencia.
+   **El precedente es un default POR ITEM, jamás un sello a ciegas** (regla
+   del dueño, 2026-08-02): leé la descripción de CADA renglón — si un item
+   contradice la naturaleza de la cuenta dominante (un mueble, un equipo,
+   algo capitalizable = activo depreciable; mercancía para revender =
+   inventario), ESE item se clasifica por su naturaleza, con la explicación
+   en `detalle`. La misma factura puede mezclar cuentas por item — eso es lo
+   correcto, no una anomalía. Forma:
+   `{"_meta", "proveedores": [{"nombre", "rnc", "facturas", "cuentas": [{"codigo","nombre","usos","pct"}]}]}`.
+   Receta (buscá por nombre o RNC):
+
+   ```bash
+   python3 -c "import json; [print(p['nombre'],'|',p['facturas'],'facturas:',[(c['codigo'],c['nombre'],str(c['pct'])+'%') for c in p['cuentas'][:3]]) for p in json.load(open('/opt/data/preentrenamiento/agg/proveedor-cuentas.json'))['proveedores'] if 'tupaq' in p['nombre'].lower() or p.get('rnc')=='132942248']"
+   ```
+
+2. **Tu memoria curada** (`memoria/proveedores.md`, criterios RATIFICADOS)
+   si matiza o contradice el precedente crudo — lo ratificado manda sobre el agg.
+
+3. **Proveedor nuevo sin precedente**: recién ahí razonás
+   (`metodo='razonado'`) con el plan
+   `/opt/data/preentrenamiento/agg/plan-cuentas.json` — forma
+   `{"_meta": {...}, "cuentas": [{"codigo", "nombre", "tipo", "clase", ...}]}`:
+
+   ```bash
+   python3 -c "import json; [print(c['codigo'],'|',c['nombre'],'|',c['tipo']) for c in json.load(open('/opt/data/preentrenamiento/agg/plan-cuentas.json'))['cuentas'] if 'represent' in (c['nombre'] or '').lower()]"
+   ```
 
 **La extracción del dossier es auto-generada: tratála como borrador a validar,
 no como verdad.** Solo el XML e-CF (`confianza: alta`) es dato exacto; lo demás
@@ -162,7 +186,8 @@ propuesta siguen siendo tuyos.
 
 ```sql
 update qualia_trabajos set estado='analizando'
- where id='<trabajo_id>' and estado='pendiente' returning id;
+ where id='<trabajo_id>' and empresa_id='$QUALIA_EMPRESA_ID'
+   and estado='pendiente' returning id;
 ```
 
 2. **Bajá el documento con el script** — NUNCA manejes la URL a mano (es larga,
@@ -280,17 +305,21 @@ insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
 values ('<trabajo_id>', 'contable', 'progreso', 'Leí la factura: Sunix, RD$45,200');
 ```
 
-8. **Cerrá con la propuesta** (jsonb con la forma del contrato) y el `resumen`:
+8. **Cerrá con la propuesta** (jsonb con la forma del contrato) y el `resumen`.
+   Ejemplo COMPLETO y coherente (VendorBills en forma de items, aritmética que
+   cuadra: 38,305.08 + 6,894.92 = 45,200.00):
 
 ```sql
 update qualia_trabajos
    set estado='propuesta',
-       resumen='Factura Sunix — RD$45,200 gasoil',
-       propuesta='{"proveedor":"Sunix Petroleum SRL","rnc":"101-89755-2","ncf":"E310000012345","fecha":"2026-08-01","moneda":"DOP","monto":45200.00,"itbis":6890.85,"cuenta_destino":"6120-01 Combustibles","documento_adm":"VendorBills","lineas":[{"cuenta":"6120-01","cuenta_nombre":"Combustibles","descripcion":"Gasoil flotilla","debito":38309.15,"credito":0},{"cuenta":"1180-02","cuenta_nombre":"ITBIS adelantado","descripcion":"ITBIS 18% credito fiscal","debito":6890.85,"credito":0},{"cuenta":"2110-01","cuenta_nombre":"CxP Sunix Petroleum","descripcion":"Total factura a credito 30d","debito":0,"credito":45200.00}],"metodo":"precedente","precedente_ref":"libro-de-accion/2026-07-30-sunix-combustible.md","confianza":0.95,"detalle":"Gasoil flotilla. ITBIS no aprovechable (NG 07-2007 art. 3)."}'::jsonb
+       resumen='Factura Isla Dominicana — RD$45,200 combustible flotilla',
+       propuesta='{"proveedor":"Isla Dominicana De Petroleo Corporation","rnc":"101897552","ncf":"E310000012345","fecha":"2026-08-01","moneda":"DOP","monto":45200.00,"itbis":6894.92,"cuenta_destino":"620.11 Combustible","documento_adm":"VendorBills","lineas":[{"descripcion":"Gasoil flotilla","cantidad":1,"precio":38305.08,"grupo_impuesto":"ITBIS","itbis":6894.92,"cuenta":"620.11","cuenta_nombre":"Combustible"}],"metodo":"precedente","precedente_ref":"agg:proveedor-cuentas.json#101897552","confianza":0.95,"detalle":"Combustible de flotilla. Cuenta 620.11 por precedente: 46 de 47 facturas históricas de este proveedor."}'::jsonb
+ where id='<trabajo_id>' and empresa_id='$QUALIA_EMPRESA_ID' and estado='analizando';
+```
 
-   **`lineas` es obligatorio en toda propuesta** y su forma depende de
-   `documento_adm` (VendorBills | Journals | BankCharges | BankBankTransfers),
-   imitando la pantalla REAL de ADM:
+   **Las `lineas`, por tipo de documento** — obligatorias en toda propuesta;
+   su forma depende de `documento_adm` (VendorBills | Journals | BankCharges |
+   BankBankTransfers), imitando la pantalla REAL de ADM:
 
    - **VendorBills (facturas de proveedor): lineas de ITEMS**, como la pestaña
      "Articulos y Servicios" de ADM.
@@ -304,13 +333,14 @@ update qualia_trabajos
      sumes al precio de otro renglon ni los omitas.
 
      **La suma de items DEBE dar el total del documento.** Antes de cerrar la
-     propuesta, verificalo vos: `sum(precio*cantidad) + sum(itbis) == monto`.
+     propuesta, verificalo vos: `sum(precio*cantidad) + sum(itbis)` contra
+     `monto`, con el MISMO umbral que valida la web: diferencia < 0.05.
      Si no cuadra, te falta un renglon (casi siempre la propina legal o un
      impuesto): en el protocolo completo (sin dossier) volve al documento y
      encontralo; si venis del dossier del preparador, aplica SU regla —
-     pregunta al humano con la diferencia exacta, sin releer. NO cierres una
-     propuesta que no cuadra — la web la marca en rojo y no sirve para
-     registrar.
+     patron conocido → renglon inferido; sin patron → pregunta al humano con
+     la diferencia exacta, sin releer. NO cierres una propuesta que no cuadra
+     — la web la marca en rojo y no sirve para registrar.
 
      Ejemplo restaurante (asi debe quedar): items de comida con su ITBIS + una
      linea "Propina legal 10%" con su precio y `itbis: 0` (la propina no se
@@ -329,8 +359,6 @@ update qualia_trabajos
 
    Estas lineas seran el payload del registro real cuando la escritura se
    encienda: escribilas como si ya estuvieras llenando la pantalla de ADM.
- where id='<trabajo_id>' and estado='analizando';
-```
 
    ¿Te falta algo para decidir? Preguntá y esperá:
 
@@ -338,7 +366,7 @@ update qualia_trabajos
 insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
 values ('<id>', 'contable', 'pregunta', '¿Este flete de Marítima Dominicana es de la importación de julio o gasto local?');
 update qualia_trabajos set estado='esperando_respuesta'
- where id='<id>' and estado='analizando';
+ where id='<id>' and empresa_id='$QUALIA_EMPRESA_ID' and estado='analizando';
 ```
 
 9. Si algo revienta: `estado='error'` + `error_detalle` legible + evento `nota`.
@@ -364,15 +392,19 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
   trabajo queda en `aprobada` y eso es correcto. Cerrá con un evento `nota`:
   «Anotado en el libro. Queda pendiente de registro en ADM Cloud.»
 
-  **Contrato para cuando la Entrega 2 encienda el registro real**: al crear el
-  documento en ADM, su DocID queda enlazado en DOS lugares, siempre —
+  **Contrato para cuando la Entrega 2 encienda el registro real** (el diseño
+  canónico y completo vive en `docs/plan-encendido-escritura.md` §4 — ante
+  cualquier diferencia, manda el plan): el ORDEN es registrar en ADM PRIMERO
+  y escribir el libro DESPUÉS, para que la entrada nazca con su DocID —
   (1) en la fila: `update qualia_trabajos set propuesta = propuesta ||
   jsonb_build_object('registro_adm', jsonb_build_object('docid', '<DocID>',
-  'fecha', now()::date)) where id='<id>'` (la web lo muestra como "Documento
-  ADM" en la bandeja y en el libro); (2) en el TEXTO de la entrada del libro
-  (archivo canónico en git y espejo en `qualia_libro.entrada`), p.ej.
-  «Registrada en ADM como PI20250921». Una entrada de libro sin el DocID del
-  documento que generó está incompleta.
+  'fecha', now()::date)) where id='<id>' and empresa_id='$QUALIA_EMPRESA_ID'`
+  (la web lo muestra como "Documento ADM" en la bandeja y en el libro);
+  (2) en el TEXTO de la entrada del libro (archivo canónico en git y espejo
+  en `qualia_libro.entrada`), p.ej. «Registrada en ADM como PI20250921».
+  Si el registro en ADM falla, la entrada del libro se DIFIERE (no se escribe
+  incompleta): el trabajo queda con el error y se reintenta — jamás una
+  entrada sin el DocID del documento que generó.
 
 - **`rechazada`**: evento `nota` reconociéndolo («Entendido, descartada»). Sin
   libro, sin precedente. Si el usuario explicó por qué, guardá el criterio en
@@ -382,7 +414,8 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
 
 ```sql
 update qualia_trabajos set estado='analizando'
- where id='<id>' and estado='esperando_respuesta';
+ where id='<id>' and empresa_id='$QUALIA_EMPRESA_ID'
+   and estado='esperando_respuesta';
 ```
 
   — y seguí el análisis con la respuesta como dato nuevo.

@@ -68,7 +68,10 @@ log() { echo "[prep ${ID:0:8}] $(date -u +%H:%M:%S) $*"; }
 # mitad (timeout del poller manda TERM): sin esto el agente no podría escribir
 # al lado del documento.
 entregar() { [ -d "${DIR:-}" ] && chown -R "${HERMES_UID:-1000}:${HERMES_GID:-1000}" "$DIR" 2>/dev/null; true; }
-trap entregar EXIT TERM INT
+# TERM/INT deben TERMINAR el script (un trap sin exit anula el `timeout` del
+# poller: el script seguía corriendo tras la señal — hallazgo de auditoría).
+trap entregar EXIT
+trap 'entregar; exit 143' TERM INT
 
 # python: el del venv de Hermes es el único garantizado en la imagen; el del
 # PATH queda de respaldo. Sin python el prep degrada a solo-descarga.
@@ -133,23 +136,34 @@ fi
 # GC del cache: cuando un trabajo se borra desde la web, su carpeta en
 # /tmp/mesa sobrevive y su dossier se vuelve un FANTASMA que contamina el
 # dedup (pasó el 2026-08-02: "2 duplicados en mesa" que eran carpetas de
-# trabajos ya borrados). Antes de trabajar, se barren las carpetas cuyo
-# trabajo ya no existe en la base. Nunca la del trabajo actual.
+# trabajos ya borrados). Se barren en UN solo viaje a la base (antes era una
+# conexión por carpeta y la latencia crecía con la historia de la mesa).
+# Nunca la carpeta del trabajo actual. Los nombres pasan la regex UUID antes
+# de entrar al literal del array — sin eso no se interpolan.
+CARPETAS=()
 for d in /tmp/mesa/*/; do
   otro=$(basename "$d")
   [ "$otro" = "$ID" ] && continue
-  [[ "$otro" =~ ^[0-9a-f-]{36}$ ]] || continue
-  existe=$(sql -v oid="$otro" <<'SQL'
-select 1 from qualia_trabajos where id = :'oid';
-SQL
-  ) || existe="?"
-  # Solo se borra con un "no existe" POSITIVO (query ok y vacía); si la base
-  # no respondió, no se toca nada.
-  if [ "$existe" = "" ]; then
-    rm -rf "$d"
-    log "GC: carpeta huérfana $otro barrida (trabajo borrado en la web)"
-  fi
+  [[ "$otro" =~ ^[0-9a-f-]{36}$ ]] && CARPETAS+=("$otro")
 done
+if [ "${#CARPETAS[@]}" -gt 0 ]; then
+  lista="{$(IFS=,; echo "${CARPETAS[*]}")}"
+  if vivos=$(sql -v ids="$lista" <<'SQL'
+select id from qualia_trabajos where id = any(:'ids'::uuid[]);
+SQL
+  ); then
+    # Query OK: lo que no volvió, no existe → se barre. Base caída → no tocar.
+    for otro in "${CARPETAS[@]}"; do
+      if ! grep -qx "$otro" <<< "$vivos"; then
+        rm -rf "/tmp/mesa/$otro"
+        log "GC: carpeta huérfana $otro barrida (trabajo borrado en la web)"
+      fi
+    done
+  fi
+fi
+# Poda por edad: a los 35 días la URL firmada ya venció y el respaldo nocturno
+# tiene el documento — la carpeta se retira aunque el trabajo siga vivo.
+find /tmp/mesa -mindepth 1 -maxdepth 1 -type d -mtime +35 ! -name "$ID" -exec rm -rf {} + 2>/dev/null || true
 
 # Workdir limpio: los fragmentos de una corrida anterior no deben contaminar
 # esta (updated_at cambió = petición nueva). El dossier viejo queda hasta que
@@ -220,14 +234,23 @@ fi
 if [ "$BYTES" -ge 100 ]; then
   log "documento ya en cache ($((BYTES / 1024)) KB); no re-descargo"
 else
-  code=$(curl -sSL -m 75 -o "$SALIDA" -w '%{http_code}' "$URL" 2>/dev/null) || code=000
+  # A .part + mv atómico: un TERM/KILL a mitad de curl no deja un archivo
+  # parcial que el short-circuit (>100 bytes) sirva como bueno para siempre.
+  code=$(curl -sSL -m 75 -o "$SALIDA.part" -w '%{http_code}' "$URL" 2>/dev/null) || code=000
   [[ "$code" =~ ^[0-9]{3}$ ]] || code=000
-  BYTES=$(wc -c < "$SALIDA" 2>/dev/null | tr -d '[:space:]') || BYTES=0
-  BYTES="${BYTES:-0}"
+  BYTES=0
+  [ -f "$SALIDA.part" ] && { BYTES=$(wc -c 2>/dev/null < "$SALIDA.part" | tr -d '[:space:]'); BYTES="${BYTES:-0}"; }
   if [ "$code" != "200" ] || [ "$BYTES" -lt 100 ]; then
-    rm -f "$SALIDA"
+    rm -f "$SALIDA.part"
+    if [ "$code" = "000" ]; then
+      # curl matado o red caída: transitorio — NO se marca error (el re-aviso
+      # de los 300s reintenta y el agente tiene bajar-documento de respaldo).
+      log "descarga cortada (curl sin código); fallo suave, sin tocar estado"
+      exit 1
+    fi
     marcar_error_descarga "$code" "$BYTES"
   fi
+  mv -f "$SALIDA.part" "$SALIDA"
   log "descargado ($((BYTES / 1024)) KB)"
 fi
 
@@ -246,7 +269,17 @@ ES_HEIC=no
 CONVERTIDO=no
 case "$ext" in
   pdf)               TIPO=pdf ;;
-  jpg|jpeg|png|webp) TIPO=imagen ;;
+  jpg|jpeg|png|webp)
+    TIPO=imagen
+    # iPhone/WhatsApp renombran HEIC como .jpg al compartir: el CONTENIDO
+    # manda — sin este sniff, la visión recibía bytes HEIC como image/jpeg
+    # y fallaba en silencio (hallazgo de auditoría).
+    if command -v file >/dev/null 2>&1; then
+      case "$(file -b --mime-type "$SALIDA" 2>/dev/null)" in
+        image/heic|image/heif) ES_HEIC=si ;;
+      esac
+    fi
+    ;;
   heic|heif)         TIPO=imagen; ES_HEIC=si ;;
   xml)               TIPO=xml ;;
   xls|xlsx)          TIPO=excel ;;
@@ -661,10 +694,13 @@ if items:
             out["propina"] = prop
             out["propina_inferida"] = True
             calc = round(base + itbis_items + prop, 2)
+        # Umbral 0.05: el MISMO que valida la web al aprobar. Con 1.0 había
+        # una zona muerta (0.05-1.00) donde el dossier decía cuadra y la web
+        # pintaba rojo (hallazgo de auditoría).
         out["aritmetica"] = {"base_items": base, "itbis_items": itbis_items,
                             "propina": prop or 0, "calculado": calc,
                             "monto_documento": out["monto"],
-                            "cuadra": abs(calc - out["monto"]) <= 1.0}
+                            "cuadra": abs(calc - out["monto"]) <= 0.05}
         if out.get("propina_inferida"):
             out["aritmetica"]["nota"] = ("propina legal 10% inferida del "
                                          "descuadre exacto; verificable en el documento")
@@ -908,6 +944,7 @@ if PREP="$PREP" DIRW="$DIR" TRABAJO_ID="$ID" ROW_UPD="$UPD" \
    ARCHIVO_PATH="$SALIDA" ARCHIVO_BYTES="$BYTES" ARCHIVO_TIPO="$TIPO" \
    CONVERTIDO="$CONVERTIDO" ARCHIVO_JPG="${SALIDA%.*}.jpg" DURACION="$SECONDS" \
    DUP_VERIFICADO="$DUP_VERIFICADO" DUP_MOTIVO="$DUP_MOTIVO" \
+   NCF_OK="$NCF" MONTO_OK="$MONTO_FMT" \
    "$PY" - <<'PY'
 import json, os
 
@@ -985,17 +1022,21 @@ os.replace(tmp, os.path.join(dirw, "dossier.json"))
 
 # Resumen humano para el evento de progreso (SPEC 4). Solo campos del dossier:
 # nada de URLs ni cuerpos de API.
-# El proveedor viene del documento (input hostil): acotado a 120 chars para
-# que un texto malicioso no infle ni ensucie el evento.
+# El evento se arma SOLO con valores re-validados: el proveedor acotado a
+# 120 chars, y NCF/monto desde las variables que bash ya pasó por regex
+# (NCF_OK/MONTO_OK) — nunca los crudos de extraccion.json, que son input
+# hostil y llegaban al hilo sin filtro (hallazgo de auditoría).
 quien = (str(extr["proveedor"])[:120] if extr.get("proveedor")
          else "archivo " + d["archivo"]["tipo"])
 partes = [quien]
-if extr.get("ncf"):
-    etiqueta = "e-NCF" if str(extr["ncf"]).startswith("E") else "NCF"
-    partes.append("%s %s" % (etiqueta, extr["ncf"]))
-if isinstance(extr.get("monto"), (int, float)):
+ncf_ok = os.environ.get("NCF_OK", "")
+if ncf_ok:
+    etiqueta = "e-NCF" if ncf_ok.startswith("E") else "NCF"
+    partes.append("%s %s" % (etiqueta, ncf_ok))
+monto_ok = os.environ.get("MONTO_OK", "")
+if monto_ok:
     simbolo = "US$" if extr.get("moneda") == "USD" else "RD$"
-    partes.append("%s%s" % (simbolo, format(extr["monto"], ",.2f")))
+    partes.append("%s%s" % (simbolo, format(float(monto_ok), ",.2f")))
 partes.append("DGII: %s" % dgii.get("estado", "no verificable"))
 n_dup = len(mesa) + len(adm)
 if n_dup:

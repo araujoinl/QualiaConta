@@ -13,8 +13,17 @@ set -u
 : "${QUALIA_DSN:?falta QUALIA_DSN}"
 ID="${1:?uso: bajar-documento.sh <trabajo_id>}"
 
+# El id viaja a SQL y a rutas: misma disciplina que el preparador — regex
+# UUID antes de todo, y el valor entra al query parametrizado (:'id'), nunca
+# concatenado (el caller es el agente y su argumento es input no confiable).
+if ! [[ "$ID" =~ ^[0-9a-f-]{36}$ ]]; then
+  echo "trabajo_id inválido: no es un UUID" >&2
+  exit 1
+fi
+
 fila=$(PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -t -A -q -F $'\t' \
-  -c "select coalesce(archivo_nombre,'documento'), coalesce(archivo_url,'') from qualia_trabajos where id='$ID'" 2>/dev/null)
+  -v id="$ID" \
+  -c "select coalesce(archivo_nombre,'documento'), coalesce(archivo_url,'') from qualia_trabajos where id = :'id'" 2>/dev/null)
 
 nombre=$(printf '%s' "$fila" | cut -f1)
 url=$(printf '%s' "$fila" | cut -f2)
@@ -61,16 +70,19 @@ if [ "$bytes" -gt 100 ]; then
   exit 0
 fi
 
-code=$(curl -sL -o "$salida" -w "%{http_code}" -m 90 "$url")
-bytes=$(wc -c < "$salida" 2>/dev/null || echo 0)
+# A .part + mv atómico: un corte a mitad de curl no deja un parcial que el
+# short-circuit de arriba sirva como bueno en la próxima corrida.
+code=$(curl -sL -o "$salida.part" -w "%{http_code}" -m 90 "$url")
+bytes=$(wc -c < "$salida.part" 2>/dev/null || echo 0)
 
 if [ "$code" != "200" ] || [ "$bytes" -lt 100 ]; then
-  rm -f "$salida"
+  rm -f "$salida.part"
   echo "no se pudo bajar (HTTP $code, $bytes bytes). La URL firmada dura 30 días;" >&2
   echo "si de verdad venció, pedile al humano que abra «Ver original» en la web:" >&2
   echo "eso la regenera. NO reescribas archivo_url: no tenés permiso y la romperías." >&2
   exit 1
 fi
+mv -f "$salida.part" "$salida"
 
 echo "bajado ok: $(( bytes / 1024 )) KB, $tipo" >&2
 
