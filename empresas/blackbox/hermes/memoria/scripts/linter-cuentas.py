@@ -31,7 +31,11 @@ import os
 import re
 import sys
 
+# Los montos con prefijo de moneda (USD 567.27, RD$1,234.56) NO son codigos
+# de cuenta: el lookbehind variable no existe en re, asi que la exclusion de
+# moneda se hace post-match mirando los ~6 chars previos.
 CANDIDATO = re.compile(r"(?<![\w.,$-])(\d+(?:[.-]\d+)+)(?![\d,])")
+MONEDA_PREVIA = re.compile(r"(?:USD|RD\$|US\$|EUR|DOP|\$)\s*$", re.IGNORECASE)
 FECHA = re.compile(r"^\d{4}-\d{2}(-\d{2})?$")
 CUENTA_PELADA = re.compile(r"\bcuentas?\s*:?\s*(\d{2,6})\b", re.IGNORECASE)
 
@@ -101,6 +105,8 @@ def main():
             vistos = set()
             for m in CANDIDATO.finditer(linea):
                 tok = m.group(1)
+                if MONEDA_PREVIA.search(linea[: m.start()]):
+                    continue  # monto con prefijo de moneda, no codigo de cuenta
                 if es_codigo_posible(tok, raices, largos_seg):
                     vistos.add(tok.replace("-", "."))
             for m in CUENTA_PELADA.finditer(linea):

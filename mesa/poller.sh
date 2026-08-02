@@ -59,15 +59,20 @@ declare -A avisado
 
 while [ "$corriendo" -eq 1 ]; do
   # 1) trabajos nuevos
-  while IFS= read -r id; do
+  # La clave del anti-spam incluye updated_at: si el trabajo VUELVE a pendiente
+  # (tras un error, o porque el humano pidió otra revisión) es una petición
+  # nueva y se avisa al instante. El tope de 300s queda solo para el caso
+  # "sigue pendiente y el gateway estaba caído cuando avisé".
+  while IFS='|' read -r id upd; do
     [ -z "$id" ] && continue
     ahora=$(date +%s)
-    antes=${avisado[$id]:-0}
+    clave="${id}:${upd}"
+    antes=${avisado[$clave]:-0}
     if (( ahora - antes > 300 )); then
       poke "$id" "trabajo_nuevo"
-      avisado[$id]=$ahora
+      avisado[$clave]=$ahora
     fi
-  done < <(sql "select id from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='pendiente' order by created_at limit 3")
+  done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='pendiente' order by created_at limit 3")
 
   # 2) acciones del usuario en la web
   while IFS='|' read -r eid tid; do

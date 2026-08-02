@@ -76,5 +76,8 @@ services:
       # Puerto de platforms.webhook del gateway (config.yaml); si la empresa lo
       # cambia alla, fijarlo tambien aca en el .env.
       WEBHOOK_PORT: ${WEBHOOK_PORT:-8644}
+      # Tick corto: la subida en la web dispara al contable en ~4s (la consulta
+      # es indexada y trivial; la latencia dominante es el analisis del modelo).
+      MESA_INTERVALO: ${MESA_INTERVALO:-4}
     volumes:
       - ../../mesa:/mesa:ro

@@ -43,7 +43,7 @@
 
 set -euo pipefail
 exec python3 - "$@" <<'PY'
-import argparse, datetime, json, os, re, sys, tempfile
+import argparse, datetime, json, os, re, subprocess, sys, tempfile
 
 RAIZ = "/opt/data/preentrenamiento"
 
@@ -251,6 +251,47 @@ def main():
     ap.add_argument("--max-tokens-lote", type=int, default=12_000)
     args = ap.parse_args()
     plan_path = args.plan or os.path.join(args.agg, "plan-cuentas.json")
+
+    # 0. Ceder el paso a la mesa: si hay trabajo VIVO (una factura recién
+    # subida, un análisis en curso o una pregunta esperando), la destilación
+    # se saltea este turno. Competían por el mismo gateway y el mismo endpoint
+    # de z.AI, y el análisis que el humano está mirando en vivo tardaba
+    # minutos de más (medido 2026-08-02: 6m22s con un lote corriendo en
+    # paralelo). El lote se retoma en la próxima corrida; el cursor no avanza.
+    if not args.dry_run:
+        dsn, emp = os.environ.get("QUALIA_DSN"), os.environ.get("QUALIA_EMPRESA_ID")
+        if dsn and emp:
+            try:
+                q = ("select count(*) from qualia_trabajos where empresa_id=%s "
+                     "and estado in (pendiente,analizando,esperando_respuesta)" % emp)
+                r = subprocess.run(["psql", dsn, "-t", "-A", "-q", "-c", q],
+                                   capture_output=True, text=True, timeout=15,
+                                   env={**os.environ, "PGCONNECT_TIMEOUT": "10"})
+                vivos = int((r.stdout or "0").strip() or 0)
+                # Ceder, pero no morirse de hambre: si la mesa esta ocupada
+                # varios turnos seguidos (un dia de mucha carga de facturas),
+                # a la 4a corrida la destilacion pasa igual. Sin esto, el
+                # preentrenamiento no avanza nunca en una jornada activa.
+                st_ceder = cargar_estado(args.estado)
+                seguidos = int(st_ceder.get("cedidos_seguidos", 0))
+                if vivos > 0 and seguidos < 3:
+                    st_ceder["cedidos_seguidos"] = seguidos + 1
+                    guardar_estado(args.estado, st_ceder)
+                    print(f"la mesa tiene {vivos} trabajo(s) vivo(s): cedo el turno "
+                          f"({seguidos + 1}/3 seguidos; a la 4a paso igual)",
+                          file=sys.stderr)
+                    return 0
+                if vivos > 0:
+                    print(f"la mesa tiene {vivos} vivo(s) pero ya cedi {seguidos} veces: "
+                          f"corro el lote igual", file=sys.stderr)
+                if st_ceder.get("cedidos_seguidos"):
+                    st_ceder["cedidos_seguidos"] = 0
+                    guardar_estado(args.estado, st_ceder)
+            except Exception as e:
+                # Si no se puede consultar, seguir: la destilación no debe
+                # detenerse por un problema de la mesa.
+                print(f"no pude consultar la mesa ({type(e).__name__}); sigo con el lote",
+                      file=sys.stderr)
 
     # 1. Tope diario: sin presupuesto no hay lote (stdout vacío = turno nulo).
     gastado = tokens_hoy(args.usage)
