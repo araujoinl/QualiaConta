@@ -108,6 +108,43 @@ dos dan números distintos para la misma importación, es acá donde empezó.
 Lo que sí se aprovecha es el conocimiento: el patrón de conexión verificado, el
 inventario de endpoints que responden y las fórmulas de reparto.
 
+## 2.9 Permisos de ADM Cloud: qué recorta y qué no (verificado 2026-08-02)
+
+Dos verificaciones empíricas el mismo día, con sondas sobre GUIDs inexistentes y
+dos auditores independientes. El resultado cambió a mitad de camino porque a la
+cuenta de API se le quitó el modo administrador.
+
+**Antes de quitar el admin:** ninguna restricción. Toda credencial alcanzaba
+firmar/desfirmar e-CF, borrar facturas, tocar secuencias fiscales. El soporte de
+ADM lo describió como «la API sube como administrador siempre».
+
+**Después de quitarlo: el recorte SÍ funciona, pero es parcial y por ACCIÓN, no
+por módulo.** Apareció una negación nueva y real: `success:false` con
+`message: "Unauthorized"`, que dispara *antes* de buscar el documento.
+
+| Estado | Operaciones |
+|---|---|
+| **Negado** (`Unauthorized`) | `DELETE` de Journals, VendorBills, CreditInvoices, FiscalSequences, Payrolls · `PUT` de CreditInvoices · lectura de FiscalSequences y Payrolls |
+| **Sigue abierto** | `POST .../ElectronicSign` y `/RemoveSign` (firmar y **desfirmar** e-CF ante DGII) · `POST /api/Journals/Void` (anular asiento) |
+
+Lección de diseño: **el permiso es por acción concreta**. Que `DELETE Journals`
+esté negado no cubre `Journals/Void` — son puertas distintas y hay que cerrar
+cada una por su nombre.
+
+**Cómo se lee una respuesta** (calibración, no negociable):
+- `"Unauthorized"` → negado por permiso. **Es la única negación que vale.**
+- `"Este documento no existe"` o `success:true, data:null` → **permitido**: la
+  llamada atravesó la compuerta y sólo la frenó el GUID falso.
+- `404` de ASP.NET → ruta o verbo inexistente. No prueba nada.
+- `401 "Este usuario no está vinculado a este grupo de usuarios"` → el intento de
+  escalar pidiendo otro rol (`role=Administradores`) falla correctamente. El
+  lookup del rol es *case-insensitive*: separar roles por mayúsculas no separa.
+
+**El Gate 0 sigue cerrado** hasta que `ElectronicSign`, `RemoveSign` y
+`Journals/Void` respondan `Unauthorized`. La regla 5 del CLAUDE.md (los límites
+viven en los permisos de ADM, no en el prompt) se sostiene — pero sólo sobre las
+acciones que estén explícitamente negadas y verificadas una por una.
+
 ## 3. Memoria
 
 Tres niveles. Los dos primeros son memoria curada — el agente los resume y los
