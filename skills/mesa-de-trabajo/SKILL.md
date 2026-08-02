@@ -103,8 +103,15 @@ cat /tmp/mesa/<trabajo_id>/dossier.json
     1. **Precedente del proveedor**: `/opt/data/preentrenamiento/agg/proveedor-cuentas.json`
        — con qué cuenta registró la contabilidad REAL las facturas de ESE
        proveedor (1,050 facturas destiladas). Si el proveedor está y su
-       cuenta dominante tiene ≥70% de usos: esa es tu cuenta,
-       `metodo='precedente'` citando "N de M facturas históricas". Forma:
+       cuenta dominante tiene ≥70% de usos: ese es tu punto de partida,
+       `metodo='precedente'` citando "N de M facturas históricas".
+       **El precedente es un default POR ITEM, jamás un sello a ciegas**
+       (regla del dueño, 2026-08-02): leé la descripción de CADA renglón —
+       si un item contradice la naturaleza de la cuenta dominante (un mueble,
+       un equipo, algo capitalizable = activo depreciable; mercancía para
+       revender = inventario), ESE item se clasifica por su naturaleza, con
+       la explicación en `detalle`. La misma factura puede mezclar cuentas
+       por item — eso es lo correcto, no una anomalía. Forma:
        `{"_meta", "proveedores": [{"nombre", "rnc", "facturas", "cuentas": [{"codigo","nombre","usos","pct"}]}]}`.
        Receta (buscá por nombre o RNC):
 
