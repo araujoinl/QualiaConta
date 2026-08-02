@@ -4,19 +4,40 @@
 # empresas. Este archivo traduce entre los dos y dice, además, en qué cuenta
 # contable de ADM Cloud cae cada cuenta bancaria.
 #
-# Se usa en la entrega 4 (conciliación). Copiar a mapa-cuentas.yaml y llenar.
+# `cuentas` se usa en la conciliación y en las sugerencias (contrapartida del
+# asiento). `cargos` es el mapa de las sugerencias de conciliación:
+# descripción del movimiento → cuenta contable de ADM. Sembrarlo desde el
+# HISTÓRICO real (cómo registró cada cargo la contabilidad), no de memoria.
+#
+# Copiar a mapa-cuentas.yaml y llenar.
 
 empresas:
   blackbox:
+    empresa_id: ""                    # admcloud_empresas.id (UUID)
+
     cuentas:
       - banco: popular                # coincide con openbanking_accounts.banco
         numero: "000000000"           # coincide con openbanking_accounts.numero
         moneda: DOP
-        cuenta_contable: ""           # código de la cuenta en ADM Cloud
+        cuenta_contable: "101.01"     # código de la cuenta en ADM Cloud
+        cuenta_nombre: "Banco Corriente"  # nombre tal cual en ADM
         alias: "Corriente principal"
 
-      # - banco: bhd
-      #   numero: "000000000"
-      #   moneda: USD
-      #   cuenta_contable: ""
-      #   alias: "Dólares"
+    # Mapa de cargos: PRIMERA regla que matchea gana (el orden es la
+    # prioridad). `match` es regex case-insensitive sobre la descripción del
+    # movimiento; `direccion` es cargo (salió plata) o credito (entró plata).
+    # Una regla con `revisar` en vez de `cuenta` marca el movimiento como
+    # detectado pero SIN cuenta asignada: el detalle de la sugerencia explica
+    # por qué exige ojo humano. Sin match ⇒ sin cuenta, con aviso genérico.
+    cargos:
+      - match: "comisi|cargo|manejo"
+        direccion: cargo
+        cuenta: "640.01"
+        cuenta_nombre: "Cargos Bancarios"
+      - match: "nota de debito"
+        direccion: cargo
+        revisar: "descripción genérica — identificá el movimiento antes de registrar"
+      - match: "capitalizaci|interes"
+        direccion: credito
+        cuenta: "700.01"
+        cuenta_nombre: "Intereses Bancarios"

@@ -1,0 +1,921 @@
+#!/bin/bash
+# Pre-procesador determinista de la mesa de trabajo — SIN LLM.
+#
+# El poller lo corre ANTES de despertar al contable, por cada trabajo
+# 'pendiente'. Deja un dossier masticado en /tmp/mesa/<id>/ (documento local,
+# texto extraído, campos, verificación DGII, duplicados) para que el agente no
+# gaste 15-25 turnos de terminal en pasos mecánicos y vaya directo al juicio
+# contable. Si el dossier no llega a armarse, el agente sigue su protocolo
+# completo: por eso acá TODO paso falla suave (se anota en errores_prep y se
+# sigue) salvo la descarga, que es el único caso fatal.
+#
+# Contrato duro (SPEC — no negociable):
+#   - NO cambia estado, salvo descarga imposible -> estado='error' guardado
+#     con `where estado='pendiente'`. El claim pendiente->analizando sigue
+#     siendo del contable; su candado anti doble-aviso no se toca.
+#   - Deja UN evento de progreso (autor='contable') con un resumen humano
+#     corto. Sin URLs, sin cuerpos de API.
+#   - El poke al webhook lo hace el poller, no este script.
+#   - Idempotente: si el dossier existente coincide con updated_at, sale 0.
+#
+# Uso:  preparar-trabajo.sh <trabajo_id>
+#   (el poller lo invoca con `timeout 120`; ese es el tope global real)
+#
+# Env requerido: QUALIA_DSN, QUALIA_EMPRESA_ID
+# Opcional:
+#   GLM_API_KEY                                visión de imágenes (glm-4.6v)
+#   GLM_VISION_BASE / GLM_VISION_MODEL         override del endpoint de visión
+#   QUALIA_EMPRESA_RNC                         RNC comprador para timbre e-CF
+#   MESA_SCRIPTS_DIR                           default /memoria-scripts
+#   PREENTRENAMIENTO_DIR                       default /preentrenamiento
+#   HERMES_UID / HERMES_GID                    default 1000 (dueño de /tmp/mesa)
+#
+# Nota deliberada: el prep NO habla con la API de ADM Cloud. El listado de
+# VendorBills viene con NCF:null y su parámetro `search` no filtra (verificado
+# 2026-08-02 contra la API real: un NCF inexistente devuelve el mismo registro
+# que uno real) — consultarla sería una verificación falsa. Los duplicados
+# contra ADM se resuelven con el histórico local del preentrenamiento
+# (vendor-bills-detalle.jsonl, que SÍ trae NCF), y así el sidecar tampoco
+# necesita credenciales de ADM.
+
+set -u
+umask 022
+export LC_ALL=C
+
+: "${QUALIA_DSN:?falta QUALIA_DSN}"
+: "${QUALIA_EMPRESA_ID:?falta QUALIA_EMPRESA_ID}"
+
+ID="${1:?uso: preparar-trabajo.sh <trabajo_id>}"
+
+# trabajo_id y empresa_id viajan a SQL, rutas y logs: se validan ANTES de todo.
+if ! [[ "$ID" =~ ^[0-9a-f-]{36}$ ]]; then
+  echo "[prep] trabajo_id invalido: no es un UUID" >&2
+  exit 1
+fi
+if ! [[ "$QUALIA_EMPRESA_ID" =~ ^[0-9a-f-]{36}$ ]]; then
+  echo "[prep] QUALIA_EMPRESA_ID invalido: no es un UUID" >&2
+  exit 1
+fi
+
+TAB=$'\t'
+SCRIPTS="${MESA_SCRIPTS_DIR:-/memoria-scripts}"
+PRE_DIR="${PREENTRENAMIENTO_DIR:-/preentrenamiento}"
+
+log() { echo "[prep ${ID:0:8}] $(date -u +%H:%M:%S) $*"; }
+
+# El sidecar corre como root; el contable como HERMES_UID. Todo lo que quede en
+# /tmp/mesa/<id> debe terminar siendo del contable, incluso si el prep muere a
+# mitad (timeout del poller manda TERM): sin esto el agente no podría escribir
+# al lado del documento.
+entregar() { [ -d "${DIR:-}" ] && chown -R "${HERMES_UID:-1000}:${HERMES_GID:-1000}" "$DIR" 2>/dev/null; true; }
+trap entregar EXIT TERM INT
+
+# python: el del venv de Hermes es el único garantizado en la imagen; el del
+# PATH queda de respaldo. Sin python el prep degrada a solo-descarga.
+PY="/opt/hermes/.venv/bin/python3"
+[ -x "$PY" ] || PY="$(command -v python3 || true)"
+
+sql() {
+  # SQL SIEMPRE por stdin (heredoc) con valores por -v: psql los interpola con
+  # :'var' entrecomillado. Nunca se concatena un dato del documento en el texto
+  # del query (todo valor extraído es input hostil, SPEC seguridad).
+  PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -X -q -t -A -F "$TAB" \
+    -v ON_ERROR_STOP=1 "$@" 2>/dev/null
+}
+
+# ───────────────────────── 1. La fila y sus compuertas ─────────────────────────
+
+fila=$(sql -v id="$ID" -v emp="$QUALIA_EMPRESA_ID" <<'SQL'
+select estado,
+       to_char(updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+       coalesce(archivo_nombre, 'documento'),
+       coalesce(archivo_url, '')
+  from qualia_trabajos
+ where id = :'id' and empresa_id = :'emp';
+SQL
+) || fila=""
+
+if [ -z "$fila" ]; then
+  log "sin fila para ese id (o base inalcanzable); nada que preparar"
+  exit 0
+fi
+IFS="$TAB" read -r ESTADO UPD NOMBRE URL <<< "$fila"
+
+# El prep solo trabaja sobre 'pendiente'. Cualquier otro estado significa que
+# el contable o el usuario ya están en eso: no se toca nada.
+if [ "$ESTADO" != "pendiente" ]; then
+  log "estado='$ESTADO', no es pendiente; no toco nada"
+  exit 0
+fi
+
+DIR="/tmp/mesa/$ID"
+PREP="$DIR/.prep"
+DOSSIER="$DIR/dossier.json"
+
+# Idempotencia (SPEC 9): el poller puede re-llamar cada 4s mientras el agente
+# no reclama el trabajo. Si el dossier ya refleja este updated_at, no hay nada
+# nuevo que preparar.
+if [ -f "$DOSSIER" ] && [ -n "$PY" ]; then
+  previo=$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("row_updated_at",""))' "$DOSSIER" 2>/dev/null || true)
+  if [ -n "$previo" ] && [ "$previo" = "$UPD" ]; then
+    log "dossier vigente (updated_at sin cambios); nada que hacer"
+    exit 0
+  fi
+fi
+
+# Sin archivo no hay nada que masticar (sugerencias y bloques de criterios no
+# pasan por acá; si un pendiente viene sin URL, que lo resuelva el agente).
+if [ -z "$URL" ]; then
+  log "el trabajo no tiene archivo; nada que preparar"
+  exit 0
+fi
+
+# Workdir limpio: los fragmentos de una corrida anterior no deben contaminar
+# esta (updated_at cambió = petición nueva). El dossier viejo queda hasta que
+# el nuevo lo reemplace de forma atómica. .prep queda al final como diagnóstico.
+mkdir -p "$PREP"
+rm -rf "$PREP"
+mkdir -p "$PREP"
+rm -f "$DIR/texto.txt"
+ERRORES="$PREP/errores.txt"
+
+anotar_error() {
+  # Falla suave: queda en errores_prep del dossier y en el log del sidecar.
+  printf '%s\n' "$1" >> "$ERRORES"
+  log "aviso: $1"
+}
+
+# ───────────────────────── 2. Descarga (único paso fatal) ─────────────────────────
+
+# Nombre saneado: basename + lista blanca de caracteres. Es lo único del
+# documento que toca el filesystem antes de validarse.
+base=$(basename -- "$NOMBRE")
+base=$(printf '%s' "$base" | tr -c 'A-Za-z0-9._ -' '_')
+base="${base#.}"
+[ -n "$base" ] || base="documento"
+case "$base" in
+  dossier.json|texto.txt) base="doc-$base" ;;   # que no pise nuestros artefactos
+esac
+if [ "${#base}" -gt 140 ]; then base="${base: -140}"; fi   # cola: conserva la extensión
+SALIDA="$DIR/$base"
+
+ext=""
+case "$base" in *.*) ext="${base##*.}" ;; esac
+ext=$(printf '%s' "$ext" | tr 'A-Z' 'a-z')
+
+marcar_error_descarga() {
+  # ÚNICO caso en que el prep toca el estado (SPEC, diseño 1). El guard
+  # `estado='pendiente'` respeta el claim del contable: si alguien tomó el
+  # trabajo entre medio, acá no se escribe nada. Sin URL en el mensaje.
+  local det="No se pudo descargar el documento (HTTP $1, $2 bytes). La URL firmada dura 30 días; si venció, abrir «Ver original» en la web la regenera."
+  local marcado
+  marcado=$(sql -v id="$ID" -v emp="$QUALIA_EMPRESA_ID" -v det="$det" <<'SQL'
+update qualia_trabajos
+   set estado = 'error', error_detalle = :'det'
+ where id = :'id' and empresa_id = :'emp' and estado = 'pendiente'
+ returning id;
+SQL
+) || marcado=""
+  if [ -n "$marcado" ]; then
+    sql -v id="$ID" -v det="$det" <<'SQL' || true
+insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
+values (:'id', 'contable', 'nota', :'det');
+SQL
+    log "descarga imposible (HTTP $1, $2 bytes): trabajo marcado en error"
+  else
+    log "descarga imposible (HTTP $1), pero el trabajo ya no está pendiente; no toco nada"
+  fi
+  exit 1
+}
+
+# Short-circuit: si el archivo ya está en el cache compartido con >100 bytes,
+# no se re-descarga (misma regla que bajar-documento.sh). La URL firmada solo
+# vive en $URL, siempre entrecomillada; jamás en logs, eventos ni dossier.
+BYTES=0
+if [ -f "$SALIDA" ]; then
+  BYTES=$(wc -c 2>/dev/null < "$SALIDA" | tr -d '[:space:]')
+  BYTES="${BYTES:-0}"
+fi
+if [ "$BYTES" -ge 100 ]; then
+  log "documento ya en cache ($((BYTES / 1024)) KB); no re-descargo"
+else
+  code=$(curl -sSL -m 75 -o "$SALIDA" -w '%{http_code}' "$URL" 2>/dev/null) || code=000
+  [[ "$code" =~ ^[0-9]{3}$ ]] || code=000
+  BYTES=$(wc -c < "$SALIDA" 2>/dev/null | tr -d '[:space:]') || BYTES=0
+  BYTES="${BYTES:-0}"
+  if [ "$code" != "200" ] || [ "$BYTES" -lt 100 ]; then
+    rm -f "$SALIDA"
+    marcar_error_descarga "$code" "$BYTES"
+  fi
+  log "descargado ($((BYTES / 1024)) KB)"
+fi
+
+if [ -z "$PY" ]; then
+  # Sin python no hay extracción, dossier ni evento: el documento local ya es
+  # ganancia (el agente se ahorra la descarga) y el resto lo hace él.
+  log "sin python3 en la imagen: dejo solo el documento descargado"
+  chown -R "${HERMES_UID:-1000}:${HERMES_GID:-1000}" "$DIR" 2>/dev/null || true
+  exit 0
+fi
+
+# ───────────────────────── 3. Tipo de documento ─────────────────────────
+
+TIPO=desconocido
+ES_HEIC=no
+CONVERTIDO=no
+case "$ext" in
+  pdf)               TIPO=pdf ;;
+  jpg|jpeg|png|webp) TIPO=imagen ;;
+  heic|heif)         TIPO=imagen; ES_HEIC=si ;;
+  xml)               TIPO=xml ;;
+  xls|xlsx)          TIPO=excel ;;
+  *)
+    # Extensión fuera de la lista blanca: NO se renombra (se preserva la
+    # convención de nombres del agente); se clasifica por contenido si `file`
+    # existe (el Dockerfile lo agrega) y si no, queda desconocido sin extracción.
+    if command -v file >/dev/null 2>&1; then
+      case "$(file -b --mime-type "$SALIDA" 2>/dev/null)" in
+        application/pdf)                 TIPO=pdf ;;
+        image/jpeg|image/png|image/webp) TIPO=imagen ;;
+        image/heic|image/heif)           TIPO=imagen; ES_HEIC=si ;;
+        text/xml|application/xml)        TIPO=xml ;;
+      esac
+    fi
+    if [ "$TIPO" = "desconocido" ]; then
+      anotar_error "extension '.$ext' fuera de la lista blanca; sin extraccion"
+    fi
+    ;;
+esac
+
+# ───────────────────────── 4. Extracción por tipo ─────────────────────────
+
+TXT="$DIR/texto.txt"
+NOTA_EXTR="extraccion automatica; el agente DEBE verificar contra el documento"
+
+frag_ninguno() {
+  # $1 = motivo (texto fijo, sin datos del documento — es JSON armado a mano)
+  printf '{"metodo": "ninguno", "nota": "%s"}\n' "$1" > "$PREP/extraccion.json"
+}
+
+extraer_campos_texto() {
+  # Regex prudentes sobre texto.txt (SPEC 6): NCF, RNC, montos con contexto
+  # TOTAL/ITBIS, fecha, moneda, y los extras del e-CF impreso (código de
+  # seguridad + fecha de firma) que habilitan el timbre. Confianza media.
+  local metodo="$1"
+  if ! "$PY" - "$TXT" "$PREP/extraccion.json" "$metodo" 2>/dev/null <<'PY'
+import json, re, sys
+textop, outp, metodo = sys.argv[1:4]
+NOTA = "extraccion automatica; el agente DEBE verificar contra el documento"
+texto = open(textop, encoding="utf-8", errors="replace").read()
+out = {"metodo": metodo, "confianza": "media", "nota": NOTA}
+
+# NCF: regex del SPEC, validado a largo exacto (B+10 / E+12)
+for m in re.finditer(r"\b[BE]\d{10,12}\b", texto):
+    if re.fullmatch(r"B\d{10}|E\d{12}", m.group(0)):
+        out["ncf"] = m.group(0)
+        break
+
+# RNC: con contexto. El primero etiquetado se asume del emisor (encabeza el
+# documento); el segundo distinto, del comprador — habilita el timbre e-CF.
+rncs = []
+for m in re.finditer(r"RNC[^0-9]{0,20}(\d[\d.\- ]{6,14}\d)", texto, re.I):
+    limpio = re.sub(r"\D", "", m.group(1))
+    if len(limpio) in (9, 11) and limpio not in rncs:
+        rncs.append(limpio)
+if not rncs:
+    m = re.search(r"\b(\d{9})\b", texto)   # último recurso: 9 dígitos sueltos
+    if m:
+        rncs.append(m.group(1))
+if rncs:
+    out["rnc"] = rncs[0]
+if len(rncs) > 1:
+    out["rnc_comprador"] = rncs[1]
+
+MONTO = r"(\d{1,3}(?:,\d{3})+\.\d{2}|\d+\.\d{2})"
+def montos_en(linea):
+    return [float(x.replace(",", "")) for x in re.findall(MONTO, linea)]
+tot, itb = [], []
+for linea in texto.splitlines():
+    if re.search(r"\bITBIS\b", linea, re.I):
+        itb += montos_en(linea)
+    if re.search(r"\bTOTAL\b", linea, re.I) and not re.search(r"SUB\s*-?\s*TOTAL", linea, re.I):
+        tot += montos_en(linea)
+if tot:
+    out["monto"] = max(tot)          # el total final es el mayor de las líneas TOTAL
+if itb:
+    cand = [x for x in itb if "monto" not in out or x <= out["monto"]]
+    if cand:
+        out["itbis"] = max(cand)
+
+m = (re.search(r"Fecha\s*(?:de\s*)?Emisi[oó]n[^0-9]{0,20}(\d{1,2}[/-]\d{1,2}[/-]\d{4}|\d{4}-\d{2}-\d{2})", texto, re.I)
+     or re.search(r"\bFecha\b[^0-9]{0,20}(\d{1,2}[/-]\d{1,2}[/-]\d{4}|\d{4}-\d{2}-\d{2})", texto, re.I))
+if m:
+    f = m.group(1).replace("/", "-")
+    mm = re.fullmatch(r"(\d{1,2})-(\d{1,2})-(\d{4})", f)
+    out["fecha"] = "%s-%02d-%02d" % (mm.group(3), int(mm.group(2)), int(mm.group(1))) if mm else f
+
+usd = bool(re.search(r"US\$|\bUSD\b", texto))
+dop = bool(re.search(r"RD\$|\bDOP\b", texto))
+if dop != usd:
+    out["moneda"] = "DOP" if dop else "USD"
+
+# Extras del e-CF: sirven para verificar el timbre (SPEC 7)
+m = re.search(r"C[oó]digo\s+de\s+Seguridad[^A-Za-z0-9+/=]{0,15}([A-Za-z0-9+/=]{6})", texto, re.I)
+if m:
+    out["codigo_seguridad"] = m.group(1)
+m = re.search(r"Fecha\s*(?:de\s*)?Firma[^0-9]{0,20}(\d{1,2}[-/]\d{1,2}[-/]\d{4}\s+\d{1,2}:\d{2}:\d{2})", texto, re.I)
+if m:
+    v = m.group(1).replace("/", "-")
+    mm = re.fullmatch(r"(\d{1,2})-(\d{1,2})-(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})", v)
+    if mm:
+        out["fecha_firma"] = "%02d-%02d-%s %02d:%s:%s" % (
+            int(mm.group(1)), int(mm.group(2)), mm.group(3),
+            int(mm.group(4)), mm.group(5), mm.group(6))
+
+json.dump(out, open(outp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+PY
+  then
+    anotar_error "extraccion de campos del texto fallo"
+    frag_ninguno "sin extraccion automatica; el agente sigue el protocolo completo"
+  fi
+}
+
+extraccion_xml() {
+  # e-CF en XML: datos exactos con la stdlib (SPEC 6). También deja texto.txt
+  # (tag: valor por línea) para que el agente lea sin re-parsear.
+  if ! "$PY" - "$SALIDA" "$PREP/extraccion.json" "$TXT" 2>"$PREP/xml.err" <<'PY'
+import json, re, sys
+import xml.etree.ElementTree as ET
+xmlp, outp, textop = sys.argv[1:4]
+NOTA = "extraccion automatica; el agente DEBE verificar contra el documento"
+
+def local(tag):
+    return tag.rsplit("}", 1)[-1]
+
+try:
+    arbol = ET.parse(xmlp)
+except ET.ParseError as e:
+    print("XML invalido: %s" % str(e)[:80], file=sys.stderr)
+    sys.exit(1)
+
+campos, lineas = {}, []
+for el in arbol.iter():
+    tag = local(el.tag)
+    txt = (el.text or "").strip()
+    if txt:
+        lineas.append("%s: %s" % (tag, txt))
+        campos.setdefault(tag, txt)   # primer valor gana: el encabezado va antes que los items
+open(textop, "w", encoding="utf-8").write("\n".join(lineas) + "\n")
+
+def num(v):
+    try:
+        return float(str(v).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+
+def fecha_iso(v):
+    m = re.fullmatch(r"(\d{2})-(\d{2})-(\d{4})", v or "")
+    return "%s-%s-%s" % (m.group(3), m.group(2), m.group(1)) if m else v
+
+out = {"metodo": "xml", "confianza": "alta", "nota": NOTA}
+mapa = [("RNCEmisor", "rnc"), ("RazonSocialEmisor", "proveedor"),
+        ("eNCF", "ncf"), ("ENCF", "ncf"), ("FechaEmision", "fecha"),
+        ("TipoMoneda", "moneda"), ("MontoTotal", "monto"),
+        ("TotalITBIS", "itbis"), ("RNCComprador", "rnc_comprador"),
+        ("FechaHoraFirma", "fecha_firma")]
+for tag, clave in mapa:
+    if tag in campos and clave not in out:
+        out[clave] = campos[tag]
+if "monto" in out:
+    out["monto"] = num(out["monto"])
+if "itbis" in out:
+    out["itbis"] = num(out["itbis"])
+if "fecha" in out:
+    out["fecha"] = fecha_iso(out["fecha"])
+out.setdefault("moneda", "DOP")   # el e-CF omite TipoMoneda cuando es peso dominicano
+if out.get("ncf"):
+    out["ncf"] = str(out["ncf"]).strip().upper()
+for clave in ("rnc", "rnc_comprador"):
+    if out.get(clave):
+        out[clave] = re.sub(r"\D", "", str(out[clave]))
+out = {k: v for k, v in out.items() if v not in (None, "")}
+json.dump(out, open(outp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+PY
+  then
+    anotar_error "parseo XML fallo: $(head -c 120 "$PREP/xml.err" 2>/dev/null || echo sin detalle)"
+    frag_ninguno "XML no parseable; el agente sigue el protocolo completo"
+    rm -f "$TXT"
+  fi
+}
+
+extraccion_pdf() {
+  # pdftotext -layout primero (lo agrega el Dockerfile); pypdf vía uv de
+  # respaldo. Si el texto sale vacío es un escaneado: decisión del SPEC, acá
+  # NO se hace visión sobre PDFs — metodo='ninguno' y el agente decide.
+  local metodo=""
+  if command -v pdftotext >/dev/null 2>&1; then
+    if timeout 30 pdftotext -layout "$SALIDA" "$TXT" 2>/dev/null; then
+      metodo="pdftotext"
+    fi
+  fi
+  if [ -z "$metodo" ] && command -v uv >/dev/null 2>&1; then
+    if timeout 60 uv run --with pypdf python - "$SALIDA" "$TXT" >/dev/null 2>&1 <<'PY'
+import sys
+from pypdf import PdfReader
+pdf, destino = sys.argv[1:3]
+open(destino, "w", encoding="utf-8").write(
+    "\n".join((p.extract_text() or "") for p in PdfReader(pdf).pages))
+PY
+    then
+      metodo="pypdf"
+    fi
+  fi
+  if [ -z "$metodo" ]; then
+    anotar_error "no pude extraer texto del PDF (ni pdftotext ni pypdf)"
+    frag_ninguno "sin extraccion automatica; el agente sigue el protocolo completo"
+    rm -f "$TXT"
+    return
+  fi
+  if ! grep -q '[^[:space:]]' "$TXT" 2>/dev/null; then
+    rm -f "$TXT"
+    frag_ninguno "PDF sin capa de texto (posible escaneado); el agente decide si aplica vision"
+    return
+  fi
+  extraer_campos_texto "$metodo"
+}
+
+extraccion_imagen() {
+  # UNA llamada a glm-4.6v (SPEC 6): imagen en data URL base64, prompt fijo
+  # pidiendo SOLO JSON, temperatura 0, timeout 60s por intento, 1 reintento.
+  # Tope duro de 90s alrededor de todo. Si falla, el agente hará visión.
+  local IMG="$SALIDA"
+  if [ "$ES_HEIC" = "si" ]; then
+    local JPG="${SALIDA%.*}.jpg"
+    if command -v uv >/dev/null 2>&1 && \
+       timeout 60 uv run --with pillow-heif python -c \
+         "import sys, pillow_heif, PIL.Image as I; pillow_heif.register_heif_opener(); I.open(sys.argv[1]).convert('RGB').save(sys.argv[2], quality=90)" \
+         "$SALIDA" "$JPG" >/dev/null 2>&1 && [ -s "$JPG" ]; then
+      CONVERTIDO=si
+      IMG="$JPG"
+      log "HEIC convertido a jpg"
+    else
+      anotar_error "conversion HEIC fallo; sin vision en el prep"
+      frag_ninguno "HEIC sin convertir; el agente convierte y decide"
+      return
+    fi
+  fi
+  if [ -z "${GLM_API_KEY:-}" ]; then
+    anotar_error "GLM_API_KEY ausente; sin vision en el prep"
+    frag_ninguno "sin vision en el prep (falta GLM_API_KEY); el agente aplica vision"
+    return
+  fi
+  local peso
+  peso=$(wc -c < "$IMG" 2>/dev/null | tr -d '[:space:]') || peso=0
+  if [ "${peso:-0}" -gt 10000000 ]; then
+    anotar_error "imagen mayor a 10 MB; sin vision en el prep"
+    frag_ninguno "imagen muy grande para el prep; el agente aplica vision"
+    return
+  fi
+  if ! timeout 90 "$PY" - "$IMG" "$PREP/extraccion.json" 2>"$PREP/vision.err" <<'PY'
+import base64, json, os, re, sys, urllib.request
+img, outp = sys.argv[1:3]
+NOTA = "extraccion automatica; el agente DEBE verificar contra el documento"
+base = os.environ.get("GLM_VISION_BASE", "https://api.z.ai/api/coding/paas/v4").rstrip("/")
+modelo = os.environ.get("GLM_VISION_MODEL", "glm-4.6v")
+llave = os.environ["GLM_API_KEY"]
+ext = img.rsplit(".", 1)[-1].lower()
+mime = {"png": "image/png", "webp": "image/webp"}.get(ext, "image/jpeg")
+b64 = base64.b64encode(open(img, "rb").read()).decode()
+prompt = (
+    "Lee esta imagen de un comprobante fiscal dominicano y responde SOLO un JSON "
+    "(sin markdown, sin texto extra) con esta forma exacta: "
+    '{"proveedor": str|null, "rnc": str|null (solo digitos del RNC del emisor), '
+    '"ncf": str|null, "fecha": "YYYY-MM-DD"|null, "moneda": "DOP"|"USD"|null, '
+    '"monto": number|null (total del documento), "itbis": number|null, '
+    '"codigo_seguridad": str|null (6 caracteres, solo si es e-CF y se lee), '
+    '"fecha_firma": "DD-MM-YYYY HH:MM:SS"|null (solo si se lee), '
+    '"confianza": "alta"|"media"|"baja"}. '
+    "Usa null en lo que no puedas leer. No inventes valores."
+)
+cuerpo = json.dumps({
+    "model": modelo,
+    "temperature": 0,
+    "max_tokens": 800,
+    "messages": [{"role": "user", "content": [
+        {"type": "image_url", "image_url": {"url": "data:%s;base64,%s" % (mime, b64)}},
+        {"type": "text", "text": prompt},
+    ]}],
+}).encode()
+resp, ultimo = None, "sin intento"
+for intento in (1, 2):   # 1 reintento (SPEC)
+    try:
+        req = urllib.request.Request(
+            base + "/chat/completions", data=cuerpo,
+            headers={"Authorization": "Bearer " + llave, "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            resp = json.load(r)
+        break
+    except Exception as e:
+        ultimo = type(e).__name__   # solo el tipo: nada de cuerpos ni URLs en stderr
+if resp is None:
+    print("vision fallo (%s)" % ultimo, file=sys.stderr)
+    sys.exit(1)
+try:
+    contenido = resp["choices"][0]["message"]["content"]
+    m = re.search(r"\{.*\}", contenido, re.S)
+    datos = json.loads(m.group(0))
+except Exception:
+    print("vision: la respuesta no trajo JSON parseable", file=sys.stderr)
+    sys.exit(1)
+out = {"metodo": "vision-glm4.6v", "nota": NOTA}
+out["confianza"] = datos.get("confianza") if datos.get("confianza") in ("alta", "media", "baja") else "media"
+for clave in ("proveedor", "rnc", "ncf", "fecha", "moneda"):
+    v = datos.get(clave)
+    if isinstance(v, str) and v.strip():
+        out[clave] = v.strip()
+for clave in ("monto", "itbis"):
+    v = datos.get(clave)
+    if isinstance(v, (int, float)):
+        out[clave] = float(v)
+    elif isinstance(v, str):
+        try:
+            out[clave] = float(v.replace(",", ""))
+        except ValueError:
+            pass
+if out.get("ncf"):
+    out["ncf"] = out["ncf"].upper().replace(" ", "")
+if out.get("rnc"):
+    out["rnc"] = re.sub(r"\D", "", out["rnc"])
+# Extras del timbre e-CF, si la foto los trae (el bash los re-valida igual):
+cs = str(datos.get("codigo_seguridad") or "").strip()
+if re.fullmatch(r"[A-Za-z0-9+/=]{6}", cs):
+    out["codigo_seguridad"] = cs
+ff = str(datos.get("fecha_firma") or "").strip().replace("/", "-")
+if re.fullmatch(r"\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}", ff):
+    out["fecha_firma"] = ff
+json.dump(out, open(outp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+PY
+  then
+    anotar_error "vision: $(head -c 120 "$PREP/vision.err" 2>/dev/null || echo fallo)"
+    frag_ninguno "vision fallo en el prep; el agente aplica vision"
+  fi
+}
+
+case "$TIPO" in
+  xml)    extraccion_xml ;;
+  pdf)    extraccion_pdf ;;
+  imagen) extraccion_imagen ;;
+  excel)  frag_ninguno "Excel: la nomina u hoja la razona el agente (sin extraccion en el prep)" ;;
+  *)      frag_ninguno "tipo desconocido; el agente sigue el protocolo completo" ;;
+esac
+
+# ───────────── 5. Campos extraídos, re-validados antes de usarse ─────────────
+
+# TODO valor que salió del documento es input hostil (SPEC seguridad): solo
+# entra a URLs, SQL (-v) o comandos si pasa su regex acá. Lo que no pasa se
+# queda en el dossier como dato informativo, pero no se usa.
+leer_campo() {
+  [ -f "$PREP/extraccion.json" ] || return 0
+  "$PY" -c 'import json, sys
+v = json.load(open(sys.argv[1])).get(sys.argv[2], "")
+print("" if v is None else v)' "$PREP/extraccion.json" "$1" 2>/dev/null || true
+}
+
+NCF=$(leer_campo ncf)
+[[ "$NCF" =~ ^(B[0-9]{10}|E[0-9]{12})$ ]] || NCF=""
+RNC=$(leer_campo rnc)
+[[ "$RNC" =~ ^([0-9]{9}|[0-9]{11})$ ]] || RNC=""
+FECHA=$(leer_campo fecha)
+[[ "$FECHA" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || FECHA=""
+MONTO=$(leer_campo monto)
+[[ "$MONTO" =~ ^[0-9]+(\.[0-9]+)?$ ]] || MONTO=""
+MONTO_FMT=""
+[ -n "$MONTO" ] && MONTO_FMT=$(printf '%.2f' "$MONTO")
+CODIGO=$(leer_campo codigo_seguridad)
+[[ "$CODIGO" =~ ^[A-Za-z0-9+/=]{6}$ ]] || CODIGO=""
+FFIRMA=$(leer_campo fecha_firma)
+RE_FF='^[0-9]{2}-[0-9]{2}-[0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2}$'
+[[ "$FFIRMA" =~ $RE_FF ]] || FFIRMA=""
+RNCC=$(leer_campo rnc_comprador)
+[[ "$RNCC" =~ ^([0-9]{9}|[0-9]{11})$ ]] || RNCC=""
+if [ -z "$RNCC" ] && [ -n "${QUALIA_EMPRESA_RNC:-}" ]; then
+  [[ "$QUALIA_EMPRESA_RNC" =~ ^([0-9]{9}|[0-9]{11})$ ]] && RNCC="$QUALIA_EMPRESA_RNC"
+fi
+
+# ───────────────────────── 6. Verificación DGII ─────────────────────────
+
+escribir_dgii_nv() {
+  # $1 = motivo (texto fijo del script, sin datos del documento)
+  printf '{"estado": "no verificable", "motivo": "%s"}\n' "$1" > "$PREP/dgii.json"
+}
+
+if [ -z "$NCF" ]; then
+  escribir_dgii_nv "sin NCF extraído"
+elif [[ "$NCF" == B* ]]; then
+  # NCF impreso: consulta pública de DGII vía el script ya probado (SPEC 7).
+  if [ -z "$RNC" ]; then
+    escribir_dgii_nv "NCF impreso sin RNC emisor extraído; verificar manualmente"
+  elif [ ! -f "$SCRIPTS/consultar-ncf-dgii.py" ]; then
+    escribir_dgii_nv "consultar-ncf-dgii.py no montado en el sidecar"
+  elif ! timeout 45 "$PY" "$SCRIPTS/consultar-ncf-dgii.py" --rnc "$RNC" --ncf "$NCF" > "$PREP/dgii.json" 2>/dev/null \
+       || [ ! -s "$PREP/dgii.json" ]; then
+    anotar_error "consulta DGII del NCF impreso fallo o excedio el tiempo"
+    escribir_dgii_nv "la consulta a DGII fallo o excedio el tiempo"
+  fi
+else
+  # e-CF: SOLO si del documento salieron código de seguridad y fecha de firma
+  # (SPEC 7); además el timbre exige RNCs, fecha de emisión y monto exactos.
+  if [ -z "$CODIGO" ] || [ -z "$FFIRMA" ]; then
+    escribir_dgii_nv "faltan codigo/fecha firma; verificar timbre manualmente"
+  elif [ -z "$RNC" ] || [ -z "$RNCC" ] || [ -z "$FECHA" ] || [ -z "$MONTO_FMT" ]; then
+    escribir_dgii_nv "faltan datos para armar la consulta del timbre (RNC emisor/comprador, fecha o monto); verificar manualmente"
+  elif ! timeout 40 "$PY" - "$PREP/dgii.json" \
+         "rnc_emisor=$RNC" "rnc_comprador=$RNCC" "encf=$NCF" \
+         "fecha_emision=$FECHA" "monto=$MONTO_FMT" \
+         "fecha_firma=$FFIRMA" "codigo=$CODIGO" 2>/dev/null <<'PY'
+import datetime, json, re, sys, urllib.parse, urllib.request
+outp = sys.argv[1]
+p = {}
+for arg in sys.argv[2:]:
+    k, _, v = arg.partition("=")
+    p[k] = v
+UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+
+def ddmmaaaa(f):
+    a, m, d = f.split("-")
+    return "%s-%s-%s" % (d, m, a)
+
+tipo = p["encf"][1:3]
+ruta = "ConsultaTimbreFC" if tipo == "32" else "ConsultaTimbre"
+salida = {"tipo": "ecf", "encf": p["encf"], "fuente": "ecf.dgii.gov.do/ecf/" + ruta}
+try:
+    # quote_via=quote: el espacio de FechaFirma viaja como %20, no '+' — es el
+    # formato del QR real (SKILL.md §5b).
+    qs = urllib.parse.urlencode({
+        "RncEmisor": p["rnc_emisor"], "RncComprador": p["rnc_comprador"],
+        "ENCF": p["encf"], "FechaEmision": ddmmaaaa(p["fecha_emision"]),
+        "MontoTotal": p["monto"], "FechaFirma": p["fecha_firma"],
+        "CodigoSeguridad": p["codigo"]}, quote_via=urllib.parse.quote)
+    req = urllib.request.Request(
+        "https://ecf.dgii.gov.do/ecf/%s?%s" % (ruta, qs),
+        headers={"User-Agent": UA, "Accept-Language": "es-DO,es;q=0.9"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        html = r.read().decode("utf-8", "replace")
+    # mismo aplanado de HTML que consultar-ncf-dgii.py
+    t = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", html)
+    t = re.sub(r"(?i)<br\s*/?>|</tr>|</p>|</div>", "\n", t)
+    t = re.sub(r"(?i)</t[dh]>", " | ", t)
+    t = re.sub(r"<[^>]+>", " ", t).replace("&nbsp;", " ")
+    t = re.sub(r"[ \t]{2,}", " ", t)
+    campos = [
+        (r"Estado", "estado"),
+        (r"RNC\s*Emisor", "rnc_emisor"),
+        (r"Raz[oó]n\s+Social\s+(?:del\s+)?Emisor", "razon_social_emisor"),
+        (r"RNC\s*Comprador", "rnc_comprador"),
+        (r"Raz[oó]n\s+Social\s+(?:del\s+)?Comprador", "razon_social_comprador"),
+        (r"Total\s*(?:de\s*)?ITBIS", "total_itbis"),
+        (r"Monto\s*Total", "monto_total"),
+        (r"Fecha\s*(?:de\s*)?Emisi[oó]n", "fecha_emision"),
+    ]
+    for patron, clave in campos:
+        m = re.search(patron + r"\s*[:|]\s*([^\n|]{1,80})", t, re.I)
+        if m:
+            v = m.group(1).strip(" .|")
+            if v and not re.fullmatch(r"[-–—]*", v):
+                salida.setdefault(clave, v)
+    for clave in ("total_itbis", "monto_total"):
+        if clave in salida:
+            crudo = salida[clave].replace("RD$", "").replace("$", "").replace(",", "").strip()
+            try:
+                salida[clave] = float(crudo)
+            except ValueError:
+                pass
+    if "estado" not in salida:
+        # La tabla no trajo la etiqueta "Estado": barrido por palabra clave
+        # (el orden importa: "Aceptado Condicional" antes que "Aceptado").
+        for patron, valor in (
+                (r"Aceptado\s+Condicional", "Aceptado Condicional"),
+                (r"\bAceptado\b", "Aceptado"),
+                (r"\bRechazado\b", "Rechazado"),
+                (r"\bEn\s+Proceso\b", "En Proceso"),
+                (r"no\s+(?:se\s+encontr|existe)", "NO ENCONTRADO")):
+            if re.search(patron, t, re.I):
+                salida["estado"] = valor
+                break
+    if "estado" not in salida:
+        salida["estado"] = "no verificable"
+        salida["motivo"] = "la respuesta del timbre no trajo un estado reconocible"
+    salida["verificado_en"] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+except Exception as e:
+    salida["estado"] = "no verificable"
+    salida["motivo"] = "consulta de timbre fallo: %s" % type(e).__name__
+json.dump(salida, open(outp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+PY
+  then
+    anotar_error "consulta del timbre e-CF fallo o excedio el tiempo"
+    escribir_dgii_nv "la consulta del timbre fallo o excedio el tiempo"
+  fi
+fi
+
+# ───────────────────────── 7. Duplicados (solo con NCF) ─────────────────────────
+
+# El prep NUNCA marca error por duplicado (SPEC 8): reporta en el dossier y el
+# agente decide con su regla existente.
+DUP_VERIFICADO=si
+DUP_MOTIVO=""
+agregar_motivo() { DUP_MOTIVO="${DUP_MOTIVO:+$DUP_MOTIVO; }$1"; }
+
+if [ -n "$NCF" ]; then
+  # 7a. En la mesa: trabajos con ese NCF ya en su propuesta (query del SPEC).
+  if ! sql -v emp="$QUALIA_EMPRESA_ID" -v ncf="$NCF" -v id="$ID" > "$PREP/dup_mesa.txt" <<'SQL'
+select id, estado
+  from qualia_trabajos
+ where empresa_id = :'emp'
+   and propuesta->>'ncf' = :'ncf'
+   and id != :'id';
+SQL
+  then
+    DUP_VERIFICADO=no
+    agregar_motivo "mesa: consulta fallo"
+    anotar_error "duplicados en la mesa: consulta fallo"
+  fi
+  # 7b. Dossiers de otros trabajos en el cache: cubre pendientes que aún no
+  # tienen propuesta pero cuyo prep ya extrajo ese NCF (SPEC 8: guardar el NCF
+  # en el propio dossier basta — esto es el otro lado de esa moneda).
+  for f in /tmp/mesa/*/dossier.json; do
+    [ -e "$f" ] || continue
+    otro=$(basename "$(dirname "$f")")
+    [ "$otro" = "$ID" ] && continue
+    [[ "$otro" =~ ^[0-9a-f-]{36}$ ]] || continue
+    if grep -qF "\"$NCF\"" "$f" 2>/dev/null; then
+      printf '%s\t%s\n' "$otro" "dossier" >> "$PREP/dup_mesa.txt"
+    fi
+  done
+  # 7c. Contra ADM, por el HISTÓRICO local del preentrenamiento. La API en vivo
+  # no sirve para esto (listado con NCF:null y `search` que no filtra — ver el
+  # encabezado); el detalle jsonl SÍ trae el NCF y se refresca con el pipeline
+  # de preentrenamiento. Se reportan los DocID coincidentes.
+  if [ -d "$PRE_DIR/raw" ]; then
+    if ! grep -hsF -- "\"$NCF\"" "$PRE_DIR"/raw/vendor-bills*.jsonl 2>/dev/null \
+      | "$PY" -c '
+import json, sys
+ncf = sys.argv[1]
+docids = []
+for linea in sys.stdin:
+    try:
+        d = json.loads(linea)
+    except ValueError:
+        continue
+    if str(d.get("NCF", "")).strip().upper() != ncf:
+        continue
+    doc = str(d.get("DocID") or d.get("ID") or "").strip()
+    if doc and doc not in docids:
+        docids.append(doc)
+print(json.dumps(docids))
+' "$NCF" > "$PREP/dup_adm.json" 2>/dev/null; then
+      DUP_VERIFICADO=no
+      agregar_motivo "historico ADM: parseo fallo"
+      anotar_error "duplicados historico ADM: parseo fallo"
+    fi
+  else
+    DUP_VERIFICADO=no
+    agregar_motivo "historico ADM (preentrenamiento) no montado"
+  fi
+else
+  DUP_VERIFICADO=no
+  agregar_motivo "sin NCF extraído"
+fi
+
+# ───────────────── 9. Dossier (atómico) + evento de progreso ─────────────────
+
+if PREP="$PREP" DIRW="$DIR" TRABAJO_ID="$ID" ROW_UPD="$UPD" \
+   ARCHIVO_PATH="$SALIDA" ARCHIVO_BYTES="$BYTES" ARCHIVO_TIPO="$TIPO" \
+   CONVERTIDO="$CONVERTIDO" ARCHIVO_JPG="${SALIDA%.*}.jpg" DURACION="$SECONDS" \
+   DUP_VERIFICADO="$DUP_VERIFICADO" DUP_MOTIVO="$DUP_MOTIVO" \
+   "$PY" - <<'PY'
+import json, os
+
+prep = os.environ["PREP"]
+dirw = os.environ["DIRW"]
+
+def carga(nombre):
+    ruta = os.path.join(prep, nombre)
+    if not os.path.exists(ruta):
+        return None
+    try:
+        return json.load(open(ruta, encoding="utf-8"))
+    except Exception:
+        return None
+
+def entero(v):
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        return 0
+
+errores = []
+ruta_err = os.path.join(prep, "errores.txt")
+if os.path.exists(ruta_err):
+    errores = [l.strip() for l in open(ruta_err, encoding="utf-8") if l.strip()]
+
+d = {"version": 1,
+     "trabajo_id": os.environ["TRABAJO_ID"],
+     "row_updated_at": os.environ["ROW_UPD"],
+     "archivo": {"path": os.environ["ARCHIVO_PATH"],
+                 "bytes": entero(os.environ.get("ARCHIVO_BYTES")),
+                 "tipo": os.environ["ARCHIVO_TIPO"],
+                 "convertido_de_heic": os.environ.get("CONVERTIDO") == "si"}}
+if d["archivo"]["convertido_de_heic"]:
+    d["archivo"]["path_jpg"] = os.environ.get("ARCHIVO_JPG", "")
+
+extr = carga("extraccion.json") or {
+    "metodo": "ninguno",
+    "nota": "sin extraccion automatica; el agente sigue el protocolo completo"}
+texto = os.path.join(dirw, "texto.txt")
+if os.path.exists(texto):
+    extr["texto_path"] = texto
+d["extraccion"] = extr
+
+dgii = carga("dgii.json")
+if not isinstance(dgii, dict) or "estado" not in dgii:
+    if dgii is not None:
+        errores.append("dgii: salida invalida del verificador")
+    dgii = {"estado": "no verificable",
+            "motivo": "verificacion no ejecutada o con salida invalida"}
+d["dgii"] = dgii
+
+mesa = []
+ruta_dm = os.path.join(prep, "dup_mesa.txt")
+if os.path.exists(ruta_dm):
+    for linea in open(ruta_dm, encoding="utf-8"):
+        partes = linea.rstrip("\n").split("\t")
+        if len(partes) >= 2 and partes[0]:
+            mesa.append({"id": partes[0], "estado": partes[1]})
+adm = carga("dup_adm.json")   # DocIDs del histórico local de VendorBills
+if not isinstance(adm, list):
+    adm = []
+dup = {"mesa": mesa, "adm": adm,
+       "verificado": os.environ.get("DUP_VERIFICADO") == "si"}
+if os.environ.get("DUP_MOTIVO"):
+    dup["motivo"] = os.environ["DUP_MOTIVO"]
+d["duplicados"] = dup
+
+d["errores_prep"] = errores
+d["duracion_seg"] = entero(os.environ.get("DURACION"))
+
+tmp = os.path.join(dirw, "dossier.json.tmp")
+json.dump(d, open(tmp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+os.replace(tmp, os.path.join(dirw, "dossier.json"))
+
+# Resumen humano para el evento de progreso (SPEC 4). Solo campos del dossier:
+# nada de URLs ni cuerpos de API.
+# El proveedor viene del documento (input hostil): acotado a 120 chars para
+# que un texto malicioso no infle ni ensucie el evento.
+quien = (str(extr["proveedor"])[:120] if extr.get("proveedor")
+         else "archivo " + d["archivo"]["tipo"])
+partes = [quien]
+if extr.get("ncf"):
+    etiqueta = "e-NCF" if str(extr["ncf"]).startswith("E") else "NCF"
+    partes.append("%s %s" % (etiqueta, extr["ncf"]))
+if isinstance(extr.get("monto"), (int, float)):
+    simbolo = "US$" if extr.get("moneda") == "USD" else "RD$"
+    partes.append("%s%s" % (simbolo, format(extr["monto"], ",.2f")))
+partes.append("DGII: %s" % dgii.get("estado", "no verificable"))
+n_dup = len(mesa) + len(adm)
+if n_dup:
+    partes.append("posible duplicado (mesa: %d, ADM: %d)" % (len(mesa), len(adm)))
+elif dup["verificado"]:
+    partes.append("sin duplicados")
+else:
+    partes.append("duplicados no verificados")
+msj = "⚙️ Preparador: documento listo. " + ", ".join(partes) + "."
+if errores:
+    msj += " Prep parcial (%d paso(s) fallaron)." % len(errores)
+msj += " Analizando…"
+open(os.path.join(prep, "evento.txt"), "w", encoding="utf-8").write(msj)
+PY
+then
+  log "dossier listo"
+else
+  log "no pude armar el dossier; el contable seguira el protocolo completo"
+fi
+
+# UN evento de progreso (SPEC 4). Si falla, no es fatal: el dossier ya está.
+if [ -s "$PREP/evento.txt" ]; then
+  cont=$(cat "$PREP/evento.txt")
+  if ! sql -v id="$ID" -v cont="$cont" <<'SQL'
+insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
+values (:'id', 'contable', 'progreso', :'cont');
+SQL
+  then
+    log "no pude insertar el evento de progreso"
+  fi
+fi
+
+# ───────────────────────── 10. Cierre ─────────────────────────
+
+# La entrega (chown al HERMES_UID) la hace el trap de arriba en TODA salida,
+# incluida ésta.
+log "listo en ${SECONDS}s (tipo=$TIPO, ncf=${NCF:-no}, dgii=$([ -s "$PREP/dgii.json" ] && echo si || echo no))"
+exit 0

@@ -26,7 +26,40 @@ fi
 
 destino="/tmp/mesa/$ID"
 mkdir -p "$destino"
-salida="$destino/$(basename "$nombre")"
+
+# Mismo saneo de nombre que el preparador (preparar-trabajo.sh): así el
+# short-circuit de abajo encuentra el archivo que él dejó, aunque el nombre
+# original traiga caracteres raros.
+base=$(basename -- "$nombre")
+base=$(printf '%s' "$base" | tr -c 'A-Za-z0-9._ -' '_')
+base="${base#.}"
+[ -n "$base" ] || base="documento"
+case "$base" in
+  dossier.json|texto.txt) base="doc-$base" ;;
+esac
+if [ "${#base}" -gt 140 ]; then base="${base: -140}"; fi
+salida="$destino/$base"
+
+# Pista de tipo por stderr para que al agente le alcance la salida del script,
+# sin encadenar comandos extra. Solo depende de la extensión.
+case "${salida##*.}" in
+  [jJ][pP][gG]|[jJ][pP][eE][gG]|[pP][nN][gG]|[wW][eE][bB][pP]) tipo="imagen (usar vision_analyze)" ;;
+  [pP][dD][fF])   tipo="PDF (probar pypdf primero; si no trae texto, es escaneado -> vision)" ;;
+  [xX][lL][sS]*)  tipo="Excel (openpyxl/pandas via uv)" ;;
+  [xX][mM][lL])   tipo="XML e-CF (datos exactos)" ;;
+  *)              tipo="desconocido" ;;
+esac
+
+# Short-circuit: si ya está en disco (>100 bytes, mismo umbral que valida la
+# descarga) no se vuelve a pedir la URL. Lo normal es que lo haya dejado el
+# preparador (preparar-trabajo.sh) o una corrida anterior; así no se
+# re-descarga ni se depende de que la firma siga viva.
+bytes=$(wc -c < "$salida" 2>/dev/null || echo 0)
+if [ "$bytes" -gt 100 ]; then
+  echo "ya estaba bajado: $(( bytes / 1024 )) KB, $tipo (no se re-descargó)" >&2
+  echo "$salida"
+  exit 0
+fi
 
 code=$(curl -sL -o "$salida" -w "%{http_code}" -m 90 "$url")
 bytes=$(wc -c < "$salida" 2>/dev/null || echo 0)
@@ -39,16 +72,6 @@ if [ "$code" != "200" ] || [ "$bytes" -lt 100 ]; then
   exit 1
 fi
 
-# Info por stderr para que el agente NO necesite `file` (no esta instalado en
-# la imagen): con esto le alcanza la salida del script.
-kb=$(( bytes / 1024 ))
-case "${salida##*.}" in
-  [jJ][pP][gG]|[jJ][pP][eE][gG]|[pP][nN][gG]|[wW][eE][bB][pP]) tipo="imagen (usar vision_analyze)" ;;
-  [pP][dD][fF])   tipo="PDF (probar pypdf primero; si no trae texto, es escaneado -> vision)" ;;
-  [xX][lL][sS]*)  tipo="Excel (openpyxl/pandas via uv)" ;;
-  [xX][mM][lL])   tipo="XML e-CF (datos exactos)" ;;
-  *)              tipo="desconocido" ;;
-esac
-echo "bajado ok: ${kb} KB, $tipo" >&2
+echo "bajado ok: $(( bytes / 1024 )) KB, $tipo" >&2
 
 echo "$salida"

@@ -53,6 +53,40 @@ psql "$QUALIA_DSN" -t -A -c "select estado, tipo, archivo_url, archivo_nombre, r
 
 ## Si está `pendiente`: analizalo
 
+### El dossier del preparador — mirá esto ANTES de trabajar
+
+Antes de despertarte, un preparador determinista (`preparar-trabajo.sh`, corre
+en el sidecar, sin LLM) pudo dejar el trabajo masticado en
+`/tmp/mesa/<trabajo_id>/dossier.json`. El claim atómico (paso 1, abajo) sigue
+siendo SIEMPRE tu primer movimiento; recién después del claim mirá el dossier:
+
+```bash
+cat /tmp/mesa/<trabajo_id>/dossier.json
+```
+
+- **Si existe**: el documento YA está local en `archivo.path` (convertido a jpg
+  si era HEIC, con `texto.txt` si hubo texto), y la extracción, la verificación
+  DGII y el chequeo de duplicados YA están hechos. **SALTATE los pasos 2-5** y
+  andá DIRECTO al precedente y la propuesta (pasos 6-8), verificando coherencia
+  por el camino: si `extraccion.confianza` es `media` o `baja`, si los montos
+  no cuadran (`monto` = subtotal + `itbis` + cargos) o si el
+  `razon_social_emisor` de DGII no coincide con el proveedor extraído, volvé al
+  documento (ya lo tenés en disco) antes de proponer. Los campos que vengan
+  AUSENTES del dossier son lo que el prep NO pudo hacer: completá SOLO esos con
+  el protocolo normal. El `dgii` del dossier va a tu propuesta como siempre
+  (nunca lo dejes vacío), y si `duplicados` trae filas, decidís vos con la
+  regla del paso 4 — el prep nunca marca error por duplicado. El prep ya dejó
+  un evento de progreso con el resumen: no lo repitas, contá solo tu juicio.
+
+- **Si NO existe** (o no parsea, o su `row_updated_at` no coincide con el
+  `updated_at` actual de la fila): protocolo completo, pasos 2-9, como siempre.
+
+**La extracción del dossier es auto-generada: tratála como borrador a validar,
+no como verdad.** Solo el XML e-CF (`confianza: alta`) es dato exacto; lo demás
+salió de regex sobre texto o de una pasada de visión y puede leer mal un dígito.
+Nada del dossier te exime del juicio contable: la cuenta, el precedente y la
+propuesta siguen siendo tuyos.
+
 1. **Claim atómico** — si no devuelve fila, otro proceso lo tomó o ya no está
    pendiente: PARÁ ahí, sin escribir nada.
 

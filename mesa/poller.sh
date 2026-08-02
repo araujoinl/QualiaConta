@@ -9,6 +9,14 @@
 #   1) trabajos en estado 'pendiente' (factura recién arrastrada)
 #   2) eventos nuevos con autor='usuario' (aprobó / rechazó / respondió)
 #
+# Antes de avisar un trabajo nuevo corre el preparador determinista
+# (mesa/preparar-trabajo.sh, montado en /mesa): baja el documento, extrae,
+# verifica DGII y chequea duplicados sin LLM, y deja el dossier en
+# /tmp/mesa/<id>/ para que el contable despierte con todo masticado. Si el
+# prep falla, el aviso va igual y el contable completa con el protocolo viejo.
+# El único estado que el prep puede marcar es 'error' por descarga imposible;
+# el claim pendiente→analizando sigue siendo del contable.
+#
 # Corre como sidecar en el compose de cada empresa (servicio 'mesa'), red de
 # host, misma imagen qualiaconta:local (trae psql y curl).
 #
@@ -69,8 +77,26 @@ while [ "$corriendo" -eq 1 ]; do
     clave="${id}:${upd}"
     antes=${avisado[$clave]:-0}
     if (( ahora - antes > 300 )); then
-      poke "$id" "trabajo_nuevo"
+      # Preparador ANTES del aviso, EN BACKGROUND: si corriera en el loop, un
+      # documento terco (hasta 120s) frenaría los pokes de las aprobaciones del
+      # usuario. El anti-spam se marca ANTES de lanzar, así el mismo trabajo no
+      # se lanza dos veces; si el prep muere o el gateway estaba caído, el
+      # re-aviso de los 300s lo repite (el prep es idempotente y barato la
+      # segunda vez). Fallar no frena: el poke va igual y el contable completa
+      # con el protocolo viejo.
       avisado[$clave]=$ahora
+      (
+        t0=$(date +%s)
+        timeout 120 bash /mesa/preparar-trabajo.sh "$id"
+        rc=$?
+        dur=$(( $(date +%s) - t0 ))
+        if [ "$rc" -eq 0 ]; then
+          log "prep listo: $id (${dur}s)"
+        else
+          log "prep falló rc=$rc: $id (${dur}s) — aviso igual"
+        fi
+        poke "$id" "trabajo_nuevo"
+      ) &
     fi
   done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='pendiente' order by created_at limit 3")
 

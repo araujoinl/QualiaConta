@@ -32,3 +32,11 @@ empresas/*/liquidaciones/
 .DS_Store
 node_modules/
 __pycache__/
+
+# Cache de la mesa: documentos descargados por el preparador (sensibles,
+# recuperables del bucket; el respaldo nocturno ya los cubre).
+empresas/*/mesa-cache/
+
+# Mapa real de cuentas bancarias: numeros de cuenta reales, fuera de git
+# (mismo patron que banks.json del colector).
+mapa-cuentas.yaml

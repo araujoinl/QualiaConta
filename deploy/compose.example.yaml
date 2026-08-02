@@ -1,6 +1,5 @@
-# Compose de referencia para UNA empresa.
-#
-# Agregar una empresa = copiar esta carpeta, cambiar el .env y levantar.
+# Compose de ejemplo por empresa. Es la plantilla: dar de alta una empresa =
+# copiar esta carpeta a empresas/<empresa>/, cambiar el .env y levantar.
 # Quitarla = borrar la carpeta. Ninguna operación toca a las demás.
 #
 # La imagen se construye una sola vez desde la fuente de Hermes y la comparten
@@ -43,6 +42,10 @@ services:
       - ../../skills:/opt/data/skills/qualiaconta:ro
       # Mapa de cuentas bancarias, sólo lectura.
       - ../../mapa-cuentas.yaml:/mapa-cuentas.yaml:ro
+      # Workdir compartido con el sidecar 'mesa': el preparador deja ahí el
+      # documento bajado y el dossier, y el contable los encuentra en su ruta
+      # de siempre (/tmp/mesa/<id>/...) sin re-descargar nada.
+      - ./mesa-cache:/tmp/mesa
 
     environment:
       # Dueño de los archivos que cree el contenedor: el usuario del host,
@@ -52,7 +55,41 @@ services:
       # Puerto del panel, distinto por empresa para que no choquen.
       API_SERVER_PORT: ${PUERTO_PANEL:-8642}
 
-    # Sin puertos publicados: con red del host no hacen falta. Sale hacia
-    # Telegram, ADM Cloud, el banco y el modelo. El panel escucha en
-    # 127.0.0.1:${PUERTO_PANEL}, alcanzable sólo con túnel ssh:
+    # Sin puertos publicados: sale hacia Telegram, ADM Cloud y el modelo.
+    # Nadie entra. No necesita proxy ni túnel.
+    #
+    # Para entrar al panel de Hermes cuando haga falta, túnel por ssh:
     #   ssh -L 8642:localhost:8642 codebox
+    # y publicar el puerto sólo en loopback en esa empresa:
+    #   ports: ["127.0.0.1:8642:8642"]
+
+  # Poller de la mesa de trabajo: vigila la cola qualia_* en la Supabase de
+  # Labs_Inv y despierta al contable por el webhook local cuando hay trabajo.
+  # Sin LLM: solo psql + curl (misma imagen, ya los trae). Red de host para
+  # alcanzar el panel del gateway en 127.0.0.1 y el IPv6 de Supabase.
+  # Contrato completo: docs/mesa-de-trabajo.md
+  mesa:
+    image: qualiaconta:local
+    container_name: qualiaconta-mesa-${EMPRESA}
+    restart: unless-stopped
+    env_file: .env
+    network_mode: host
+    entrypoint: ["/bin/bash", "/mesa/poller.sh"]
+    environment:
+      # Puerto de platforms.webhook del gateway (config.yaml); si la empresa lo
+      # cambia alla, fijarlo tambien aca en el .env.
+      WEBHOOK_PORT: ${WEBHOOK_PORT:-8644}
+      # Tick corto: la subida en la web dispara al contable en ~4s (la consulta
+      # es indexada y trivial; la latencia dominante es el analisis del modelo).
+      MESA_INTERVALO: ${MESA_INTERVALO:-4}
+    volumes:
+      - ../../mesa:/mesa:ro
+      # Workdir compartido con el contable (mismo mount de arriba): acá escribe
+      # preparar-trabajo.sh, con chown a HERMES_UID para que el contable lea.
+      - ./mesa-cache:/tmp/mesa
+      # Scripts de la memoria del contable (consultar-ncf-dgii.py, etc.),
+      # sólo lectura: el preparador los reusa en vez de duplicarlos.
+      - ./hermes/memoria/scripts:/memoria-scripts:ro
+      # Histórico de VendorBills para el chequeo de duplicados por grep,
+      # sólo lectura. Si el mount no existe, el prep lo salta con motivo.
+      - ./hermes/preentrenamiento:/preentrenamiento:ro

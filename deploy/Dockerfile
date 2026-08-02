@@ -1,8 +1,11 @@
-# Capa fina sobre Hermes: le agrega el cliente de Postgres.
+# Capa fina sobre Hermes: le agrega el cliente de Postgres y las herramientas
+# del preparador de la mesa.
 #
-# Hermes no lo trae, y sin él el contable no puede consultar los movimientos
-# del banco aunque tenga la conexión. Es una capa de segundos sobre una imagen
-# de 4 GB que no se reconstruye.
+# Hermes no los trae. Sin psql el contable no puede consultar los movimientos
+# del banco aunque tenga la conexión; sin `file` y poppler-utils (pdftotext)
+# el preparador (mesa/preparar-trabajo.sh) no puede detectar el tipo real del
+# documento ni extraer texto de un PDF sin gastar turnos de LLM. Es una capa
+# de segundos sobre una imagen de 4 GB que no se reconstruye.
 #
 #   cd /home/codebox/qualiaconta/repo/deploy
 #   docker build -t qualiaconta:local -f Dockerfile .
@@ -14,8 +17,17 @@ FROM hermes-agent:local
 
 USER root
 RUN apt-get update \
- && apt-get install -y --no-install-recommends postgresql-client \
+ && apt-get install -y --no-install-recommends postgresql-client file poppler-utils \
  && rm -rf /var/lib/apt/lists/*
+
+# Pre-calentar el cache de uv con las ruedas que usa el preparador (pypdf de
+# respaldo para PDFs, pillow-heif para fotos de iPhone): sin esto, la PRIMERA
+# factura tras cada recreación del contenedor pagaría la descarga en frío y
+# podría comerse el timeout de la conversión. Si falla (sin red en el build),
+# la imagen sirve igual — solo vuelve el costo de arranque en frío.
+RUN uv run --with pypdf python -c "import pypdf" \
+ && uv run --with pillow-heif python -c "import pillow_heif" \
+ || true
 USER root
 
 # El entrypoint de la base es ["/init", "/opt/hermes/docker/main-wrapper.sh"] y
