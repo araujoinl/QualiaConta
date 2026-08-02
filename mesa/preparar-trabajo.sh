@@ -736,6 +736,49 @@ NCF=$(leer_campo ncf)
 [[ "$NCF" =~ ^(B[0-9]{10}|E[0-9]{12})$ ]] || NCF=""
 RNC=$(leer_campo rnc)
 [[ "$RNC" =~ ^([0-9]{9}|[0-9]{11})$ ]] || RNC=""
+
+# Rescate del NCF impreso con UN digito de mas. La vision mete un digito
+# espurio con frecuencia (2026-08-02: leyo B01000000500 donde el papel decia
+# B0100000050) y el regex de arriba, que esta bien puesto porque esto es input
+# hostil, lo descarta entero. Sin NCF no hay DGII ni dedup, y el agente vuelve
+# a la imagen con vision: 8 minutos de reloj y una propuesta equivocada (declaro
+# gasto no admitido sobre una factura que SI daba credito fiscal).
+# Se prueban solo las candidatas de borrar un digito, cada una re-validada por
+# el MISMO regex antes de tocar la red, y gana la primera que DGII de VIGENTE.
+# Si ninguna verifica, NCF sigue vacio: no se adivina.
+NCF_CRUDO=$(leer_campo ncf)
+NCF_RESCATADO=""
+if [ -z "$NCF" ] && [ -n "$RNC" ] && [[ "$NCF_CRUDO" =~ ^B[0-9]{11}$ ]] \
+   && [ -f "$SCRIPTS/consultar-ncf-dgii.py" ]; then
+  intentos=0
+  while read -r cand; do
+    [ -n "$cand" ] || continue
+    [[ "$cand" =~ ^B[0-9]{10}$ ]] || continue
+    intentos=$((intentos + 1))
+    [ "$intentos" -gt 8 ] && break
+    if timeout 20 "$PY" "$SCRIPTS/consultar-ncf-dgii.py" --rnc "$RNC" --ncf "$cand" \
+         > "$PREP/dgii_try.json" 2>/dev/null \
+       && grep -q '"estado": *"VIGENTE"' "$PREP/dgii_try.json"; then
+      NCF="$cand"
+      NCF_RESCATADO="$cand"
+      log "NCF rescatado: lei $NCF_CRUDO (formato invalido) -> $cand VIGENTE en DGII"
+      break
+    fi
+  done < <("$PY" - "$NCF_CRUDO" <<'PYNCF'
+import sys
+crudo = sys.argv[1]
+# Solo borrado de un digito: la letra inicial no se toca y el caso "falta un
+# digito" no se intenta (serian 100 candidatas y 100 consultas a DGII).
+vistas = []
+for i in range(1, len(crudo)):
+    c = crudo[:i] + crudo[i + 1:]
+    if c not in vistas:
+        vistas.append(c)
+print("\n".join(vistas))
+PYNCF
+  )
+  rm -f "$PREP/dgii_try.json"
+fi
 FECHA=$(leer_campo fecha)
 [[ "$FECHA" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || FECHA=""
 MONTO=$(leer_campo monto)
@@ -761,7 +804,14 @@ escribir_dgii_nv() {
 }
 
 if [ -z "$NCF" ]; then
-  escribir_dgii_nv "sin NCF extraído"
+  # Distinguir "no habia NCF" de "lo lei mal" es lo que evita que el agente
+  # concluya que el documento no lo trae y vuelva a la imagen con vision.
+  # Longitudes fijas de DGII: impreso B+10 = 11 posiciones, e-CF E+12 = 13.
+  if [ -n "$NCF_CRUDO" ]; then
+    escribir_dgii_nv "se leyó un NCF con formato inválido (${#NCF_CRUDO} posiciones; el impreso lleva 11 y el e-CF 13): confirmá el número contra el documento antes de descartarlo"
+  else
+    escribir_dgii_nv "sin NCF extraído"
+  fi
 elif [[ "$NCF" == B* ]]; then
   # NCF impreso: consulta pública de DGII vía el script ya probado (SPEC 7).
   if [ -z "$RNC" ]; then
@@ -935,7 +985,11 @@ print(json.dumps(docids))
   fi
 else
   DUP_VERIFICADO=no
-  agregar_motivo "sin NCF extraído"
+  if [ -n "$NCF_CRUDO" ]; then
+    agregar_motivo "NCF leído con formato inválido: no se pudo buscar duplicados"
+  else
+    agregar_motivo "sin NCF extraído"
+  fi
 fi
 
 # ───────────────── 9. Dossier (atómico) + evento de progreso ─────────────────
@@ -945,6 +999,7 @@ if PREP="$PREP" DIRW="$DIR" TRABAJO_ID="$ID" ROW_UPD="$UPD" \
    CONVERTIDO="$CONVERTIDO" ARCHIVO_JPG="${SALIDA%.*}.jpg" DURACION="$SECONDS" \
    DUP_VERIFICADO="$DUP_VERIFICADO" DUP_MOTIVO="$DUP_MOTIVO" \
    NCF_OK="$NCF" MONTO_OK="$MONTO_FMT" \
+   NCF_CRUDO="$NCF_CRUDO" NCF_RESCATADO="$NCF_RESCATADO" \
    "$PY" - <<'PY'
 import json, os
 
@@ -997,6 +1052,27 @@ if not isinstance(dgii, dict) or "estado" not in dgii:
             "motivo": "verificacion no ejecutada o con salida invalida"}
 d["dgii"] = dgii
 
+# Si el NCF se rescato, el agente TIENE que saberlo: el numero que va a la
+# propuesta no es el que dice la foto, y eso se explica en el detalle.
+crudo = os.environ.get("NCF_CRUDO", "")
+rescatado = os.environ.get("NCF_RESCATADO", "")
+if crudo and not os.environ.get("NCF_OK"):
+    # Se leyó algo pero no pasó el formato y tampoco se pudo rescatar. El
+    # agente tiene que saber que el número EXISTE en el documento: le queda
+    # corregirlo desde el texto, no re-descubrirlo con visión.
+    d["ncf_invalido"] = {
+        "leido": crudo[:20],
+        "posiciones": len(crudo),
+        "esperado": "11 el impreso (B + 10 dígitos), 13 el e-CF (E + 12)",
+    }
+if rescatado:
+    d["ncf_rescatado"] = {
+        "leido_por_vision": os.environ.get("NCF_CRUDO", ""),
+        "corregido": rescatado,
+        "como": "un digito de mas; se probaron los borrados de un digito y "
+                "DGII confirmo este como VIGENTE",
+    }
+
 mesa = []
 ruta_dm = os.path.join(prep, "dup_mesa.txt")
 if os.path.exists(ruta_dm):
@@ -1037,6 +1113,10 @@ monto_ok = os.environ.get("MONTO_OK", "")
 if monto_ok:
     simbolo = "US$" if extr.get("moneda") == "USD" else "RD$"
     partes.append("%s%s" % (simbolo, format(float(monto_ok), ",.2f")))
+if rescatado:
+    partes.append("NCF corregido (la foto se leia %s)" % crudo[:20])
+elif "ncf_invalido" in d:
+    partes.append("NCF ilegible (lei %s)" % crudo[:20])
 partes.append("DGII: %s" % dgii.get("estado", "no verificable"))
 n_dup = len(mesa) + len(adm)
 if n_dup:
