@@ -1,0 +1,2398 @@
+{
+ "_meta": {
+  "generado": "2026-08-02T22:37:36Z",
+  "alcance": "GENERAL (DGII) — vale para cualquier empresa; el tipo de gasto 606 no depende de quién compra. La cuenta contable NO se comparte: vive en cada empresa.",
+  "n_empresas_aportantes": 1,
+  "n_suplidores": 153,
+  "n_facturas": 1050,
+  "n_sin_rnc": 26,
+  "n_sin_tipo_gasto": 20,
+  "n_con_dominante": 40
+ },
+ "catalogo": [
+  {
+   "codigo": "02",
+   "nombre": "Gastos por Trabajos, Suministros y Servicios",
+   "usos": 632,
+   "n_suplidores": 91
+  },
+  {
+   "codigo": "07",
+   "nombre": "Gastos Financieros",
+   "usos": 196,
+   "n_suplidores": 1
+  },
+  {
+   "codigo": "05",
+   "nombre": "Gastos de Representación",
+   "usos": 60,
+   "n_suplidores": 39
+  },
+  {
+   "codigo": "01",
+   "nombre": "Gastos de Personal",
+   "usos": 42,
+   "n_suplidores": 19
+  },
+  {
+   "codigo": "09",
+   "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
+   "usos": 41,
+   "n_suplidores": 6
+  },
+  {
+   "codigo": "10",
+   "nombre": "Adquisición de Activos",
+   "usos": 18,
+   "n_suplidores": 14
+  },
+  {
+   "codigo": "04",
+   "nombre": "Gastos de Activo Fijo",
+   "usos": 11,
+   "n_suplidores": 8
+  },
+  {
+   "codigo": "11",
+   "nombre": "Gastos de Seguros",
+   "usos": 2,
+   "n_suplidores": 2
+  },
+  {
+   "codigo": "03",
+   "nombre": "Arrendamientos",
+   "usos": 1,
+   "n_suplidores": 1
+  },
+  {
+   "codigo": "06",
+   "nombre": "Otras Deducciones Admitidas",
+   "usos": 1,
+   "n_suplidores": 1
+  },
+  {
+   "codigo": "08",
+   "nombre": "Gastos Extraordinarios",
+   "usos": 0,
+   "n_suplidores": 0
+  }
+ ],
+ "suplidores": [
+  {
+   "rnc": "102012921",
+   "nombre": "Banco Multiple Santa Cruz S A",
+   "facturas": 198,
+   "dominante": "07",
+   "tipos": [
+    {
+     "codigo": "07",
+     "nombre": "Gastos Financieros",
+     "usos": 196,
+     "pct": 99.0
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 0.5
+    },
+    {
+     "codigo": "03",
+     "nombre": "Arrendamientos",
+     "usos": 1,
+     "pct": 0.5
+    }
+   ]
+  },
+  {
+   "rnc": "132942248",
+   "nombre": "Tupaq Cargo & Courier Srl",
+   "facturas": 114,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 113,
+     "pct": 99.1
+    },
+    {
+     "codigo": "09",
+     "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
+     "usos": 1,
+     "pct": 0.9
+    }
+   ]
+  },
+  {
+   "rnc": "101008172",
+   "nombre": "Isla Dominicana De Petroleo Corporation",
+   "facturas": 93,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 93,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101767766",
+   "nombre": "Mecari Srl",
+   "facturas": 86,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 86,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101830719",
+   "nombre": "Estacion De Servicios H E Nuevo Milenio S R L",
+   "facturas": 53,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 52,
+     "pct": 98.1
+    },
+    {
+     "codigo": "04",
+     "nombre": "Gastos de Activo Fijo",
+     "usos": 1,
+     "pct": 1.9
+    }
+   ]
+  },
+  {
+   "rnc": "101068744",
+   "nombre": "Totalenergies Marketing Dominicana, Sa",
+   "facturas": 36,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 36,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "133124981",
+   "nombre": "Logistichause International R&M Srl",
+   "facturas": 24,
+   "dominante": "09",
+   "tipos": [
+    {
+     "codigo": "09",
+     "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
+     "usos": 21,
+     "pct": 87.5
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 3,
+     "pct": 12.5
+    }
+   ]
+  },
+  {
+   "rnc": "133169045",
+   "nombre": "Account One Dcm2rp, Srl",
+   "facturas": 20,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 20,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "102017174",
+   "nombre": "Humano Seguros S A",
+   "facturas": 19,
+   "dominante": "01",
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 17,
+     "pct": 89.5
+    },
+    {
+     "codigo": "06",
+     "nombre": "Otras Deducciones Admitidas",
+     "usos": 1,
+     "pct": 5.3
+    },
+    {
+     "codigo": "11",
+     "nombre": "Gastos de Seguros",
+     "usos": 1,
+     "pct": 5.3
+    }
+   ]
+  },
+  {
+   "rnc": "101001577",
+   "nombre": "Compania Dominicana De Telefonos S A",
+   "facturas": 18,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 18,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101035129",
+   "nombre": "Supermercado El Dragon De Oro S A",
+   "facturas": 14,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 14,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131728251",
+   "nombre": "Inversiones Max Grill Srl",
+   "facturas": 13,
+   "dominante": "05",
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 11,
+     "pct": 84.6
+    },
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 7.7
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 7.7
+    }
+   ]
+  },
+  {
+   "rnc": "130012271",
+   "nombre": "Megasuply Srl",
+   "facturas": 12,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 12,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "133375338",
+   "nombre": "JSP EMPRESAS DR SRL",
+   "facturas": 11,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 11,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130689164",
+   "nombre": "Sigma Petroleum Corp Sas",
+   "facturas": 11,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 11,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101099161",
+   "nombre": "Amable Aristy Castro S R L",
+   "facturas": 10,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 10,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131459562",
+   "nombre": "Good Market Express Eg Srl",
+   "facturas": 10,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 7,
+     "pct": 70.0
+    },
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 2,
+     "pct": 20.0
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 10.0
+    }
+   ]
+  },
+  {
+   "rnc": "101013834",
+   "nombre": "Almacenes Unidos Sas",
+   "facturas": 9,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 9,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "102316163",
+   "nombre": "Cecomsa Srl",
+   "facturas": 7,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 4,
+     "pct": 57.1
+    },
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 3,
+     "pct": 42.9
+    }
+   ]
+  },
+  {
+   "rnc": "130403899",
+   "nombre": "Sarton Dominicana Sas",
+   "facturas": 7,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 5,
+     "pct": 71.4
+    },
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 2,
+     "pct": 28.6
+    }
+   ]
+  },
+  {
+   "rnc": "131643132",
+   "nombre": "Consilia Logistics Srl",
+   "facturas": 7,
+   "dominante": "09",
+   "tipos": [
+    {
+     "codigo": "09",
+     "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
+     "usos": 6,
+     "pct": 85.7
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 14.3
+    }
+   ]
+  },
+  {
+   "rnc": "130161453",
+   "nombre": "M C Logistics Srl",
+   "facturas": 6,
+   "dominante": "09",
+   "tipos": [
+    {
+     "codigo": "09",
+     "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
+     "usos": 5,
+     "pct": 83.3
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 16.7
+    }
+   ]
+  },
+  {
+   "rnc": "132998391",
+   "nombre": "Apr Creators Srl",
+   "facturas": 6,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 3,
+     "pct": 50.0
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 3,
+     "pct": 50.0
+    }
+   ]
+  },
+  {
+   "rnc": "132675134",
+   "nombre": "Ferreteria Juanly Srl",
+   "facturas": 5,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 5,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130547386",
+   "nombre": "Pier 17 Group Dominicana Srl",
+   "facturas": 5,
+   "dominante": "09",
+   "tipos": [
+    {
+     "codigo": "09",
+     "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
+     "usos": 4,
+     "pct": 80.0
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 20.0
+    }
+   ]
+  },
+  {
+   "rnc": "124005132",
+   "nombre": "Fortech Srl",
+   "facturas": 5,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 5,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101019921",
+   "nombre": "Centro Cuesta Nacional Sas",
+   "facturas": 5,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 4,
+     "pct": 80.0
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 20.0
+    }
+   ]
+  },
+  {
+   "rnc": "131833799",
+   "nombre": "Moon & Sea Logistics Srl",
+   "facturas": 5,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 5,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132050802",
+   "nombre": "Glo Valia Construction Group Gvcg Srl",
+   "facturas": 5,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 5,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "125000117",
+   "nombre": "Grupo Suriel S A",
+   "facturas": 5,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 5,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "122009452",
+   "nombre": "Lucami Srl",
+   "facturas": 4,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 4,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "124004152",
+   "nombre": "Estacion De Servicio Dona Catalina Cabral Srl",
+   "facturas": 4,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 4,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130870081",
+   "nombre": "Global Storage Srl",
+   "facturas": 4,
+   "dominante": "09",
+   "tipos": [
+    {
+     "codigo": "09",
+     "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
+     "usos": 4,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "122024697",
+   "nombre": "Oliver Exterminating Dominicana Corp",
+   "facturas": 4,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 4,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132085086",
+   "nombre": "Valeco Print Solutions Srl",
+   "facturas": 4,
+   "dominante": "01",
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 4,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101805404",
+   "nombre": "Suena Electronica Srl",
+   "facturas": 4,
+   "dominante": "04",
+   "tipos": [
+    {
+     "codigo": "04",
+     "nombre": "Gastos de Activo Fijo",
+     "usos": 3,
+     "pct": 75.0
+    },
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 25.0
+    }
+   ]
+  },
+  {
+   "rnc": "131717535",
+   "nombre": "Premier Wash Technology Pwt Srl",
+   "facturas": 4,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 4,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101733934",
+   "nombre": "E Y M Importadores Srl",
+   "facturas": 4,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 4,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131925375",
+   "nombre": "Sabores Del Desierto Srl",
+   "facturas": 3,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 2,
+     "pct": 66.7
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 33.3
+    }
+   ]
+  },
+  {
+   "rnc": "132258312",
+   "nombre": "Anarca Investments Srl",
+   "facturas": 3,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "04",
+     "nombre": "Gastos de Activo Fijo",
+     "usos": 2,
+     "pct": 66.7
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 33.3
+    }
+   ]
+  },
+  {
+   "rnc": "130389586",
+   "nombre": "Jade Teriyaki Srl",
+   "facturas": 3,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 33.3
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 33.3
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 33.3
+    }
+   ]
+  },
+  {
+   "rnc": "101005831",
+   "nombre": "La Innovacion Srl",
+   "facturas": 3,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 3,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131236456",
+   "nombre": "Grupo Arqlux Srl",
+   "facturas": 3,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 66.7
+    },
+    {
+     "codigo": "04",
+     "nombre": "Gastos de Activo Fijo",
+     "usos": 1,
+     "pct": 33.3
+    }
+   ]
+  },
+  {
+   "rnc": "101744342",
+   "nombre": "Estacion Bella Vista Srl",
+   "facturas": 3,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 3,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132315103",
+   "nombre": "Kylg & Asociados Srl",
+   "facturas": 3,
+   "dominante": "05",
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 3,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101069392",
+   "nombre": "Bona S A",
+   "facturas": 3,
+   "dominante": "05",
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 3,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131508006",
+   "nombre": "Grupo Rolling Srl",
+   "facturas": 3,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 2,
+     "pct": 66.7
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 33.3
+    }
+   ]
+  },
+  {
+   "rnc": "131165389",
+   "nombre": "Emprendia Consulting Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131471463",
+   "nombre": "Inversiones Camarelli Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 50.0
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 50.0
+    }
+   ]
+  },
+  {
+   "rnc": "101632501",
+   "nombre": "Estacion De Servicios Ozama Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132450477",
+   "nombre": "Inversiones Aika Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 50.0
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 50.0
+    }
+   ]
+  },
+  {
+   "rnc": "131202586",
+   "nombre": "Inversiones Santa Catalina Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 50.0
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 50.0
+    }
+   ]
+  },
+  {
+   "rnc": "101822635",
+   "nombre": "Ms Enterprises Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130866171",
+   "nombre": "Dipsa Coral Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130997081",
+   "nombre": "Ghanem Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131010148",
+   "nombre": "Foodhall Holding Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101824735",
+   "nombre": "Refricentro Rubiera Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131364616",
+   "nombre": "Invigo Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132079795",
+   "nombre": "Inversiones Familia Pucchi Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101628431",
+   "nombre": "Inversiones Migs Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130246491",
+   "nombre": "Raya Food Dominicana Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101602465",
+   "nombre": "Bravo S A",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 50.0
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 50.0
+    }
+   ]
+  },
+  {
+   "rnc": "131937241",
+   "nombre": "Bellems Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132309634",
+   "nombre": "Luvali Global Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132090081",
+   "nombre": "Sincoro Restaurant And Auto Detailing Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "133214946",
+   "nombre": "Yuanwang Trading Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131422675",
+   "nombre": "The Corporate Lunch Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101695102",
+   "nombre": "Talleres Benjamin Egli Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "04",
+     "nombre": "Gastos de Activo Fijo",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "133124718",
+   "nombre": "Mare Flumen Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101865431",
+   "nombre": "Conformatic Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130749531",
+   "nombre": "Bakerstreet Holdings Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101108665",
+   "nombre": "Angel Veloz Millares Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131319297",
+   "nombre": "Inversiones A & C Five Wings Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101171111",
+   "nombre": "Plaza Lama S A",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101801875",
+   "nombre": "Pricesmart Dominicana Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131667351",
+   "nombre": "El Ferreton Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "123001339",
+   "nombre": "Erik Gas Del 2000 Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101137142",
+   "nombre": "Servicios Alvarez De Administracion Tecnica Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "122001085",
+   "nombre": "Centro De Frenos David Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "04",
+     "nombre": "Gastos de Activo Fijo",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101065801",
+   "nombre": "Centro Automotriz Jaquez Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "04",
+     "nombre": "Gastos de Activo Fijo",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130657785",
+   "nombre": "Transportes De Combustibles Mixtos Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131295789",
+   "nombre": "The Money Coach",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130985898",
+   "nombre": "Zucca Catering Y Servicios Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "122029109",
+   "nombre": "La Puerta Del Sur Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130990735",
+   "nombre": "Estaciones Y Transporte De Combustibles Estracom Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101008342",
+   "nombre": "Seguros Sura S A",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "11",
+     "nombre": "Gastos de Seguros",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131769578",
+   "nombre": "Estaciones De Combustibles Emmar Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "123005857",
+   "nombre": "Estacion De Servicios La Marina Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130787581",
+   "nombre": "Vv Autos Sas",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "04",
+     "nombre": "Gastos de Activo Fijo",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101637587",
+   "nombre": "Body Shop Athletic Club Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "133347482",
+   "nombre": "Grupo Rodriguez Anton Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130570592",
+   "nombre": "Grupo Astro Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101148969",
+   "nombre": "Virgilio A Then S R L",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132917472",
+   "nombre": "Innovex Group Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130316848",
+   "nombre": "Puntomac Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131518567",
+   "nombre": "Ingenieria Del Valor Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131611249",
+   "nombre": "Inversiones Asor Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131369529",
+   "nombre": "Inversiones Coriander Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101088222",
+   "nombre": "Antonio Chahin M S A",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131369545",
+   "nombre": "Inversiones Distral Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130518149",
+   "nombre": "Gamma Elite Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101003693",
+   "nombre": "Distribuidora Corripio S A S",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "133415208",
+   "nombre": "Pizzorno",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132413229",
+   "nombre": "Frescomax Dominicana Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130256128",
+   "nombre": "Wildfire Investments Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130218935",
+   "nombre": "Asogadom Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132997621",
+   "nombre": "La Pinseria Group Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131407587",
+   "nombre": "The Butcher Shop Distrito Gastronomico De Imex Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101570611",
+   "nombre": "Pala Pizza, Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130222509",
+   "nombre": "Avansi Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130813809",
+   "nombre": "Likecorp Srl.",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130169446",
+   "nombre": "Tecnoelite Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132184416",
+   "nombre": "Edufinsa Escuela De Negocios & Tecnologia Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131981267",
+   "nombre": "Caruso Pizza Su Misura Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101128542",
+   "nombre": "Referencia Laboratorio Clinico S A",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131647634",
+   "nombre": "Trigo Cacao Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "102616541",
+   "nombre": "Importers T & E S A",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101831936",
+   "nombre": "Distribuidores Internacionales De Petroleo S A",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130402061",
+   "nombre": "Argent Investments Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131718299",
+   "nombre": "Tfs Urban Grill Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131127835",
+   "nombre": "Electromuebles Kewrys Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101519292",
+   "nombre": "Estacion Gasolinera Marino Done Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "122015086",
+   "nombre": "Extintores Del Caribe Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132769104",
+   "nombre": "Gravisa Foods Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132429303",
+   "nombre": "Tertulia Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131481442",
+   "nombre": "Mercantil Abertis Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101670363",
+   "nombre": "Chanlatte Formas & Nutricion Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130409692",
+   "nombre": "Solo Pastelitos Guilbe Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131675484",
+   "nombre": "Niport Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130530459",
+   "nombre": "Square One Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "123008066",
+   "nombre": "F G Estacion De Servicios Los Hermanos Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131738885",
+   "nombre": "Gulfstream Petroleum Gestiones Operativas Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "00100876028",
+   "nombre": "Maria Mauad Brinz De Jacobo",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101122439",
+   "nombre": "Credigas S A.",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132263529",
+   "nombre": "Grupo Fuddom Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130025177",
+   "nombre": "Moruno Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130335321",
+   "nombre": "Estacion De Servicios Rae Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130653722",
+   "nombre": "Restaurantes Tipico Bonao Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101867396",
+   "nombre": "Estacion De Servicios F&H Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132024516",
+   "nombre": "Centro De Capacitacion Enfoque Digital Eirl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "133046751",
+   "nombre": "Filtrosrd Jcp Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101697271",
+   "nombre": "PETROMOVIL S A",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131187609",
+   "nombre": "Grupo Diseño Awort Arquitectura & Arte Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130463417",
+   "nombre": "Transporte B & S Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130632022",
+   "nombre": "Noguera Hermanos S R L",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101773227",
+   "nombre": "Trans Diesel Del Caribe S A",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131883095",
+   "nombre": "Inversiones Fepeca Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131279961",
+   "nombre": "Inversiones Cajamarca Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130935882",
+   "nombre": "Kenfra Display Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131301462",
+   "nombre": "Pastelitos Valerio Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130184755",
+   "nombre": "Empresas Lluberes La Cumbre C Por A",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132624696",
+   "nombre": "Effe Pizza Srl",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130533393",
+   "nombre": "Acomsa",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  }
+ ]
+}
