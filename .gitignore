@@ -12,6 +12,11 @@ empresas/*/hermes/*
 !empresas/*/hermes/libro-de-accion/
 !empresas/*/hermes/memoria/
 !empresas/*/hermes/SOUL.md
+# Los scripts de los crons del agente (sugerir-cargos, sugerir-transferencias)
+# son CÓDIGO, no estado: leen sus secretos de env y del mapa (que sigue fuera de
+# git). Vivían solo en el server, así que un contenedor recreado se los llevaba
+# sin dejar copia — el mismo riesgo que el ROADMAP ya anota para approvals.deny.
+!empresas/*/hermes/scripts/
 
 # Salidas de preentrenamiento (raw y agregados): datos crudos sensibles.
 # Ya lo tapa el patron general de arriba, pero queda explicito a proposito:

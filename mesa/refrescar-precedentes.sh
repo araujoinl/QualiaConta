@@ -57,7 +57,12 @@ fi
 DESDE=$(date -u +%F)
 fallas=0
 
-for recurso in vendor-bills vendors; do
+# bank-transfers no alimenta la libreta de precedentes: es el espejo con el que
+# sugerir-transferencias.sh sabe que una transferencia entre cuentas propias YA
+# esta registrada en ADM y no la vuelve a proponer. Sin refrescarlo, el detector
+# duplicaria todo lo asentado despues del ultimo snapshot. Son 203 docs y solo
+# GET: cuesta nada bajarlo con los otros dos.
+for recurso in vendor-bills vendors bank-transfers; do
     registrar "bajando $recurso (delta)"
     if salida=$(docker exec "$CONTENEDOR" python3 "$SCRIPTS/extraer-adm.py" \
                     --solo "$recurso" --desde "$DESDE" 2>&1); then
