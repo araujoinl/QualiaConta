@@ -21,12 +21,32 @@ if ! [[ "$ID" =~ ^[0-9a-f-]{36}$ ]]; then
   exit 1
 fi
 
-fila=$(PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -t -A -q -F $'\t' \
-  -v id="$ID" \
-  -c "select coalesce(archivo_nombre,'documento'), coalesce(archivo_url,'') from qualia_trabajos where id = :'id'" 2>/dev/null)
+# La consulta va por STDIN y NO por -c: `psql -c` no interpola las variables
+# `-v`, manda el `:'id'` literal y muere con "syntax error at or near :".
+# Por stdin sí las interpola, así que el id sigue viajando parametrizado (es
+# input no confiable) en vez de concatenado. Y el stderr NO se tapa: taparlo
+# es lo que hacía que un query roto se reportara como "no tiene archivo".
+err=$(mktemp)
+fila=$(PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -t -A -q -F $'\t' -v id="$ID" 2>"$err" <<'SQL'
+select coalesce(archivo_nombre,'documento'), coalesce(archivo_url,'')
+  from qualia_trabajos where id = :'id';
+SQL
+)
+estado=$?
+if [ "$estado" -ne 0 ]; then
+  echo "no pude consultar el trabajo $ID: $(head -c 200 "$err")" >&2
+  rm -f "$err"
+  exit 1
+fi
+rm -f "$err"
 
 nombre=$(printf '%s' "$fila" | cut -f1)
 url=$(printf '%s' "$fila" | cut -f2)
+
+if [ -z "$fila" ]; then
+  echo "el trabajo $ID no existe en la mesa" >&2
+  exit 1
+fi
 
 if [ -z "$url" ]; then
   echo "el trabajo $ID no tiene archivo (¿es una sugerencia o un bloque de criterios?)" >&2
