@@ -46,6 +46,32 @@ TIMEOUT = 90
 
 # Catalogos fijos de Blackbox, verificados contra el sistema vivo.
 TAX_ITBIS = "f980499b-4f32-48cb-8c6f-5fe74d245528"      # ITBIS 18%
+TAX_ITBIS_16 = "26b690b9-cc2a-4ced-d30b-08dd66faeff4"  # ITBIS 16% (tasa reducida: cafe, leche, etc.)
+TAX_ITBIS_30 = "264c13b2-286d-4b60-03b8-08dd34a31da8"  # ITBIS 30% (telecomunicaciones)
+
+# Mapea tasa efectiva -> TaxScheduleID. Se calcula por linea desde itbis/(precio*cantidad).
+TAX_SCHEDULES = {
+    18.0: (TAX_ITBIS, 18.0),
+    16.0: (TAX_ITBIS_16, 16.0),
+    30.0: (TAX_ITBIS_30, 30.0),
+}
+
+def resolver_tasa_linea(itbis, cantidad, precio):
+    """Dado el ITBIS y la base de una linea, devuelve (TaxScheduleID, TaxPercent).
+    Si itbis<=0 -> exento. Si la tasa no calza con un schedule conocido, morir."""
+    itbis = float(itbis or 0)
+    if itbis <= 0:
+        return (None, 0.0)
+    base = float(cantidad or 1) * float(precio or 0)
+    if base <= 0:
+        return (None, 0.0)
+    tasa = round((itbis / base) * 100, 1)
+    # Tolerancia de 1 punto porcentual para redondeos del documento
+    for t_key in TAX_SCHEDULES:
+        if abs(tasa - t_key) <= 1.0:
+            return TAX_SCHEDULES[t_key]
+    morir("la linea (base %.2f, itbis %.2f, tasa %.1f%%) no calza con ningun "
+          "schedule conocido (16%%, 18%%, 30%%). Revisar el documento." % (base, itbis, tasa))
 TERMINOS = {
     "al contado": "94940a99-f119-4573-8bbd-08dd14abff09",
     "30": "b002e9c1-0430-4809-8612-b27db42a35a0",
@@ -286,7 +312,8 @@ def armar_payload(p, relationship_id, payment_term_id):
     cuentas = mapa_cuentas()
     items = []
     for i, l in enumerate(lineas, 1):
-        gravada = float(l.get("itbis") or 0) > 0
+        sched_id, sched_pct = resolver_tasa_linea(
+            l.get("itbis"), l.get("cantidad"), l.get("precio"))
         items.append({
             "RowOrder": i, "RowType": 0,
             "Name": str(l.get("descripcion") or "")[:200],
@@ -296,8 +323,8 @@ def armar_payload(p, relationship_id, payment_term_id):
             "AccountID": (l.get("account_id") or l.get("cuenta_id")
                           or cuentas.get(str(l.get("cuenta") or "").strip())),
             # El monto del ITBIS NO se manda: el server lo calcula del grupo.
-            "TaxScheduleID": TAX_ITBIS if gravada else None,
-            "TaxPercent": 18.0 if gravada else 0.0,
+            "TaxScheduleID": sched_id,
+            "TaxPercent": sched_pct,
         })
     faltan = [(items[j]["Name"], lineas[j].get("cuenta"))
               for j in range(len(items)) if not items[j]["AccountID"]]
@@ -333,10 +360,20 @@ def verificar_cuadre(p, payload):
     Se chequea ANTES del POST, porque despues la unica salida es borrar el
     documento y ADM no deja anular.
     """
-    base = sum(i["Quantity"] * i["Price"] for i in payload["Items"] if i["TaxScheduleID"])
-    exento = sum(i["Quantity"] * i["Price"] for i in payload["Items"] if not i["TaxScheduleID"])
-    itbis_adm = round(base * 0.18, 2)
-    total_adm = round(base + exento + itbis_adm, 2)
+    # Suma por tasa: cada schedule tiene su %, y ADM lo aplica a su base.
+    itbis_adm = 0.0
+    base_gravada = 0.0
+    exento = 0.0
+    for item in payload["Items"]:
+        b = item["Quantity"] * item["Price"]
+        if item["TaxScheduleID"]:
+            base_gravada += b
+            itbis_adm += b * (item["TaxPercent"] / 100.0)
+        else:
+            exento += b
+    itbis_adm = round(itbis_adm, 2)
+    total_adm = round(base_gravada + exento + itbis_adm, 2)
+    base = base_gravada
 
     itbis_papel = round(float(p.get("itbis") or 0), 2)
     total_papel = round(float(p.get("monto") or 0), 2)
