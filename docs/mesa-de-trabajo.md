@@ -11,6 +11,12 @@ contable lee y escribe con su DSN (`QUALIA_DSN`, rol `qualiaconta_lector`,
 grants sólo sobre estas tablas). El rol NO ve `admcloud_empresas` (ahí viven
 credenciales): cada instancia conoce su empresa por `QUALIA_EMPRESA_ID`.
 
+> Este documento describe **cómo se usa** el bus. La forma exacta de las tablas
+> —el DDL, los grants por columna, las policies, el trigger y el bucket, con las
+> migraciones que hay que crear y en qué orden— está en
+> [esquema-del-bus.md](esquema-del-bus.md). Hace falta si montás QualiaConta
+> contra una base nueva: las migraciones viven en el repo de la web, no acá.
+
 ## Las piezas
 
 ```
