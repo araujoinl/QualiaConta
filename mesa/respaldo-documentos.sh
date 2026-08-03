@@ -58,7 +58,8 @@ if ! filas=$(docker exec "$CONTENEDOR" sh -c 'psql "$QUALIA_DSN" -t -A -q -c "'"
 fi
 
 nuevos=0
-fallidos=0
+fallidos=0        # reintentables: la próxima corrida puede arreglarlas
+irrecuperables=0  # el archivo ya no existe; esperar no lo trae de vuelta
 existentes=0
 
 while IFS='|' read -r empresa trabajo nombre url; do
@@ -84,26 +85,42 @@ while IFS='|' read -r empresa trabajo nombre url; do
     log "bajado: ${empresa}/${trabajo}/${nombre} ($(stat -c%s "$archivo") bytes)"
   else
     motivo="HTTP $cuerpo"
+    clase="fallo"
     if grep -q 'NoSuchKey\|not_found' "$tmp" 2>/dev/null; then
       # El archivo ya no esta en el bucket. Reintentar no lo va a traer: esto
       # se arregla subiendo el documento de nuevo, no esperando.
       motivo="el archivo YA NO EXISTE en el bucket (borrado); no se recupera reintentando"
+      clase="irrecuperable"
     elif grep -qi 'jwt\|expired\|signature' "$tmp" 2>/dev/null; then
       motivo="la firma de la URL no sirve; abrir «Ver original» en la web la regenera"
     fi
     rm -f "$tmp"
-    fallidos=$((fallidos + 1))
-    log "FALLO: ${empresa}/${trabajo}/${nombre} — ${motivo}"
+    if [ "$clase" = "irrecuperable" ]; then
+      irrecuperables=$((irrecuperables + 1))
+      log "IRRECUPERABLE: ${empresa}/${trabajo}/${nombre} — ${motivo}"
+    else
+      fallidos=$((fallidos + 1))
+      log "FALLO: ${empresa}/${trabajo}/${nombre} — ${motivo}"
+    fi
   fi
 done <<< "$filas"
 
-log "resumen: ${nuevos} nuevos, ${fallidos} fallidos, ${existentes} ya respaldados"
+log "resumen: ${nuevos} nuevos, ${fallidos} fallidos, ${irrecuperables} irrecuperables, ${existentes} ya respaldados"
 
-resumen=$(printf '{"documentos":{"nuevos":%s,"fallidos":%s,"ya_estaban":%s,"total":%s}}' \
-    "$nuevos" "$fallidos" "$existentes" "$((nuevos + existentes))")
+resumen=$(printf '{"documentos":{"nuevos":%s,"fallidos":%s,"irrecuperables":%s,"ya_estaban":%s,"total":%s}}' \
+    "$nuevos" "$fallidos" "$irrecuperables" "$existentes" "$((nuevos + existentes))")
 
-# Un documento que no se pudo bajar es una falla real: su unica copia sigue
-# estando solo en el bucket.
+# Solo las fallas REINTENTABLES ponen la corrida en rojo.
+#
+# Un documento borrado del bucket no vuelve por esperar, asi que marcaba la
+# corrida en rojo cada hora, para siempre: paso el 2026-08-03 con el PDF de
+# TUPAQ, borrado el dia anterior cuando la policy todavia lo permitia. Un rojo
+# que NO PUEDE volver a verde es peor que no tener luz — ensena a ignorar el
+# panel, y el dia que falle algo de verdad ya nadie lo mira.
+#
+# No se esconde: va contado aparte en el resumen (la web lo muestra) y con su
+# propia linea IRRECUPERABLE en el log. Es un hecho que se mira una vez y se
+# decide, no una alarma que se repite.
 if [ "$fallidos" -eq 0 ]; then ok=true; else ok=false; fi
 "$AQUI/registrar-corrida.sh" respaldo_documentos "$INICIO" "$(date -u +%FT%TZ)" \
     "$ok" "$fallidos" "$resumen" "$CORRIDA"
