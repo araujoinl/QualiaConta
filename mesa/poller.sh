@@ -12,6 +12,13 @@
 #      red de seguridad para el turno del contable que muere después de que el
 #      aviso ya se entregó — sin esto la fila queda huérfana para siempre
 #
+# Y suelta las reservas muertas: 'analizando' congelado 20 min vuelve a
+# 'pendiente'. La regla general detrás de los tres barridos: TODO estado que le
+# pertenece al contable —pendiente, analizando, aprobada-sin-docid— necesita su
+# red. Los que le pertenecen al humano —propuesta, esperando_respuesta— no se
+# tocan nunca, y los terminales —registrada, rechazada, error— tampoco. Si algún
+# día se agrega un estado del contable, hay que preguntarse quién lo rescata.
+#
 # Antes de avisar un trabajo nuevo corre el preparador determinista
 # (mesa/preparar-trabajo.sh, montado en /mesa): baja el documento, extrae,
 # verifica DGII y chequea duplicados sin LLM, y deja el dossier en
@@ -208,6 +215,35 @@ while [ "$corriendo" -eq 1 ]; do
       break
     fi
   done < <(sql "select e.id, e.trabajo_id from qualia_eventos e join qualia_trabajos t on t.id = e.trabajo_id where t.empresa_id='${QUALIA_EMPRESA_ID}' and e.autor='usuario' and e.id > ${wm} order by e.id limit 10")
+
+  # 2b) reservas muertas: 'analizando' que no se movió en 20 minutos.
+  #
+  # El contable reclama la fila (pendiente→analizando) y ahí queda marcada como
+  # suya. Si su turno muere después del claim, la fila sale del alcance del
+  # bloque 1 —que solo mira 'pendiente'— y ya nadie la toca: es el MISMO agujero
+  # que el bloque 3 tapa un estado más adelante. Pasó el 2026-08-03 por la tarde
+  # con tres facturas, cuando 464 respuestas 429 (código 1302, límite de ritmo)
+  # mataron varios turnos a mitad del análisis.
+  #
+  # Acá el poller SÍ escribe estado, y es la segunda excepción explícita a su
+  # regla —la primera es el 'error' por descarga imposible del preparador—.
+  # Soltar una reserva muerta es infraestructura, no contabilidad. Y se hace
+  # devolviendo la fila a 'pendiente' en vez de avisarle al contable, porque el
+  # contable es justamente lo que acaba de fallar: el bloque 1 la re-prepara y
+  # la re-avisa con maquinaria que ya sabemos que funciona.
+  #
+  # 20 minutos: un análisis normal tarda 1-4 min (foto conflictiva incluida), así
+  # que el margen es 5x el peor caso legítimo. El guard de estado en el UPDATE
+  # hace imposible pisar un turno que revivió mientras tanto.
+  while IFS='|' read -r id upd; do
+    [ -z "$id" ] && continue
+    soltada=$(sql "update qualia_trabajos set estado='pendiente'
+                    where id='${id}' and empresa_id='${QUALIA_EMPRESA_ID}'
+                      and estado='analizando'
+                      and updated_at < now() - interval '20 minutes'
+                  returning id")
+    [ -n "$soltada" ] && log "reserva muerta liberada tras $(( ($(date +%s) - upd) / 60 ))min: $id"
+  done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='analizando' and updated_at < now() - interval '20 minutes' and updated_at > now() - interval '12 hours' order by updated_at limit 3")
 
   # 3) red de seguridad: aprobadas que nunca llegaron a ADM.
   #
