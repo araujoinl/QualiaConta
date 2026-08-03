@@ -54,6 +54,28 @@ psql "$QUALIA_DSN" -t -A -c "select estado, tipo, archivo_url, archivo_nombre, r
 **Guardá ese `updated_at`**: es tu referencia PRE-claim para juzgar si el
 dossier del preparador está vigente (el claim lo va a cambiar).
 
+## REGLA DURA: no inventes números para que la aritmética cierre
+
+Si el documento no cuadra, **no lo normalices**. Prohibido repartir un total
+entre los renglones, prorratear el ITBIS, o completar un campo con lo que
+"debería" ser. Un número que no leíste del papel no existe.
+
+Pasó el 2026-08-03 y costó un registro equivocado en la contabilidad real: el
+preparador leyó cuatro renglones sin ITBIS y avisó `cuadra: false`. El contable
+tomó el ITBIS total del documento y lo repartió proporcionalmente entre los
+cuatro. Los números *parecían* consistentes —los cuatro daban 16.05%— pero
+ninguno salía del papel. Y como ADM recalcula el ITBIS al 18%, la factura quedó
+registrada por RD$4,590.26 contra los RD$4,520.47 del documento, reclamando un
+crédito fiscal que el proveedor nunca facturó.
+
+La factura estaba mal calculada por el propio restaurante. Eso **no** es algo
+que el contable arregle: es algo que reporta.
+
+Cuando la aritmética del documento no cierre y no calce con un patrón conocido
+del mercado (la propina legal del 10%, un ISC de bebidas, un recargo impreso),
+la salida es SIEMPRE la misma: evento `pregunta` + estado `esperando_respuesta`,
+con la diferencia exacta y tu hipótesis. El humano tiene el papel a un click.
+
 ## Si está `pendiente`: analizalo
 
 ### El dossier del preparador — mirá esto ANTES de trabajar
@@ -274,6 +296,13 @@ update qualia_trabajos set estado='analizando'
 
 3. **Extraé los datos**: proveedor, RNC, NCF, fecha, moneda, monto, ITBIS.
    e-CF (XML) es dato exacto; PDF/foto se lee con cuidado y confianza menor.
+
+   **La fecha se imprime DÍA/MES/AÑO**: `02/08/2026` es el 2 de agosto
+   (`2026-08-02`), NO el 8 de febrero. La visión del preparador la voltea a la
+   gringa cuando día y mes son ≤ 12 y ya pasó (ticket del 2026-08-02 guardado
+   como `2026-02-08`). Cuando ambos números sean ≤ 12, releé la fecha impresa
+   en el documento antes de proponer, no copies la del dossier a ciegas.
+
    Si es Excel (.xlsx — nómina u otro), bajalo y leelo con Python
    (openpyxl/pandas); una nómina se propone como su asiento completo
    (bruto, TSS, retenciones, neto) según el criterio de tu memoria.
@@ -543,18 +572,52 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
   resuelve insistiendo: o falta un dato de la propuesta o hay que preguntarle al
   humano.
 
-  Después del script queda **una sola cosa a mano, el adjunto**:
+  **El adjunto ya lo sube el script** (desde el 2026-08-03): baja el documento,
+  lo adjunta a la transacción y lo anota en `registro_adm.adjunto`. Solo si te
+  dice «ADJUNTO FALLÓ» lo subís a mano:
 
   ```bash
   ruta=$(bash /opt/data/memoria/scripts/bajar-documento.sh <trabajo_id>)
   curl -s -H "Authorization: Basic $(printf '%s:%s' "$ADMCLOUD_REG_USER" "$ADMCLOUD_REG_PASSWORD" | base64 -w0)" \
        -F "file=@$ruta" \
-       "https://api.admcloud.net/api/Storage?transactionID=<uuid>&company=$ADMCLOUD_COMPANY&role=$ADMCLOUD_REG_ROLE&appid=$ADMCLOUD_APPID"
+       "https://api.admcloud.net/api/Storage?transactionID=<uuid>&company=$ADMCLOUD_COMPANY&role=Contabilidad%20Digital&appid=$ADMCLOUD_APPID"
   ```
+
+  **Fijate en el `%20`**: `$ADMCLOUD_REG_ROLE` vale «Contabilidad Digital», con
+  espacio, y si lo interpolás crudo en la URL el curl devuelve HTTP 000. Eso
+  costó 31 segundos por factura hasta que el script se hizo cargo.
 
   Y recién ahí el libro, citando el DocID.
 
-  ### El detalle de cada paso (por si el script falla y hay que entender qué hacía)
+  **Y lo ÚLTIMO de todo: cerrá la fila.** Si usaste el script, ya lo hizo él y
+  te lo dijo («estado: registrada»); esto es para el caso en que hayas
+  registrado a mano.
+
+  ```sql
+  update qualia_trabajos set estado='registrada'
+   where id='<trabajo_id>' and empresa_id='$QUALIA_EMPRESA_ID'
+     and estado='aprobada';
+  ```
+
+  Sin este paso la factura queda registrada de verdad en ADM y la mesa la
+  muestra como pendiente PARA SIEMPRE. Pasó con las cuatro primeras facturas
+  (2026-08-03): las cuatro en ADM, `registrada` = 0 en la base, porque este
+  renglón no existía en ninguna capa del sistema. Dos detalles:
+
+  - El `and estado='aprobada'` es el guard: si alguien movió la fila mientras
+    trabajabas, no la pises.
+  - **NO pongas `updated_at` en el SET.** No tenés grant sobre esa columna y el
+    UPDATE entero muere con «permission denied». El trigger la sella sola.
+
+  ### Referencia: qué hace el script por dentro
+
+  **Esto NO es un procedimiento a seguir.** Está acá para que entiendas los
+  mensajes de error del script y puedas explicarle al humano qué pasó. Rehacer
+  estos pasos a mano con `curl` es exactamente lo que hay que evitar: es más
+  lento (el guardián de comandos cobra 15-30s por cada `-c`), y las validaciones
+  que el script trae —el cuadre contra el documento, el readback verificado, el
+  duplicado— no están en estos pasos, así que hacerlo a mano las saltea.
+
 
   **1. ¿Existe el proveedor?** Buscalo por RNC en `/api/Vendors` (paginando:
   `skip` es obligatorio y `take` se ignora). El match es por `FiscalID`, exacto —
@@ -641,19 +704,11 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
   **7. Recién ahora, el libro**, citando el DocID: «Registrada en ADM como
   FP00001061».
 
-  **Contrato para cuando la Entrega 2 encienda el registro real** (el diseño
-  canónico y completo vive en `docs/plan-encendido-escritura.md` §4 — ante
-  cualquier diferencia, manda el plan): el ORDEN es registrar en ADM PRIMERO
-  y escribir el libro DESPUÉS, para que la entrada nazca con su DocID —
-  (1) en la fila: `update qualia_trabajos set propuesta = propuesta ||
-  jsonb_build_object('registro_adm', jsonb_build_object('docid', '<DocID>',
-  'fecha', now()::date)) where id='<id>' and empresa_id='$QUALIA_EMPRESA_ID'`
-  (la web lo muestra como "Documento ADM" en la bandeja y en el libro);
-  (2) en el TEXTO de la entrada del libro (archivo canónico en git y espejo
-  en `qualia_libro.entrada`), p.ej. «Registrada en ADM como PI20250921».
-  Si el registro en ADM falla, la entrada del libro se DIFIERE (no se escribe
-  incompleta): el trabajo queda con el error y se reintenta — jamás una
-  entrada sin el DocID del documento que generó.
+  **8. Y cierra la fila**: `update qualia_trabajos set estado='registrada'
+  … and estado='aprobada'`. Sentencia APARTE de la del paso 5, a propósito: si
+  el guard no matchea porque alguien movió la fila, perder el estado es
+  recuperable, perder el DocID no. La garantía de «nunca `registrada` sin
+  evidencia» la da el CHECK de la base, no la atomicidad.
 
 - **`rechazada`**: evento `nota` reconociéndolo («Entendido, descartada»). Sin
   libro, sin precedente. Si el usuario explicó por qué, guardá el criterio en
@@ -668,6 +723,33 @@ update qualia_trabajos set estado='analizando'
 ```
 
   — y seguí el análisis con la respuesta como dato nuevo.
+
+## Si el motivo es `registro_pendiente`
+
+El poller encontró un trabajo en `aprobada` que lleva más de 10 minutos sin
+`registro_adm.docid`. **Es un reintento, no una novedad**: significa que un
+turno anterior tuyo murió a mitad de camino y nadie lo supo. Pasó el 2026-08-03
+con cuatro facturas: z.AI devolvió 429 durante una ráfaga de aprobaciones, los
+turnos se cayeron sin escribir nada, y las filas quedaron huérfanas.
+
+Hacé exactamente lo mismo que en la rama `aprobada` de `accion_usuario`: leé la
+fila, registrá en ADM con el script, subí el adjunto, escribí el libro y cerrá
+la fila. Dos cuidados propios de un reintento:
+
+- **Puede estar registrada de verdad y vos no haberlo anotado.** El script ya lo
+  chequea (`verificar_duplicado` pagina VendorBills por NCF y por referencia) y
+  ADM también frena el duplicado, así que corré el script y leé su mensaje en
+  vez de suponer. Si te dice que ya existe, no re-registres: buscá el documento,
+  guardá su DocID en `registro_adm` y cerrá la fila.
+- **Si el libro ya tiene su entrada de la corrida anterior, no la dupliques.**
+  El libro es append-only: revisá `qualia_libro` por `trabajo_id` antes de
+  escribir.
+
+Si el registro vuelve a fallar por un dato que falta y no es transitorio (el
+proveedor no se puede crear, la propuesta no trae la razón social de DGII),
+dejá el trabajo en `error` con `error_detalle` legible. El poller deja de
+reintentar a las 2 horas, así que un trabajo mudo es un trabajo perdido:
+el `error_detalle` es lo que lo hace visible en la web.
 
 ## Si el trabajo es tipo `criterio`
 

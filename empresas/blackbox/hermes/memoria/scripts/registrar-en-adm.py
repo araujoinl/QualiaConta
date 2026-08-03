@@ -32,6 +32,7 @@ Sale 0 e imprime el DocID. Sale != 0 con el motivo por stderr, sin haber escrito
 import argparse
 import base64
 import json
+import mimetypes
 import os
 import re
 import subprocess
@@ -97,6 +98,69 @@ def llamar(metodo, ruta, cuerpo=None, params=None):
         # Un timeout en un POST es el caso peligroso: puede haberse creado igual.
         morir("fallo la llamada a %s: %s (si era un POST, NO reintentes: "
               "volve a buscar el documento antes de tocar nada)" % (ruta, type(e).__name__))
+
+
+def bajar_documento(trabajo_id):
+    """Ruta local del documento. Delega en bajar-documento.sh, que ya resuelve
+    la URL firmada y tiene el short-circuit de 'ya estaba bajado'.
+
+    Devuelve (ruta, motivo). El motivo NO es decorativo: bajar-documento.sh
+    escribe a stderr por que fallo — sin archivo_url, URL vencida, trabajo
+    inexistente— y ese script fue escrito justamente para NO tapar su stderr
+    (taparlo hacia que un query roto se reportara como "no tiene archivo").
+    Capturarlo y tirarlo repetiria el mismo error un nivel mas arriba.
+    """
+    guion = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "bajar-documento.sh")
+    if not os.path.exists(guion):
+        return None, "no encuentro bajar-documento.sh junto a este script"
+    r = subprocess.run(["bash", guion, trabajo_id], capture_output=True, text=True)
+    ruta = r.stdout.strip()
+    if r.returncode == 0 and ruta and os.path.exists(ruta):
+        return ruta, ""
+    return None, (r.stderr or "").strip()[:300] or "exit %s sin motivo" % r.returncode
+
+
+def subir_adjunto(guid, ruta):
+    """Sube el documento como adjunto de la transaccion. Multipart a mano
+    porque la stdlib no lo arma sola y no hay `requests` en el venv.
+
+    Vive ACA y no en la skill por dos medidas del 2026-08-03: el adjunto a mano
+    era el 55% del turno —~94s de ese tramo eran el portero de comandos de
+    Hermes autorizando el `curl`, contra ~6s de subida real— y otros ~31s se
+    perdian porque el `curl` de la skill interpolaba $ADMCLOUD_REG_ROLE crudo en
+    la URL. Ese rol vale "Contabilidad Digital", CON ESPACIO, y sin encodear da
+    HTTP 000. Aca la query la arma urlencode, igual que en llamar().
+    """
+    nombre = os.path.basename(ruta)
+    with open(ruta, "rb") as f:
+        contenido = f.read()
+    tipo = mimetypes.guess_type(nombre)[0] or "application/octet-stream"
+    borde = "----qualiaconta" + re.sub(r"\W", "", guid)
+    cuerpo = b"".join([
+        ("--%s\r\n" % borde).encode(),
+        ('Content-Disposition: form-data; name="file"; filename="%s"\r\n'
+         % nombre.replace('"', "_")).encode("utf-8"),
+        ("Content-Type: %s\r\n\r\n" % tipo).encode(),
+        contenido,
+        ("\r\n--%s--\r\n" % borde).encode(),
+    ])
+    q = {
+        "transactionID": guid,
+        "company": env("ADMCLOUD_COMPANY"),
+        "role": env("ADMCLOUD_REG_ROLE"),
+        "appid": env("ADMCLOUD_APPID"),
+    }
+    url = "%s/api/Storage?%s" % (BASE, urllib.parse.urlencode(q))
+    cred = base64.b64encode(
+        ("%s:%s" % (env("ADMCLOUD_REG_USER"), env("ADMCLOUD_REG_PASSWORD"))).encode()
+    ).decode()
+    req = urllib.request.Request(url, data=cuerpo, method="POST")
+    req.add_header("Authorization", "Basic " + cred)
+    req.add_header("Accept", "application/json")
+    req.add_header("Content-Type", "multipart/form-data; boundary=" + borde)
+    with urllib.request.urlopen(req, timeout=180) as r:
+        return json.loads(r.read().decode("utf-8", "replace"))
 
 
 def paginar(ruta):
@@ -259,6 +323,37 @@ def armar_payload(p, relationship_id, payment_term_id):
     }
 
 
+def verificar_cuadre(p, payload):
+    """El ITBIS lo calcula ADM aplicando 18% a los precios: si el ITBIS impreso
+    en la factura NO es el 18% de esas lineas, el documento va a quedar
+    registrado por un monto distinto al del papel.
+
+    Paso en produccion el 2026-08-03 (FP00001063): el papel decia 4,520.47 con
+    ITBIS 575.72, y ADM cobro 645.51 sobre las mismas lineas -> 69.79 de mas.
+    Se chequea ANTES del POST, porque despues la unica salida es borrar el
+    documento y ADM no deja anular.
+    """
+    base = sum(i["Quantity"] * i["Price"] for i in payload["Items"] if i["TaxScheduleID"])
+    exento = sum(i["Quantity"] * i["Price"] for i in payload["Items"] if not i["TaxScheduleID"])
+    itbis_adm = round(base * 0.18, 2)
+    total_adm = round(base + exento + itbis_adm, 2)
+
+    itbis_papel = round(float(p.get("itbis") or 0), 2)
+    total_papel = round(float(p.get("monto") or 0), 2)
+
+    if abs(itbis_adm - itbis_papel) > 0.05 or abs(total_adm - total_papel) > 0.05:
+        morir(
+            "NO CUADRA con el documento, no registro:\n"
+            "  el papel dice   total %.2f  ITBIS %.2f\n"
+            "  ADM cobraria    total %.2f  ITBIS %.2f  (18%% sobre %.2f de base)\n"
+            "  diferencia      %.2f\n"
+            "Alguna linea tiene el precio o el grupo de impuesto mal leido, o la\n"
+            "factura trae un descuento que no se capturo. Corregi las lineas o\n"
+            "preguntale al humano; NO se registra un documento que no coincide."
+            % (total_papel, itbis_papel, total_adm, itbis_adm, base,
+               total_adm - total_papel))
+
+
 def verificar_duplicado(ncf, referencia):
     """Aviso temprano. ADM tambien lo frena, pero mejor no gastar el POST."""
     for f in paginar("VendorBills"):
@@ -296,8 +391,21 @@ def main():
     if estado != "aprobada":
         morir("el trabajo esta en '%s': solo se registra lo aprobado" % estado)
     p = json.loads(propuesta_txt)
-    if (p.get("registro_adm") or {}).get("docid"):
-        morir("ya tiene registro_adm: %s" % p["registro_adm"]["docid"])
+    # Abortar solo si el registro esta VIVO. En ADM revertir BORRA el documento
+    # (no lo anula), asi que la fila se queda con el docid + una lapida
+    # (`eliminado_en`). Sin esta distincion una factura corregida no se podia
+    # volver a registrar NUNCA: el guard moria contra un documento que ya no
+    # existe. Paso con HUAYAO / FP00001063 el 2026-08-03.
+    # El registro nuevo pisa la lapida; el rastro de la borrada vive en el
+    # libro de accion, que es append-only y es el registro canonico.
+    reg = p.get("registro_adm") or {}
+    muerto = reg.get("eliminado_en") or reg.get("anulado_en")
+    if reg.get("docid") and not muerto:
+        morir("ya tiene registro_adm vivo: %s" % reg["docid"])
+    if reg.get("docid"):
+        print("nota: la fila trae %s pero fue %s el %s — registro de nuevo" % (
+            reg["docid"],
+            "eliminada" if reg.get("eliminado_en") else "anulada", muerto))
 
     rid, termino_pago = asegurar_proveedor(p, args.simular)
     payload = armar_payload(p, rid, termino_pago)
@@ -305,8 +413,12 @@ def main():
     if args.simular:
         print()
         print(json.dumps(payload, ensure_ascii=False, indent=1))
+        print()
+        verificar_cuadre(p, payload)
+        print("el cuadre coincide con el documento")
         return
 
+    verificar_cuadre(p, payload)
     verificar_duplicado(payload["NCF"], payload["Reference"])
 
     d = llamar("POST", "VendorBills", cuerpo=payload)
@@ -326,9 +438,63 @@ def main():
         doc=doc.get("DocID"), guid=guid, ref=payload["Reference"],
         id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
     print("  guardado en la mesa")
+
+    # El adjunto. Era el unico paso que quedaba a mano y se comia el 55% del
+    # turno (ver subir_adjunto). Va DESPUES de guardar el docid a proposito: el
+    # docid es el dato irremplazable y no se hace esperar detras de una subida.
+    # Si falla NO se aborta — la factura ya esta registrada y eso es lo que hay
+    # que dejar asentado; el adjunto se reintenta.
+    ruta, motivo = bajar_documento(args.trabajo)
+    if not ruta:
+        print("  ADJUNTO: no pude bajar el documento, subilo a mano — %s" % motivo)
+    else:
+        try:
+            da = subir_adjunto(guid, ruta)
+        except Exception as e:
+            da = {"success": False, "message": type(e).__name__}
+        if da.get("success"):
+            print("  adjunto: %s subido" % os.path.basename(ruta))
+            sql("update qualia_trabajos set propuesta = jsonb_set(propuesta, "
+                "'{registro_adm,adjunto}', jsonb_build_object("
+                "'nombre', :'n', 'storage_id', :'sid')) "
+                "where id = :'id' and empresa_id = :'emp';",
+                n=os.path.basename(ruta),
+                sid=da.get("data") if isinstance(da.get("data"), str) else "",
+                id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
+        else:
+            print("  ADJUNTO FALLO (%s). La factura SI quedo registrada."
+                  % sanear(da.get("message")))
+            print("  Reintentalo con el curl del SKILL sobre uuid %s, y OJO: el"
+                  % guid)
+            print("  rol lleva espacio, va como 'Contabilidad%20Digital' en la URL.")
+
+    # Cerrar la fila. Hasta hoy este paso NO EXISTIA en ninguna capa del sistema
+    # (ni aca, ni en la skill, ni en la web): la factura se registraba de verdad
+    # y la mesa la dejaba en 'aprobada' para siempre, asi que desde la web
+    # parecia que no se habia registrado nunca.
+    #
+    # Va en una sentencia APARTE de la de arriba a proposito. Si alguien movio el
+    # trabajo mientras corriamos, el guard `estado='aprobada'` no matchea — y en
+    # una sola sentencia eso se llevaria puesto tambien el docid, que es el dato
+    # irremplazable: ata la fila a un documento real en ADM. El estado se corrige
+    # despues; el docid no se recupera. La garantia de "nunca registrada sin
+    # evidencia" la da el CHECK qualia_trabajos_registrada_con_evidencia, no la
+    # atomicidad de esta linea.
+    #
+    # NADA de `updated_at = now()` en el SET: el rol tiene grant solo sobre
+    # estado/propuesta/resumen/error_detalle y el UPDATE entero muere con
+    # "permission denied". El trigger de updated_at ya lo sella solo.
+    cerrado = sql("update qualia_trabajos set estado = 'registrada' "
+                  "where id = :'id' and empresa_id = :'emp' "
+                  "and estado = 'aprobada' returning id;",
+                  id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
+    if cerrado:
+        print("  estado: registrada")
+    else:
+        print("  OJO: el docid quedo guardado pero el estado NO se cerro; "
+              "el trabajo ya no estaba en 'aprobada'. Revisar a mano.")
     print()
-    print("FALTA EL ADJUNTO: bajar el documento y subirlo con")
-    print("  curl -F file=@<ruta> '%s/api/Storage?transactionID=%s&...'" % (BASE, guid))
+    print("Falta solo el libro de accion, citando %s." % doc.get("DocID"))
 
 
 if __name__ == "__main__":

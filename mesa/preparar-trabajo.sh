@@ -563,7 +563,13 @@ prompt = (
     "propina legal 10% (Ley 16-92) — busca AMBOS renglones, los dos estan "
     "impresos. Forma exacta: "
     '{"proveedor": str|null, "rnc": str|null (solo digitos del RNC del emisor), '
-    '"ncf": str|null, "fecha": "YYYY-MM-DD"|null, "moneda": "DOP"|"USD"|null, '
+    '"ncf": str|null, '
+    '"fecha_impresa": str|null (la fecha del documento COPIADA TAL CUAL esta '
+    'impresa, sin reordenar ni convertir nada, por ejemplo "02/08/2026"), '
+    '"fecha": "YYYY-MM-DD"|null (esa misma fecha en ISO; OJO: en Republica '
+    "Dominicana se imprime DIA/MES/AÑO, el PRIMER numero es el DIA — "
+    '"02/08/2026" es 2 de agosto = 2026-08-02, NUNCA 2026-02-08), '
+    '"moneda": "DOP"|"USD"|null, '
     '"monto": number|null (total del documento), "itbis": number|null, '
     '"codigo_seguridad": str|null (6 caracteres, solo si es e-CF y se lee), '
     '"fecha_firma": "DD-MM-YYYY HH:MM:SS"|null (solo si se lee), '
@@ -633,6 +639,23 @@ for clave in ("proveedor", "rnc", "ncf", "fecha", "moneda"):
     v = datos.get(clave)
     if isinstance(v, str) and v.strip():
         out[clave] = v.strip()
+# La fecha se re-arma desde la impresa: en RD el documento dice DIA/MES/AÑO y el
+# modelo la voltea a la gringa (02/08/2026 -> 2026-02-08 en vez de 2026-08-02;
+# pasó el 2026-08-02 con un ticket de restaurante). Con el literal en mano la
+# conversión es nuestra. El "fecha" del modelo queda solo de respaldo para las
+# fechas escritas con letras ("2 de agosto de 2026"), que el regex no arma.
+impresa = str(datos.get("fecha_impresa") or "").strip()
+mf = re.match(r"(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})(?!\d)", impresa)
+if mf:
+    dd, mm_, aa = int(mf.group(1)), int(mf.group(2)), int(mf.group(3))
+    if aa < 100:
+        aa += 2000
+    if 1 <= dd <= 31 and 1 <= mm_ <= 12:
+        out["fecha"] = "%04d-%02d-%02d" % (aa, mm_, dd)
+else:
+    mf = re.match(r"(\d{4})-(\d{2})-(\d{2})(?!\d)", impresa)
+    if mf:
+        out["fecha"] = mf.group(0)
 for clave in ("monto", "itbis"):
     v = datos.get(clave)
     if isinstance(v, (int, float)):
