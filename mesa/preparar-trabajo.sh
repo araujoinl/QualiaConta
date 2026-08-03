@@ -649,13 +649,31 @@ SQL
     frag_ninguno "imagen muy grande para el prep; el agente aplica vision"
     return
   fi
-  if ! timeout 90 "$PY" - "$IMG" "$PREP/extraccion.json" 2>"$PREP/vision.err" <<'PY'
+  if ! timeout 120 "$PY" - "$IMG" "$PREP/extraccion.json" 2>"$PREP/vision.err" <<'PY'
 import base64, json, os, re, sys, urllib.request
 img, outp = sys.argv[1:3]
 NOTA = "extraccion automatica; el agente DEBE verificar contra el documento"
-base = os.environ.get("GLM_VISION_BASE", "https://api.z.ai/api/coding/paas/v4").rstrip("/")
-modelo = os.environ.get("GLM_VISION_MODEL", "glm-4.6v")
-llave = os.environ["GLM_API_KEY"]
+# Cadena de respaldo, la misma idea que fallback_chain del config.yaml del
+# agente. La vision del prep salia SOLO por z.AI, con su propio request fuera de
+# Hermes, asi que no heredaba ese respaldo: cuando z.AI agoto el tope SEMANAL
+# (2026-08-03 21:17 UTC, vuelve el 06) toda foto entro sin extraccion y el
+# contable tuvo que leerla el mismo — el doble de reloj por documento. El
+# respaldo usa el MISMO modelo servido por OpenRouter.
+cadena = [(
+    os.environ.get("GLM_VISION_BASE", "https://api.z.ai/api/coding/paas/v4").rstrip("/"),
+    os.environ.get("GLM_VISION_MODEL", "glm-4.6v"),
+    os.environ["GLM_API_KEY"],
+    True,
+    40,
+)]
+if os.environ.get("OPENROUTER_API_KEY"):
+    cadena.append((
+        os.environ.get("GLM_VISION_BASE_RESPALDO", "https://openrouter.ai/api/v1").rstrip("/"),
+        os.environ.get("GLM_VISION_MODEL_RESPALDO", "z-ai/glm-4.6v"),
+        os.environ["OPENROUTER_API_KEY"],
+        False,
+        75,
+    ))
 ext = img.rsplit(".", 1)[-1].lower()
 mime = {"png": "image/png", "webp": "image/webp"}.get(ext, "image/jpeg")
 b64 = base64.b64encode(open(img, "rb").read()).decode()
@@ -690,28 +708,40 @@ prompt = (
     '"confianza": "alta"|"media"|"baja"}. '
     "Usa null en lo que no puedas leer. No inventes valores ni renglones."
 )
-cuerpo = json.dumps({
-    "model": modelo,
-    "temperature": 0,
+def armar_cuerpo(modelo, thinking):
+    cuerpo = {
+        "model": modelo,
+        "temperature": 0,
+        "max_tokens": 3000,
+        "messages": [{"role": "user", "content": [
+            {"type": "image_url", "image_url": {"url": "data:%s;base64,%s" % (mime, b64)}},
+            {"type": "text", "text": prompt},
+        ]}],
+    }
     # glm-4.6v es un modelo pensante: pensando, el prompt de items se pasaba
     # del timeout (2 visiones paralelas murieron a los 90s el 2026-08-02) o
-    # gastaba el tope en reasoning_content y entregaba content vacio.
-    # Extraer renglones no requiere razonamiento profundo: thinking APAGADO
-    # -> respuesta directa en ~15s (medido con factura real).
-    "thinking": {"type": "disabled"},
-    "max_tokens": 3000,
-    "messages": [{"role": "user", "content": [
-        {"type": "image_url", "image_url": {"url": "data:%s;base64,%s" % (mime, b64)}},
-        {"type": "text", "text": prompt},
-    ]}],
-}).encode()
+    # gastaba el tope en reasoning_content y entregaba content vacio. Por eso
+    # thinking APAGADO -> respuesta directa en ~15s (medido con factura real).
+    # Pero "thinking" es campo propio de z.AI: al respaldo no se le manda,
+    # porque un campo desconocido puede tumbar el request entero. Ahi el modelo
+    # piensa, y por eso el JSON se busca tambien en reasoning_content mas abajo.
+    if thinking:
+        cuerpo["thinking"] = {"type": "disabled"}
+    return json.dumps(cuerpo).encode()
+
+# UN intento por proveedor, no dos contra el mismo: reintentar contra un
+# endpoint con la cuota agotada solo quema reloj. Cada pierna trae su propio
+# tope porque no corren igual: z.AI contesta en ~15s (o rebota al instante con
+# 429), y OpenRouter midio 37s y 44s con la MISMA foto — con 40s parejos el
+# respaldo era una moneda al aire justo cuando hace falta. 40+75 entra en los
+# 120s del timeout de afuera.
 resp, ultimo = None, "sin intento"
-for intento in (1, 2):   # 1 reintento (SPEC)
+for base, modelo, llave, thinking, tope in cadena:
     try:
         req = urllib.request.Request(
-            base + "/chat/completions", data=cuerpo,
+            base + "/chat/completions", data=armar_cuerpo(modelo, thinking),
             headers={"Authorization": "Bearer " + llave, "Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=60) as r:
+        with urllib.request.urlopen(req, timeout=tope) as r:
             resp = json.load(r)
         break
     except Exception as e:
@@ -736,7 +766,7 @@ for origen in ("content", "reasoning_content"):
 if datos is None:
     print("vision: la respuesta no trajo JSON parseable", file=sys.stderr)
     sys.exit(1)
-out = {"metodo": "vision-glm4.6v", "nota": NOTA}
+out = {"metodo": "vision-glm4.6v", "modelo_vision": modelo, "nota": NOTA}
 out["confianza"] = datos.get("confianza") if datos.get("confianza") in ("alta", "media", "baja") else "media"
 for clave in ("proveedor", "rnc", "ncf", "fecha", "moneda"):
     v = datos.get(clave)
