@@ -79,7 +79,12 @@ CAMPOS = [
 def parsear(texto):
     datos = {}
     for patron, clave in CAMPOS:
-        m = re.search(patron + r"\s*[:|]\s*([^\n|]{1,80})", texto, re.I)
+        # (?:...) obligatorio: "Vigencia|Valido hasta" trae alternancia y sin
+        # agrupar el `|` parte el patron entero — matchea la etiqueta sola y
+        # group(1) sale None. Reventaba justo en las fichas VIGENTES (son las
+        # unicas que traen esa etiqueta) y el except de main lo disfrazaba de
+        # "no verificable": DGII respondia bien y el NCF valido se perdia.
+        m = re.search(r"(?:%s)\s*[:|]\s*([^\n|]{1,80})" % patron, texto, re.I)
         if m:
             v = m.group(1).strip(" .|")
             if v and not re.fullmatch(r"[-–—]*", v):

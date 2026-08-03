@@ -351,6 +351,43 @@ update qualia_trabajos set estado='analizando'
      adulterada o mal leida).
    - Sin codigo de seguridad legible o DGII inaccesible → `"dgii": {"estado":"no verificable","motivo":"..."}` — nunca inventes el resultado.
 
+   **(c) El padrón de RNC: quién es el emisor. Siempre disponible.** Es otra
+   pregunta y otra fuente: (a) y (b) dicen si el COMPROBANTE vale; el padrón
+   dice de quién es el RNC. **Un comprobante no verificable NO te deja sin
+   nombre oficial** — el padrón pide solo el RNC, que siempre se lee, mientras
+   que el timbre exige el código de seguridad del QR y la fecha de firma.
+
+   El preparador ya lo consulta por vos y lo deja en `rnc_emisor` del dossier
+   (clave aparte de `dgii`, nunca mezcladas). Si falta o querés reconsultar:
+
+   ```bash
+   python3 /opt/data/memoria/scripts/consultar-rnc-dgii.py --rnc <rnc_emisor>
+   ```
+
+   Devuelve `estado` ENCONTRADO (con `razon_social`, `nombre_comercial`,
+   `estado_contribuyente`, `actividad_economica`), NO ENCONTRADO, `formato
+   invalido` o `no verificable` con su motivo. Es la web
+   `dgii.gov.do/.../consultas/rnc.aspx`, sin captcha (verificado 2026-08-03).
+
+   **Copiá su salida tal cual a la propuesta, en `"rnc_padron"`** (hermana de
+   `"dgii"`, nunca dentro). `registrar-en-adm.py` la lee de ahí para nombrar al
+   proveedor cuando el comprobante no verificó: si no la ponés, el registro
+   muere pidiendo un nombre que ya tenías.
+
+   Qué hacer con eso:
+   - **`razon_social` del padrón es el nombre oficial** para crear el proveedor
+     en ADM cuando el timbre o el NCF no lo dieron. Vale igual que el
+     `razon_social_emisor` de (a)/(b) — misma DGII, distinta consulta.
+   - **Contrastalo con el proveedor que leíste**, igual que en (a): si no casa
+     ni con `razon_social` ni con `nombre_comercial`, sospechá que leíste mal el
+     RNC y volvé al documento antes de proponer.
+   - **`estado_contribuyente` distinto de ACTIVO** → decilo en `detalle`: un
+     emisor dado de baja o suspendido es una señal, no un bloqueo.
+   - **NO ENCONTRADO** con formato válido es serio: ese RNC no está inscrito.
+     Bajá la confianza y decilo en `detalle`.
+   - Nunca uses el padrón para dar por verificado el comprobante: saber de quién
+     es el RNC no dice nada de si el NCF está autorizado.
+
 6. **Buscá precedente** — primero el comando de la sección «Cómo clasificás
    la cuenta» (`buscar-precedente.py`, nunca `python3 -c`), y después
    tu memoria y tu libro (`memoria/proveedores.md`,
@@ -535,6 +572,14 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
   es la razón social oficial y es lo que la contable espera ver. (ADM tiene consulta
   automática a DGII en su pantalla, pero **no la expone por API** — verificado sobre
   los 801 endpoints publicados. Da igual: ya le preguntamos a DGII nosotros.)
+
+  **Nunca te quedes trabado por el nombre.** Si el comprobante no se pudo
+  verificar y no hay `razon_social_emisor`, el nombre igual existe: es
+  `rnc_emisor.razon_social` del dossier, o la consulta al padrón del §5c
+  (`consultar-rnc-dgii.py --rnc <rnc>`). Solo pide el RNC. Ese camino es
+  obligatorio antes de dar el trabajo por fallido — «DGII no me dio la razón
+  social» no es un motivo de error válido mientras tengas el RNC. Recién si el
+  padrón responde NO ENCONTRADO o no verificable, parás y lo explicás.
   Términos de pago: `Al contado` `94940a99-f119-4573-8bbd-08dd14abff09` ·
   `30 días` `b002e9c1-0430-4809-8612-b27db42a35a0` ·
   `45 días` `27e7f4f5-f179-40f0-6fb0-08dd14abefee` ·

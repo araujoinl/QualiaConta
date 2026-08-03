@@ -938,6 +938,29 @@ PY
   fi
 fi
 
+# ──────────────── 6b. Padrón de RNC: de quién es el RNC del emisor ────────────────
+
+# Pregunta distinta a la del bloque 6 (¿el comprobante vale?) y por eso vive en
+# su propia clave del dossier: acá solo se resuelve el NOMBRE OFICIAL del dueño
+# del RNC. Corre SIEMPRE que haya RNC, no solo cuando el bloque 6 falla, porque
+# el agente también lo necesita para el contraste "razón social de DGII contra
+# el proveedor que leí" (SKILL §5a) y para crear el proveedor en ADM (§«Nombre»).
+#
+# Es el fallback que rescata al e-CF sin código de seguridad legible: el timbre
+# exige QR/código + fecha de firma y se queda sin razón social cuando la foto no
+# los deja leer, mientras que el padrón solo pide el RNC, que siempre se lee.
+if [ -n "$RNC" ]; then
+  if [ ! -f "$SCRIPTS/consultar-rnc-dgii.py" ]; then
+    printf '{"estado": "no verificable", "motivo": "%s"}\n' \
+      "consultar-rnc-dgii.py no montado en el sidecar" > "$PREP/rnc.json"
+  elif ! timeout 45 "$PY" "$SCRIPTS/consultar-rnc-dgii.py" --rnc "$RNC" > "$PREP/rnc.json" 2>/dev/null \
+       || [ ! -s "$PREP/rnc.json" ]; then
+    anotar_error "consulta del padron de RNC fallo o excedio el tiempo"
+    printf '{"estado": "no verificable", "motivo": "%s"}\n' \
+      "la consulta al padron de RNC fallo o excedio el tiempo" > "$PREP/rnc.json"
+  fi
+fi
+
 # ───────────────────────── 7. Duplicados (solo con NCF) ─────────────────────────
 
 # El prep NUNCA marca error por duplicado (SPEC 8): reporta en el dossier y el
@@ -1072,6 +1095,15 @@ if not isinstance(dgii, dict) or "estado" not in dgii:
             "motivo": "verificacion no ejecutada o con salida invalida"}
 d["dgii"] = dgii
 
+# Padron: quien es el dueno del RNC. Separado de "dgii" a proposito — que el
+# comprobante no se pueda verificar no dice nada del RNC, y viceversa. Solo va
+# al dossier si hubo RNC que consultar; ausente = no habia RNC extraido.
+rnc_padron = carga("rnc.json")
+if isinstance(rnc_padron, dict) and "estado" in rnc_padron:
+    d["rnc_emisor"] = rnc_padron
+elif rnc_padron is not None:
+    errores.append("rnc: salida invalida del consultor del padron")
+
 # Si el NCF se rescato, el agente TIENE que saberlo: el numero que va a la
 # propuesta no es el que dice la foto, y eso se explica en el detalle.
 # El numero propio del suplidor: va al `Reference` de ADM, que ademas es una
@@ -1145,6 +1177,11 @@ if rescatado:
 elif "ncf_invalido" in d:
     partes.append("NCF ilegible (lei %s)" % crudo[:20])
 partes.append("DGII: %s" % dgii.get("estado", "no verificable"))
+# Si el comprobante no se pudo verificar pero el padron sí dio el nombre, decilo
+# en el hilo: es la diferencia entre "no sé nada" y "sé de quién es la factura".
+razon_padron = (d.get("rnc_emisor") or {}).get("razon_social")
+if razon_padron and dgii.get("estado") not in ("Aceptado", "VIGENTE"):
+    partes.append("padrón RNC: %s" % str(razon_padron)[:120])
 n_dup = len(mesa) + len(adm)
 if n_dup:
     partes.append("posible duplicado (mesa: %d, ADM: %d)" % (len(mesa), len(adm)))

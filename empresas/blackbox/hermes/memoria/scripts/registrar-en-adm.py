@@ -130,6 +130,12 @@ def asegurar_proveedor(p, simular):
     El match es por RNC exacto, NUNCA por nombre: los nombres se escriben de
     veinte formas. El nombre para crearlo sale de la razon social de DGII, que
     es la oficial — no de lo impreso en el papel.
+
+    DGII responde eso por DOS vias distintas y cualquiera sirve para el alta:
+    la verificacion del comprobante (`dgii`) y el padron de RNC (`rnc_padron`).
+    El padron es el que rescata al e-CF cuya foto no dejo leer el codigo de
+    seguridad: sin el, un comprobante no verificable dejaba al proveedor sin
+    nombre y el trabajo moria pudiendo resolverse con el RNC solo.
     """
     rnc = re.sub(r"\D", "", str(p.get("rnc") or ""))
     if len(rnc) not in (9, 11):
@@ -143,13 +149,37 @@ def asegurar_proveedor(p, simular):
             return v.get("ID"), v.get("PaymentTermID") or TERMINOS["al contado"]
 
     dgii = p.get("dgii") or {}
-    nombre = (dgii.get("razon_social_emisor") or "").strip()
+    padron = p.get("rnc_padron") or {}
+    comprobante_ok = str(dgii.get("estado") or "").upper() in ("VIGENTE", "ACEPTADO")
+    padron_ok = (str(padron.get("estado") or "").upper() == "ENCONTRADO"
+                 and bool(str(padron.get("razon_social") or "").strip()))
+
+    # El respaldo del ALTA es que DGII reconozca el RNC, no que el comprobante
+    # verifique: son dos preguntas. Un comprobante que no verifica sigue
+    # bajando confianza y puede terminar en gasto no admitido — eso lo decide
+    # el humano en la web —, pero no es motivo para no poder nombrar al emisor.
+    if comprobante_ok:
+        nombre = (dgii.get("razon_social_emisor") or "").strip()
+    elif padron_ok:
+        nombre = str(padron["razon_social"]).strip()
+    else:
+        nombre = ""
+
     if not nombre:
-        morir("el proveedor RNC %s no existe en ADM y la propuesta no trae la "
-              "razon social de DGII para crearlo. No invento el nombre." % rnc)
-    if str(dgii.get("estado") or "").upper() not in ("VIGENTE", "ACEPTADO"):
-        morir("el proveedor no existe y su comprobante no verifica en DGII "
-              "(estado: %s). No doy de alta un proveedor sin respaldo." % dgii.get("estado"))
+        morir("el proveedor RNC %s no existe en ADM y ninguna via de DGII dio su "
+              "razon social (comprobante: %s; padron: %s). Consulta el padron con "
+              "consultar-rnc-dgii.py antes de rendirte; no invento el nombre."
+              % (rnc, dgii.get("estado") or "sin consultar",
+                 padron.get("estado") or "sin consultar"))
+    if not comprobante_ok and not padron_ok:
+        morir("el proveedor no existe, su comprobante no verifica en DGII "
+              "(estado: %s) y el padron tampoco lo reconoce. No doy de alta un "
+              "proveedor sin respaldo." % dgii.get("estado"))
+    if not comprobante_ok:
+        estado_c = str(padron.get("estado_contribuyente") or "").upper()
+        print("proveedor: nombre tomado del padron de RNC (el comprobante quedo "
+              "en '%s')%s" % (dgii.get("estado") or "sin consultar",
+                              "" if estado_c in ("", "ACTIVO") else "  [contribuyente %s]" % estado_c))
 
     termino = TERMINOS["al contado"]
     m = re.search(r"(30|45|60)\s*d[ií]as", str(p.get("termino_pago") or ""), re.I)
