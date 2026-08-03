@@ -16,7 +16,7 @@
 #   - Deja UN evento de progreso (autor='contable') con un resumen humano
 #     corto. Sin URLs, sin cuerpos de API.
 #   - El poke al webhook lo hace el poller, no este script.
-#   - Idempotente: si el dossier existente coincide con updated_at, sale 0.
+#   - Idempotente: si el dossier existente es del MISMO documento, sale 0.
 #
 # Uso:  preparar-trabajo.sh <trabajo_id>
 #   (el poller lo invoca con `timeout 120`; ese es el tope global real)
@@ -60,6 +60,13 @@ fi
 TAB=$'\t'
 SCRIPTS="${MESA_SCRIPTS_DIR:-/memoria-scripts}"
 PRE_DIR="${PREENTRENAMIENTO_DIR:-/preentrenamiento}"
+
+# Versión del dossier = versión de ESTE script. Un dossier de otra versión se
+# considera vencido y se re-prepara, aunque el documento sea el mismo: es el
+# único interruptor para forzar la re-lectura de TODA la mesa cuando cambia la
+# lógica de extracción. Subirla al tocar extracción, DGII, dedup o el formato
+# del dossier.
+PREP_VERSION=2
 
 log() { echo "[prep ${ID:0:8}] $(date -u +%H:%M:%S) $*"; }
 
@@ -115,15 +122,78 @@ DIR="/tmp/mesa/$ID"
 PREP="$DIR/.prep"
 DOSSIER="$DIR/dossier.json"
 
-# Idempotencia (SPEC 9): el poller puede re-llamar cada 4s mientras el agente
-# no reclama el trabajo. Si el dossier ya refleja este updated_at, no hay nada
-# nuevo que preparar.
-if [ -f "$DOSSIER" ] && [ -n "$PY" ]; then
-  previo=$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1])).get("row_updated_at",""))' "$DOSSIER" 2>/dev/null || true)
-  if [ -n "$previo" ] && [ "$previo" = "$UPD" ]; then
-    log "dossier vigente (updated_at sin cambios); nada que hacer"
-    exit 0
+# Idempotencia (SPEC 9). La copia de lo ya leído vale mientras el DOCUMENTO sea
+# el mismo, no mientras la fila no se toque. Hasta el 2026-08-03 la clave era
+# `updated_at`, y como responder un mensaje reabre el trabajo a 'pendiente'
+# (qualiaContaService.responder), CADA pregunta del humano tiraba el dossier y
+# repetía visión + DGII + dedup sobre la misma foto. No era sólo lento: en la
+# factura de SUENA ELECTRONICA la re-lectura pisó el RNC que el contable ya
+# había corregido a mano y devolvió al dossier el dígito mal leído.
+#
+# Ahora la clave es sha256(documento) + PREP_VERSION, y se chequea abajo, ya con
+# el archivo en mano (§2b). Acá queda sólo el atajo barato por updated_at: el
+# poller re-llama cada 4s mientras el agente no reclama, y así ni se toca disco.
+#
+# Para forzar una re-lectura: subir PREP_VERSION o borrar /tmp/mesa/<id>. Si lo
+# que salió mal es la LECTURA, quien la repite es el agente —con visión y con el
+# contexto de la conversación—, que para eso está mejor parado que este script.
+leer_dossier_previo() {
+  # version<TAB>sha256<TAB>row_updated_at<TAB>preparado_en del dossier en disco.
+  # preparado_en cae al mtime del archivo si el dossier es anterior a que ese
+  # campo existiera: es la misma pregunta (¿cuándo se leyó esto?) respondida con
+  # lo que hay, y evita que un dossier viejo quede inmune al pedido de relectura.
+  [ -f "$DOSSIER" ] && [ -n "$PY" ] || return 0
+  "$PY" - "$DOSSIER" 2>/dev/null <<'PY' || true
+import datetime, json, os, sys
+ruta = sys.argv[1]
+try:
+    d = json.load(open(ruta, encoding="utf-8"))
+except Exception:
+    sys.exit(0)
+if not isinstance(d, dict):
+    sys.exit(0)
+archivo = d.get("archivo") if isinstance(d.get("archivo"), dict) else {}
+preparado = str(d.get("preparado_en", ""))
+if not preparado:
+    preparado = datetime.datetime.utcfromtimestamp(
+        os.path.getmtime(ruta)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+print("\t".join([str(d.get("version", "")),
+                 str(archivo.get("sha256", "")),
+                 str(d.get("row_updated_at", "")),
+                 preparado]))
+PY
+}
+
+PREV_VER=""; PREV_SHA=""; PREV_UPD=""; PREV_PREP=""
+previo=$(leer_dossier_previo)
+[ -n "$previo" ] && IFS="$TAB" read -r PREV_VER PREV_SHA PREV_UPD PREV_PREP <<< "$previo"
+
+# El humano puede decir «leíste mal el documento» desde la web: ese chip —y sólo
+# ése— marca su mensaje con datos.forzar_relectura, y acá bota la copia. Los
+# demás mensajes conversan sobre lo ya leído. Se mira si el pedido es POSTERIOR
+# a la preparación: uno viejo ya se atendió y no puede re-disparar para siempre.
+FORZAR=no
+if [ -n "$PREV_PREP" ]; then
+  pedido=$(sql -v id="$ID" -v desde="$PREV_PREP" <<'SQL'
+select 1
+  from qualia_eventos
+ where trabajo_id = :'id'
+   and autor = 'usuario'
+   and coalesce(datos->>'forzar_relectura', '') = 'true'
+   and created_at > :'desde'::timestamptz
+ limit 1;
+SQL
+) || pedido=""
+  if [ -n "$pedido" ]; then
+    FORZAR=si
+    log "el humano pidió releer el documento; la copia anterior no se usa"
   fi
+fi
+
+if [ "$FORZAR" = "no" ] && [ "$PREV_VER" = "$PREP_VERSION" ] \
+   && [ -n "$PREV_UPD" ] && [ "$PREV_UPD" = "$UPD" ]; then
+  log "dossier vigente (la fila no cambió); nada que hacer"
+  exit 0
 fi
 
 # Sin archivo no hay nada que masticar (sugerencias y bloques de criterios no
@@ -165,17 +235,15 @@ fi
 # tiene el documento — la carpeta se retira aunque el trabajo siga vivo.
 find /tmp/mesa -mindepth 1 -maxdepth 1 -type d -mtime +35 ! -name "$ID" -exec rm -rf {} + 2>/dev/null || true
 
-# Workdir limpio: los fragmentos de una corrida anterior no deben contaminar
-# esta (updated_at cambió = petición nueva). El dossier viejo queda hasta que
-# el nuevo lo reemplace de forma atómica. .prep queda al final como diagnóstico.
-mkdir -p "$PREP"
-rm -rf "$PREP"
-mkdir -p "$PREP"
-rm -f "$DIR/texto.txt"
+# El workdir se limpia en §2b, recién cuando ya se sabe que hay que re-leer:
+# borrarlo antes destruiría el trabajo anterior para después descubrir que el
+# documento no cambió y que servía tal cual.
+mkdir -p "$DIR"
 ERRORES="$PREP/errores.txt"
 
 anotar_error() {
   # Falla suave: queda en errores_prep del dossier y en el log del sidecar.
+  mkdir -p "$PREP" 2>/dev/null
   printf '%s\n' "$1" >> "$ERRORES"
   log "aviso: $1"
 }
@@ -261,6 +329,41 @@ if [ -z "$PY" ]; then
   chown -R "${HERMES_UID:-1000}:${HERMES_GID:-1000}" "$DIR" 2>/dev/null || true
   exit 0
 fi
+
+# ─────────── 2b. ¿Mismo documento? Entonces el dossier de antes sirve ───────────
+#
+# Acá muere el bug de la re-lectura por conversación. El sha se calcula sobre el
+# archivo ya descargado (milisegundos) y no sobre la URL firmada, que se
+# regenera sola al abrir «Ver original» y cambiaría sin que el documento cambie.
+#
+# Lo que NO se refresca al reusar: el dedup contra la mesa y el histórico. Es
+# aceptable — es un trabajo que ya está en curso, y ADM frena los duplicados por
+# dos claves propias (NCF y referencia), así que el dedup del prep es cortesía.
+SHA=$(sha256sum "$SALIDA" 2>/dev/null | cut -d' ' -f1)
+if [ "$FORZAR" = "no" ] && [ -n "$SHA" ] \
+   && [ "$PREV_VER" = "$PREP_VERSION" ] && [ "$PREV_SHA" = "$SHA" ]; then
+  # Sella el updated_at nuevo para que la próxima corte en el atajo de arriba,
+  # sin volver a bajar ni hashear. Si falla, no pasa nada: se vuelve a decidir
+  # acá y el resultado es el mismo.
+  "$PY" - "$DOSSIER" "$UPD" 2>/dev/null <<'PY' || true
+import json, os, sys
+ruta, upd = sys.argv[1], sys.argv[2]
+d = json.load(open(ruta, encoding="utf-8"))
+d["row_updated_at"] = upd
+tmp = ruta + ".tmp"
+json.dump(d, open(tmp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+os.replace(tmp, ruta)
+PY
+  log "mismo documento (sha ${SHA:0:12}); reuso el dossier, no re-leo"
+  exit 0
+fi
+
+# Workdir limpio: los fragmentos de una corrida anterior no deben contaminar
+# esta. El dossier viejo queda hasta que el nuevo lo reemplace de forma
+# atómica. .prep queda al final como diagnóstico.
+rm -rf "$PREP"
+mkdir -p "$PREP"
+rm -f "$DIR/texto.txt"
 
 # ───────────────────────── 3. Tipo de documento ─────────────────────────
 
@@ -1060,6 +1163,8 @@ fi
 # ───────────────── 9. Dossier (atómico) + evento de progreso ─────────────────
 
 if PREP="$PREP" DIRW="$DIR" TRABAJO_ID="$ID" ROW_UPD="$UPD" \
+   PREP_VERSION="$PREP_VERSION" ARCHIVO_SHA="$SHA" \
+   PREPARADO_EN="$(date -u +%Y-%m-%dT%H:%M:%S.%6NZ)" \
    ARCHIVO_PATH="$SALIDA" ARCHIVO_BYTES="$BYTES" ARCHIVO_TIPO="$TIPO" \
    CONVERTIDO="$CONVERTIDO" ARCHIVO_JPG="${SALIDA%.*}.jpg" DURACION="$SECONDS" \
    DUP_VERIFICADO="$DUP_VERIFICADO" DUP_MOTIVO="$DUP_MOTIVO" \
@@ -1092,11 +1197,16 @@ ruta_err = os.path.join(prep, "errores.txt")
 if os.path.exists(ruta_err):
     errores = [l.strip() for l in open(ruta_err, encoding="utf-8") if l.strip()]
 
-d = {"version": 1,
+# `version` + `archivo.sha256` son la clave de reuso del dossier (§2b): sin
+# los dos, la próxima corrida no puede saber que ya leyó este documento.
+# `preparado_en` es contra qué se compara el pedido de relectura del humano.
+d = {"version": entero(os.environ.get("PREP_VERSION")),
      "trabajo_id": os.environ["TRABAJO_ID"],
      "row_updated_at": os.environ["ROW_UPD"],
+     "preparado_en": os.environ.get("PREPARADO_EN", ""),
      "archivo": {"path": os.environ["ARCHIVO_PATH"],
                  "bytes": entero(os.environ.get("ARCHIVO_BYTES")),
+                 "sha256": os.environ.get("ARCHIVO_SHA", ""),
                  "tipo": os.environ["ARCHIVO_TIPO"],
                  "convertido_de_heic": os.environ.get("CONVERTIDO") == "si"}}
 if d["archivo"]["convertido_de_heic"]:
