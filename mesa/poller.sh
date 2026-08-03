@@ -109,6 +109,22 @@ cuota_bloqueada_hasta() {
   date -u -d "@$hasta" +%Y-%m-%dT%H:%M:%SZ
 }
 
+cuota_libre() {
+  # Devuelve 0 SÓLO si z.AI contestó de verdad. Exige ver "choices" en la
+  # respuesta y no se conforma con "no vino el 1308": un curl que falla por red
+  # también devuelve vacío, y confundir "no pude preguntar" con "ya volvió"
+  # dispararía un aviso falso de recuperación.
+  [ -n "${GLM_API_KEY:-}" ] || return 1
+  local resp
+  resp=$(curl -s -m 20 -X POST "https://api.z.ai/api/coding/paas/v4/chat/completions" \
+    -H "Authorization: Bearer $GLM_API_KEY" -H 'Content-Type: application/json' \
+    -d '{"model":"glm-4.6v","max_tokens":1,"messages":[{"role":"user","content":"."}]}' 2>/dev/null)
+  case "$resp" in
+    *'"choices"'*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 registrar_cuota() {
   # $1 = hora UTC ISO o vacío para liberar. Upsert de la fila de la empresa.
   local valor="null" detalle="null"
@@ -164,9 +180,17 @@ declare -A avisado
 # a propósito: el sondeo las vuelve a averiguar, y la fila de qualia_servicio
 # guarda una HORA (no un booleano), así que una que quedó vieja se lee como
 # libre sola, sin que nadie tenga que limpiarla.
-cuota_hasta=0
 cuota_avisado=0
 cuota_sondeo=0    # epoch del último sondeo, para no preguntar en cada tick
+
+# Se arranca con lo que diga la base, no en cero. Arrancar en cero dejaba
+# huérfana una fila con hora FUTURA: nadie la volvía a mirar y la web y el aviso
+# de WhatsApp seguían diciendo "topado" hasta esa hora aunque z.AI respondiera
+# normal (visto el 2026-08-03). Cargándola acá, el reloj o el re-sondeo de abajo
+# la resuelven como a cualquier otra.
+cuota_hasta=$(sql "select coalesce(extract(epoch from cuota_bloqueada_hasta)::bigint, 0) from qualia_servicio where empresa_id='${QUALIA_EMPRESA_ID}'")
+case "${cuota_hasta:-}" in ''|*[!0-9]*) cuota_hasta=0 ;; esac
+(( cuota_hasta > 0 )) && log "arranco con un bloqueo anotado hasta $(date -u -d "@$cuota_hasta" +%H:%M)Z; lo verifico"
 
 # id → epoch del último poke de trabajo_nuevo. Sirve para contar los que ya
 # despertamos pero todavía no reclamaron: el claim tarda unos segundos y sin
@@ -204,24 +228,47 @@ while [ "$corriendo" -eq 1 ]; do
         cuota_hasta=$(date -u -d "$hasta" +%s 2>/dev/null || echo 0)
         cuota_avisado=$ahora
         registrar_cuota "$hasta"
-        log "cuota del LLM agotada hasta $hasta — $estancado esperando, no molesto al contable"
+        log "cuota de z.AI agotada hasta $hasta — $estancado en cola, siguen por el respaldo"
       fi
     fi
   fi
-  # Se sale del bloqueo por RELOJ, sin gastar otro sondeo: si al volver sigue
-  # topada, el próximo trabajo estancado la re-detecta. Se corrige sola.
+  # Se sale del bloqueo por RELOJ...
   if (( cuota_hasta > 0 )) && (( cuota_hasta <= ahora )); then
     cuota_hasta=0
     registrar_cuota ""
-    log "cuota del LLM disponible otra vez"
+    log "cuota de z.AI disponible otra vez (por reloj)"
   fi
-  bloqueado=0
-  if (( cuota_hasta > ahora )); then
-    bloqueado=1
-    if (( ahora - cuota_avisado > 600 )); then
-      cuota_avisado=$ahora
-      log "cuota del LLM agotada hasta $(date -u -d "@$cuota_hasta" +%H:%M)Z — el contable está frenado"
+
+  # ...pero también ANTES de la hora, re-sondeando. La hora que anuncia z.AI no
+  # es confiable en el borde de la ventana: el 2026-08-03 el poller sondeó un
+  # segundo después de que la ventana venció, agarró el 1308 viejo y se guardó
+  # la hora de la ventana SIGUIENTE — cinco horas creyéndose topado con z.AI
+  # respondiendo normal. Antes eso congelaba la cola; ahora sólo haría mentir a
+  # la web y al aviso de WhatsApp, que es igual de malo porque son lo que se
+  # mira para decidir. El sondeo cuesta 1 token cada 5 minutos y sólo mientras
+  # dura el bloqueo.
+  if (( cuota_hasta > ahora )) && (( ahora - cuota_sondeo > 300 )); then
+    cuota_sondeo=$ahora
+    if cuota_libre; then
+      cuota_hasta=0
+      registrar_cuota ""
+      log "z.AI volvió antes de la hora que había anunciado — levanto el bloqueo"
     fi
+  fi
+  # El tope de z.AI ya NO frena la cola. Hasta el 2026-08-03 sí la frenaba, y
+  # estaba bien: sin un segundo proveedor, despertar al contable durante el tope
+  # era regalarle un turno que moría contra el 429. Desde que la cadena termina
+  # en OpenRouter —saldo aparte— el contable sigue produciendo, así que congelar
+  # la cola dejó de proteger nada y sólo retrasaba facturas medio día.
+  #
+  # El tope se sigue DETECTANDO y registrando en qualia_servicio: la web lo
+  # muestra y el aviso de WhatsApp (mesa/alerta-cuota.sh) se cuelga de esa fila.
+  # Lo único que cambia mientras dura es de dónde sale la inferencia, y eso
+  # cuesta por token — de ahí el aviso. El tope de MAX_ANALIZANDO sigue igual,
+  # que es lo que de verdad evita la estampida de sesiones.
+  if (( cuota_hasta > ahora )) && (( ahora - cuota_avisado > 600 )); then
+    cuota_avisado=$ahora
+    log "cuota de z.AI agotada hasta $(date -u -d "@$cuota_hasta" +%H:%M)Z — sigo trabajando por el respaldo de OpenRouter"
   fi
 
   # 1) trabajos nuevos
@@ -236,17 +283,11 @@ while [ "$corriendo" -eq 1 ]; do
   # el re-aviso de los 300s lo vuelve a tomar. Se pierde velocidad de pico y se
   # gana que TODAS salgan: antes las primeras salían rápido y el resto se
   # arrastraba o se caía.
-  # Con la cuota agotada el cupo es cero: despertar al contable ahora es
-  # regalarle un turno que muere contra el 429.
-  if (( bloqueado )); then
-    cupo=0
-  else
-    enVuelo=$(sql "select count(*) from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='analizando'")
-    [ -z "${enVuelo:-}" ] && enVuelo=0
-    for t in "${despertado[@]}"; do (( ahora - t < 120 )) && enVuelo=$((enVuelo + 1)); done
-    cupo=$(( MAX_ANALIZANDO - enVuelo ))
-  fi
-  if (( cupo <= 0 )) && (( ! bloqueado )) && (( ahora - cupo_avisado > 300 )); then
+  enVuelo=$(sql "select count(*) from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='analizando'")
+  [ -z "${enVuelo:-}" ] && enVuelo=0
+  for t in "${despertado[@]}"; do (( ahora - t < 120 )) && enVuelo=$((enVuelo + 1)); done
+  cupo=$(( MAX_ANALIZANDO - enVuelo ))
+  if (( cupo <= 0 )) && (( ahora - cupo_avisado > 300 )); then
     cupo_avisado=$ahora
     log "contable al tope ($enVuelo en vuelo, máx $MAX_ANALIZANDO): los nuevos esperan turno"
   fi
@@ -371,10 +412,11 @@ while [ "$corriendo" -eq 1 ]; do
     (( ahora - antes > espera )) && pendientes_reg+=("${id}|${clave}|${edad}")
   done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='aprobada' and propuesta->'registro_adm'->>'docid' is null and updated_at < now() - interval '10 minutes' and updated_at > now() - interval '12 hours' order by updated_at limit 3")
 
-  # La cuota ya se resolvió en la compuerta de arriba. Con el bloqueo puesto NO
-  # se marca `avisado`, así que cuando vuelva reintentan en el tick siguiente en
-  # vez de esperar otro ciclo entero de backoff.
-  if (( ${#pendientes_reg[@]} > 0 )) && (( ! bloqueado )); then
+  # Ya no se saltea por cuota agotada: con el respaldo puesto, una aprobada sin
+  # registrar se reintenta igual, salga por z.AI o por OpenRouter. Dejarla
+  # esperando era lo que hacía que una factura aprobada a las 2 PM apareciera en
+  # ADM recién de noche.
+  if (( ${#pendientes_reg[@]} > 0 )); then
     ahora=$(date +%s)
     for fila in "${pendientes_reg[@]}"; do
       IFS='|' read -r id clave edad <<< "$fila"
