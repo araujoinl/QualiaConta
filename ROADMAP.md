@@ -66,6 +66,128 @@ salvo en casos genuinamente nuevos, y el libro de acción explica cada decisión
 Requiere: el rol de ADM Cloud recortado — sin permiso de anular, de emitir e-CF
 de venta ni de declarar. Ver [SPEC §5](SPEC.md).
 
+### Estado al 2026-08-02: escribe, pero el contable todavía no
+
+**La escritura está encendida.** Gate 0 pasado con un asiento de RD$1.00
+(`ED00000182`, revertido) y primera factura real registrada: TUPAQ e-NCF
+E310000002221 → **`FP00001061`**, con su PDF adjunto y el asiento derivado
+cuadrando. El flujo completo quedó escrito en la skill.
+
+**Pero todo eso se ejecutó a mano.** El contable no corrió ni un paso del flujo
+nuevo. Lo que falta para cerrar la entrega, en orden:
+
+1. **Una factura de punta a punta sin tocar nada** — que el agente lea, busque
+   precedente, verifique duplicado, registre, adjunte y escriba el libro solo.
+   Es la única prueba que vale.
+2. **Alta de proveedor nuevo, nunca ejecutada.** El rol lo permite (sondeado) y
+   se sabe que son cinco campos, con el nombre saliendo de la razón social de
+   DGII. Pero no existe un solo `POST /api/Vendors` real: no sabemos qué
+   devuelve ni si el proveedor nace aprobado o pendiente.
+3. **Monitoreo y kill-switch (plan §5).** Hoy el agente puede escribir y no hay
+   nada que detecte un registro malo ni que lo frene. Más grave de lo que era en
+   el papel, porque **revertir en ADM BORRA el documento** (medido): un registro
+   equivocado revertido no deja rastro de que existió. Sin esto, la única
+   defensa es la aprobación humana una por una.
+4. **Las guardas duras del plan §3.4**: monto máximo por documento, tope diario
+   de escrituras, y prohibición de backdating pasado el día 5. Escritas, ninguna
+   existe en código. Los 12 períodos de 2026 están abiertos en ADM, así que el
+   candado contra backdating es 100% nuestro.
+
+---
+
+## Entrega 2b — Los otros documentos que la empresa registra
+
+De los cuatro tipos que Blackbox usa, sólo las facturas de proveedor saben
+registrarse. El orden sale de lo que cuesta construir contra lo que ya está
+fallando, no del volumen.
+
+### 1. Depreciación mensual — lo más fácil y **está atrasada**
+
+Último asiento registrado: **28 de febrero de 2026**. Marzo a julio no están —
+cinco meses, **~RD$151.000 de gasto sin registrar** y las acumuladas del balance
+desfasadas.
+
+Es el caso más automatizable del sistema: el mismo asiento, con **el mismo monto
+exacto** (RD$30.244,73), todos los meses desde agosto de 2025. Cuatro débitos a
+`650.01/02/03/04` y cuatro créditos espejo a `170.02/04/06/07`. Sin documento,
+sin proveedor, sin NCF, sin juicio contable. No necesita un Excel: necesita un
+calendario. Sólo cambia cuando se compra o se da de baja un activo, y eso es un
+evento que el dueño conoce.
+
+Los históricos van **sin `Reference`**, lo que los hace imposibles de buscar: los
+nuevos llevan `DEPRECIACION <AAAAMM>` para que el chequeo de duplicado funcione.
+
+**Terminado cuando:** los cinco meses atrasados están al día y el asiento del mes
+siguiente se propone solo el último día del mes.
+
+### 2. Cargos bancarios — 60 propuestas esperando
+
+Hay **60 sugerencias paradas en `propuesta`** desde el 2026-08-02: comisiones,
+impuesto 2×1000, descuento 1% DGII, notas de débito. El motor que las genera ya
+existe y funciona; lo que falta es que puedan convertirse en registro.
+
+Es el tipo más repetitivo y el que el plan dice que se gradúa primero.
+
+### 3. Nómina desde Excel — tres asientos, aprobación humana para siempre
+
+Patrón fijo en los 60 asientos históricos: `NOMINA <MES> <AÑO>`,
+`REG. TSS EMPLEADOR <AAAAMM>` y `REG.INFOTEP EMPLEADOR <AAAAMM>`, uno por mes
+sin excepción. Se arrastra el Excel a la mesa, el preparador extrae los totales
+por concepto y el contable propone **los tres juntos en una sola tarjeta** — son
+tres documentos pero una sola decisión.
+
+Lo que aporta no es escribir los asientos, es lo que verifica antes: que cada uno
+cuadre solo, que el neto de `220.01` sea bruto menos retenciones, que **no exista
+ya la nómina de ese mes**, y que el período del texto coincida con el mes de la
+fecha.
+
+**Cuidado especial: ADM NO frena asientos duplicados.** Verificado — hay tres
+referencias repetidas en el histórico, y una es de nómina: `REG. TSS EMPLEADOR
+202606` aparece dos veces, porque el de julio se registró con el período de
+junio. Buscar "202607" no encuentra nada y llevaría a registrarlo de nuevo.
+Duplicar una nómina son ~RD$350.000 en los libros y no hay red del servidor.
+
+Los tres asientos son tres POST y el agente no puede deshacer ninguno: si el
+segundo falla, queda media nómina registrada. Protocolo: registrar los tres y,
+ante un fallo, decir con nombre y número cuáles entraron. Nunca reintentar solo.
+
+**No se gradúa nunca a automático.** Guarda permanente.
+
+### 4. Préstamos y líneas de crédito — eventos, no patrón
+
+No hay plantilla posible: cada movimiento es distinto. Los desembolsos son
+eventos ad-hoc (RD$2.497.600 a `230.05` el 2026-03-23, RD$4.000.000 en febrero)
+y las cuotas mensuales de 2025 (~RD$31.600) se detuvieron.
+
+El enganche natural son las cuotas: **caen en el estado de cuenta** y el motor de
+sugerencias bancarias ya las ve. Lo que le falta es partirlas en capital e
+interés, y ese dato no sale del banco — sale de la **tabla de amortización**, que
+hoy no está en ninguna parte del sistema.
+
+**Primer paso, y es prerrequisito de todo lo demás:** cargar las tablas de
+amortización de los préstamos vivos. Sin eso cualquier propuesta va a estar mal.
+
+---
+
+## Riesgos abiertos (medidos, no teóricos)
+
+- **La firma electrónica de e-CF está abierta en ADM.** `ElectronicSign` y
+  `RemoveSign` responden "Este documento no existe" con el rol de registro, o sea
+  que lo permitirían. No se puede recortar del lado de ADM (decisión del dueño,
+  2026-08-02). La barrera es un `approvals.deny` en el `config.yaml` de la
+  empresa — **que está gitignoreado**: si el contenedor se recrea, el candado no
+  vuelve solo. Al montar una instancia nueva hay que ponerlo a mano.
+- **Revertir borra.** No hay lápida auditable. Antes de revertir, guardar el
+  documento completo en el libro de acción: es la única copia que va a quedar.
+- **Los documentos del bucket se perdieron una vez.** La política permitía a
+  cualquier autenticado borrar cualquier objeto; ya está apretada, y el respaldo
+  pasó de diario a cada hora. Pero la copia de CodeBox es lo único que hay.
+- **Julio sin registrar.** El libro de facturas de proveedor se detiene el
+  2026-06-30 y la factura de agosto ya saltó por encima.
+- **RLS tautológica del bus.** La política nueva del bucket se apoya en que
+  `qualia_trabajos` sea legible por todo autenticado; si ese RLS se aprieta, la
+  protección de los documentos se debilita en silencio.
+
 ---
 
 ## Entrega 3 — Conciliación bancaria
