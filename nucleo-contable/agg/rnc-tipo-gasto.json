@@ -1,20 +1,20 @@
 {
  "_meta": {
-  "generado": "2026-08-02T22:37:36Z",
+  "generado": "2026-08-03T05:20:40Z",
   "alcance": "GENERAL (DGII) — vale para cualquier empresa; el tipo de gasto 606 no depende de quién compra. La cuenta contable NO se comparte: vive en cada empresa.",
   "n_empresas_aportantes": 1,
-  "n_suplidores": 153,
-  "n_facturas": 1050,
+  "n_suplidores": 159,
+  "n_facturas": 1066,
   "n_sin_rnc": 26,
   "n_sin_tipo_gasto": 20,
-  "n_con_dominante": 40
+  "n_con_dominante": 41
  },
  "catalogo": [
   {
    "codigo": "02",
    "nombre": "Gastos por Trabajos, Suministros y Servicios",
-   "usos": 632,
-   "n_suplidores": 91
+   "usos": 647,
+   "n_suplidores": 98
   },
   {
    "codigo": "07",
@@ -25,8 +25,8 @@
   {
    "codigo": "05",
    "nombre": "Gastos de Representación",
-   "usos": 60,
-   "n_suplidores": 39
+   "usos": 61,
+   "n_suplidores": 40
   },
   {
    "codigo": "01",
@@ -107,20 +107,20 @@
   {
    "rnc": "132942248",
    "nombre": "Tupaq Cargo & Courier Srl",
-   "facturas": 114,
+   "facturas": 118,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 113,
-     "pct": 99.1
+     "usos": 117,
+     "pct": 99.2
     },
     {
      "codigo": "09",
      "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
      "usos": 1,
-     "pct": 0.9
+     "pct": 0.8
     }
    ]
   },
@@ -209,13 +209,13 @@
   {
    "rnc": "133169045",
    "nombre": "Account One Dcm2rp, Srl",
-   "facturas": 20,
+   "facturas": 21,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 20,
+     "usos": 21,
      "pct": 100.0
     }
    ]
@@ -223,39 +223,45 @@
   {
    "rnc": "102017174",
    "nombre": "Humano Seguros S A",
-   "facturas": 19,
+   "facturas": 21,
    "dominante": "01",
    "tipos": [
     {
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 17,
-     "pct": 89.5
+     "pct": 81.0
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 9.5
     },
     {
      "codigo": "06",
      "nombre": "Otras Deducciones Admitidas",
      "usos": 1,
-     "pct": 5.3
+     "pct": 4.8
     },
     {
      "codigo": "11",
      "nombre": "Gastos de Seguros",
      "usos": 1,
-     "pct": 5.3
+     "pct": 4.8
     }
    ]
   },
   {
    "rnc": "101001577",
    "nombre": "Compania Dominicana De Telefonos S A",
-   "facturas": 18,
+   "facturas": 19,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 18,
+     "usos": 19,
      "pct": 100.0
     }
    ]
@@ -725,6 +731,46 @@
    ]
   },
   {
+   "rnc": "131508006",
+   "nombre": "Grupo Rolling Srl",
+   "facturas": 4,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 2,
+     "pct": 50.0
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 25.0
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 25.0
+    }
+   ]
+  },
+  {
+   "rnc": "131165389",
+   "nombre": "Emprendia Consulting Srl",
+   "facturas": 3,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 3,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
    "rnc": "131925375",
    "nombre": "Sabores Del Desierto Srl",
    "facturas": 3,
@@ -862,40 +908,6 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 3,
-     "pct": 100.0
-    }
-   ]
-  },
-  {
-   "rnc": "131508006",
-   "nombre": "Grupo Rolling Srl",
-   "facturas": 3,
-   "dominante": null,
-   "tipos": [
-    {
-     "codigo": "01",
-     "nombre": "Gastos de Personal",
-     "usos": 2,
-     "pct": 66.7
-    },
-    {
-     "codigo": "05",
-     "nombre": "Gastos de Representación",
-     "usos": 1,
-     "pct": 33.3
-    }
-   ]
-  },
-  {
-   "rnc": "131165389",
-   "nombre": "Emprendia Consulting Srl",
-   "facturas": 2,
-   "dominante": null,
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 2,
      "pct": 100.0
     }
    ]
@@ -2383,6 +2395,90 @@
   {
    "rnc": "130533393",
    "nombre": "Acomsa",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132068793",
+   "nombre": "EL RAMERO SOLITARIO SRL",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131399231",
+   "nombre": "FC GESTION EMPRESARIAL Y ALIMENTICIAS SRL",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "133525844",
+   "nombre": "PULSE HARMONY J & G SRL",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131181882",
+   "nombre": "NOVA VISION HB SRL",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "133103712",
+   "nombre": "GRUPO J&A PICHARDO CREATIVE FOODS SRL",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131372228",
+   "nombre": "FREEWAY ENTERPRISE SRL",
    "facturas": 1,
    "dominante": null,
    "tipos": [

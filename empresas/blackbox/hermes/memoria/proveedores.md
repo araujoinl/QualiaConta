@@ -130,7 +130,7 @@ Un proveedor cuyo gasto se reparte ~50/50 entre dos cuentas se marca
 - NCF típico: E31 (19 docs)
 - Vía de pago: Transferencia (9), Tarjeta de Crédito (3). Cuenta banco no identificada en agregado.
 - Plazo medio de pago: 14 días
-- Tratamiento típico: Seguro médico de empleados (ARS Humano). 100% del cargo a 611.18 sin ITBIS. La prima se amortiza mensualmente; el ISC residual y la amortización de intangibles son ajustes menores. Evidencia: 19 docs, DocIDs FP00001026, FP00000980.
+- Tratamiento típico: Seguro médico de empleados (ARS Humano) — 611.18 Seguro Médico, sin ITBIS, prima amortizada mensualmente. **PERO la cuenta sigue a la naturaleza del bien asegurado, no al proveedor (ratificado C.Araujo 2026-08-03, libro 2026-08-03-humano-seguros-rc-auto-exceso):** seguros de VEHÍCULO (RC Auto Exceso, etc.) → **660.01 Seguros de Vehículos**, no 611.18. El ISC 16% sobre la prima (Ley 146-02) va como ítem propio a **620.09**. Tipo de gasto 606: **11 Gastos de Seguros**. Evidencia: 19 docs + FP00001067 (RC Auto a 660.01), DocIDs FP00001026, FP00000980.
 
 ---
 
@@ -666,11 +666,11 @@ Un proveedor cuyo gasto se reparte ~50/50 entre dos cuentas se marca
 
 - RNC: 131165389
 - Cuenta(s) de gasto típica(s): 621.04 Otros servicios profesionales (100%)
-- ITBIS / retenciones observados: 2 docs con ITBIS 18% (2 líneas), 0 sin. Retención registrada (monto DOP 4,085.91) en 0 docs marcados con bandera — inconsistencia entre monto y bandera; probable retención ISR 2% Proveedores.
+- ITBIS / retenciones observados: 2 docs con ITBIS 18% (2 líneas), 0 sin. Retención de ITBIS 30% (Norma 02-05, PJ→PJ servicios profesionales liberales) — confirmado 2026-08-03 (FP00001072). El monto DOP 4,085.91 del destilado era ITBIS 30%, no ISR 2%.
 - NCF típico: B01 (2 docs)
 - Vía de pago: Transferencia (1 pago registrado). Cuenta banco no identificada en agregado.
 - Plazo medio de pago: 4 días
-- Tratamiento típico: Consultoría/servicios profesionales. 100% a 621.04 Otros servicios profesionales con ITBIS 18%. Montos altos (DOP 95,775 en 2 facturas). Lleva retención ISR 2% Proveedores (DOP 4,085.91) aunque la bandera no está marcada — verificar. Pago por transferencia. Evidencia: 2 docs, DocIDs FP00001049, FP00000869.
+- Tratamiento típico: Consultoría/servicios profesionales (regencia de establecimiento farmacéutico). 100% a 621.04 Otros servicios profesionales con ITBIS 18%. Montos altos (DOP 95,775 en 2 facturas). Retención ITBIS 30% (Norma 02-05, PJ→PJ servicios profesionales liberales) sobre el ITBIS facturado. Pago por transferencia. Evidencia: 3 docs, DocIDs FP00001072, FP00001049, FP00000869.
 
 ---
 
@@ -914,6 +914,7 @@ Un proveedor cuyo gasto se reparte ~50/50 entre dos cuentas se marca
 | Eco Doa Catalina | sin RNC | 801.01 Gastos sin comprobante de crédito fiscal y/o al exterior | sin | sin NCF | Tarjeta | FP00000836 | 750.00 |
 | Edufinsa Escuela De Negocios & Tecnologia Srl | 132184416 | 611.13 Capacitación | sin | B01 | Transferencia | FP00000572 | 25,485.00 |
 | Effe Pizza Srl | 132624696 | 611.14 Otros gastos de personal, 690.06 Propina Legal | 18% | B01 | Tarjeta | FP00000007 | 3,948.46 |
+| FreeWay Enterprise SRL | 131372228 | 611.02 Comisiones | 18% | B01 | sin registro | FP00001068 | 90,000.00 |
 | El Ferreton Srl | 131667351 | 620.06 Suministros de oficina y otros | 18% | B01 | sin registro | FP00000989 | 620.00 |
 | Electromuebles Kewrys Srl | 131127835 | 160.07 Otros Activos Fijos | 18% | E31 | Transferencia | FP00000488 | 9,500.00 |
 | Gamma Elite Srl | 130518149 | 160.06 Mobiliarios y Equipos de Oficina | 18% | B01 | Transferencia | FP00000684 | 84,866.25 |
@@ -928,3 +929,4 @@ Un proveedor cuyo gasto se reparte ~50/50 entre dos cuentas se marca
 | Ingenieria Del Valor Srl | 131518567 | 621.02 Servcios Legales | 18% | B01 | Transferencia | FP00000718 | 14,160.00 |
 | Innovex Group Srl | 132917472 | 611.17 Dieta y Viáticos | 18% | B01 | Tarjeta | FP00000727 | 2,730.00 |
 | Inversiones A & C Five Wings Srl | 131319297 | 620.11 Combustible | sin | E31 | sin registro | FP00001025 | 750.00 |
+| Pulse Harmony J & G Srl | 133525844 | 630.05 Gastos de Representación | sin | E31 | Tarjeta | FP00001077 | 15,000.00 |
