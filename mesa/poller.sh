@@ -41,6 +41,12 @@ set -u
 PUERTO="${WEBHOOK_PORT:-8644}"
 INTERVALO="${MESA_INTERVALO:-20}"
 WEBHOOK="http://127.0.0.1:${PUERTO}/webhooks/mesa"
+# Cuántos análisis puede tener el contable a la vez. Cada aviso abre una sesión
+# LLM nueva en Hermes y del otro lado NO hay límite, así que el tope va acá.
+# Medido el 2026-08-03: con 1 la factura sale en ~3 min; con 3 termina una y las
+# otras dos se arrastran (8 min sin un solo evento); con 18 z.AI devolvió 464
+# respuestas 429 y varios turnos murieron. Subilo si el plan aguanta más.
+MAX_ANALIZANDO="${MESA_MAX_ANALIZANDO:-2}"
 
 log() { echo "[mesa-poller] $(date -u +%H:%M:%S) $*"; }
 
@@ -160,23 +166,104 @@ declare -A avisado
 # libre sola, sin que nadie tenga que limpiarla.
 cuota_hasta=0
 cuota_avisado=0
+cuota_sondeo=0    # epoch del último sondeo, para no preguntar en cada tick
+
+# id → epoch del último poke de trabajo_nuevo. Sirve para contar los que ya
+# despertamos pero todavía no reclamaron: el claim tarda unos segundos y sin
+# contarlos el tope se pasaría de largo en el tick siguiente.
+declare -A despertado
+cupo_avisado=0
 
 while [ "$corriendo" -eq 1 ]; do
   # Latido para el healthcheck del compose: si este archivo envejece, el
   # loop está congelado y Docker lo marca unhealthy (y el restart lo revive).
   date +%s > /tmp/latido 2>/dev/null
 
+  # 0) COMPUERTA DE CUOTA.
+  #
+  # Va acá arriba y no dentro de un barrido porque la cuota frena al contable
+  # ENTERO: el análisis de lo nuevo Y el registro de lo aprobado. La primera
+  # versión sondeaba dentro del barrido de aprobadas y solo si ese barrido tenía
+  # candidatos — así que el 2026-08-03, con la cuota agotada y todo el trabajo
+  # del lado del análisis, no sondeó nunca y la web no avisó nada. Peor: el
+  # poller seguía despertando al contable por cada documento nuevo y cada turno
+  # moría contra el 429.
+  #
+  # La condición correcta no es "hay aprobadas sin registrar", es «el contable
+  # DEBE trabajo y no lo entrega», sin importar en qué estado esté ese trabajo.
+  ahora=$(date +%s)
+  if (( cuota_hasta <= ahora )) && (( ahora - cuota_sondeo > 120 )); then
+    # Sin umbral de antigüedad para pendiente/analizando: la gracia del aviso es
+    # enterarte AL SUBIR, no cinco minutos después de que se trabó. El costo de
+    # sondear de más es 1 token cada 2 minutos y solo mientras hay cola; con la
+    # mesa vacía no se pregunta nada, porque no habría nada que explicar.
+    estancado=$(sql "select count(*) from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and (estado in ('pendiente','analizando') or (estado='aprobada' and propuesta->'registro_adm'->>'docid' is null and updated_at < now() - interval '10 minutes'))")
+    if [ -n "${estancado:-}" ] && (( estancado > 0 )); then
+      cuota_sondeo=$ahora
+      if hasta=$(cuota_bloqueada_hasta) && [ -n "$hasta" ]; then
+        cuota_hasta=$(date -u -d "$hasta" +%s 2>/dev/null || echo 0)
+        cuota_avisado=$ahora
+        registrar_cuota "$hasta"
+        log "cuota del LLM agotada hasta $hasta — $estancado esperando, no molesto al contable"
+      fi
+    fi
+  fi
+  # Se sale del bloqueo por RELOJ, sin gastar otro sondeo: si al volver sigue
+  # topada, el próximo trabajo estancado la re-detecta. Se corrige sola.
+  if (( cuota_hasta > 0 )) && (( cuota_hasta <= ahora )); then
+    cuota_hasta=0
+    registrar_cuota ""
+    log "cuota del LLM disponible otra vez"
+  fi
+  bloqueado=0
+  if (( cuota_hasta > ahora )); then
+    bloqueado=1
+    if (( ahora - cuota_avisado > 600 )); then
+      cuota_avisado=$ahora
+      log "cuota del LLM agotada hasta $(date -u -d "@$cuota_hasta" +%H:%M)Z — el contable está frenado"
+    fi
+  fi
+
   # 1) trabajos nuevos
+  #
+  # CONTRAPRESIÓN antes de avisar. Cada aviso abre una sesión LLM en Hermes y
+  # del otro lado no hay tope: subiendo varios documentos seguidos terminabas
+  # con media docena de sesiones compitiendo por la misma API con límite de
+  # ritmo. Se frenaban entre ellas y algunas morían con 429. Los barridos de
+  # abajo rescatan lo que se cayó, pero no evitan la caída — esto sí.
+  #
+  # Lo que no entra en el cupo se queda en 'pendiente', que es exactamente donde
+  # el re-aviso de los 300s lo vuelve a tomar. Se pierde velocidad de pico y se
+  # gana que TODAS salgan: antes las primeras salían rápido y el resto se
+  # arrastraba o se caía.
+  # Con la cuota agotada el cupo es cero: despertar al contable ahora es
+  # regalarle un turno que muere contra el 429.
+  if (( bloqueado )); then
+    cupo=0
+  else
+    enVuelo=$(sql "select count(*) from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='analizando'")
+    [ -z "${enVuelo:-}" ] && enVuelo=0
+    for t in "${despertado[@]}"; do (( ahora - t < 120 )) && enVuelo=$((enVuelo + 1)); done
+    cupo=$(( MAX_ANALIZANDO - enVuelo ))
+  fi
+  if (( cupo <= 0 )) && (( ! bloqueado )) && (( ahora - cupo_avisado > 300 )); then
+    cupo_avisado=$ahora
+    log "contable al tope ($enVuelo en vuelo, máx $MAX_ANALIZANDO): los nuevos esperan turno"
+  fi
+
   # La clave del anti-spam incluye updated_at: si el trabajo VUELVE a pendiente
   # (tras un error, o porque el humano pidió otra revisión) es una petición
   # nueva y se avisa al instante. El tope de 300s queda solo para el caso
   # "sigue pendiente y el gateway estaba caído cuando avisé".
   while IFS='|' read -r id upd; do
     [ -z "$id" ] && continue
+    (( cupo <= 0 )) && continue    # sin cupo: queda pendiente, lo toma el re-aviso
     ahora=$(date +%s)
     clave="${id}:${upd}"
     antes=${avisado[$clave]:-0}
     if (( ahora - antes > 300 )); then
+      cupo=$((cupo - 1))
+      despertado[$id]=$ahora
       # Preparador ANTES del aviso, EN BACKGROUND: si corriera en el loop, un
       # documento terco (hasta 120s) frenaría los pokes de las aprobaciones del
       # usuario. El anti-spam se marca ANTES de lanzar, así el mismo trabajo no
@@ -284,36 +371,17 @@ while [ "$corriendo" -eq 1 ]; do
     (( ahora - antes > espera )) && pendientes_reg+=("${id}|${clave}|${edad}")
   done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='aprobada' and propuesta->'registro_adm'->>'docid' is null and updated_at < now() - interval '10 minutes' and updated_at > now() - interval '12 hours' order by updated_at limit 3")
 
-  # Recién acá se mira la cuota, y solo si de verdad hay a quién avisar: en
-  # régimen normal esta rama no corre nunca y no genera un solo request.
-  if (( ${#pendientes_reg[@]} > 0 )); then
+  # La cuota ya se resolvió en la compuerta de arriba. Con el bloqueo puesto NO
+  # se marca `avisado`, así que cuando vuelva reintentan en el tick siguiente en
+  # vez de esperar otro ciclo entero de backoff.
+  if (( ${#pendientes_reg[@]} > 0 )) && (( ! bloqueado )); then
     ahora=$(date +%s)
-    if (( cuota_hasta > ahora )); then
-      # Bloqueo ya conocido: ni sondeamos ni molestamos al contable. No se marca
-      # `avisado`, así que cuando la cuota vuelva reintentan en el próximo tick
-      # en vez de esperar otro ciclo de backoff.
-      if (( ahora - cuota_avisado > 600 )); then
-        cuota_avisado=$ahora
-        log "cuota del LLM agotada hasta $(date -u -d "@$cuota_hasta" +%H:%M)Z — ${#pendientes_reg[@]} sin registrar, no reintento"
-      fi
-    elif hasta=$(cuota_bloqueada_hasta) && [ -n "$hasta" ]; then
-      cuota_hasta=$(date -u -d "$hasta" +%s 2>/dev/null || echo 0)
-      cuota_avisado=$ahora
-      registrar_cuota "$hasta"
-      log "cuota del LLM agotada hasta $hasta — ${#pendientes_reg[@]} sin registrar, no reintento"
-    else
-      if (( cuota_hasta > 0 )); then
-        cuota_hasta=0
-        registrar_cuota ""
-        log "cuota del LLM disponible otra vez"
-      fi
-      for fila in "${pendientes_reg[@]}"; do
-        IFS='|' read -r id clave edad <<< "$fila"
-        avisado[$clave]=$ahora
-        log "aprobada sin registrar hace $(( edad / 60 ))min: $id — reintento"
-        poke "$id" "registro_pendiente" "$ahora"
-      done
-    fi
+    for fila in "${pendientes_reg[@]}"; do
+      IFS='|' read -r id clave edad <<< "$fila"
+      avisado[$clave]=$ahora
+      log "aprobada sin registrar hace $(( edad / 60 ))min: $id — reintento"
+      poke "$id" "registro_pendiente" "$ahora"
+    done
   fi
 
   sleep "$INTERVALO" &
