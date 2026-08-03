@@ -568,6 +568,9 @@ prompt = (
     '"codigo_seguridad": str|null (6 caracteres, solo si es e-CF y se lee), '
     '"fecha_firma": "DD-MM-YYYY HH:MM:SS"|null (solo si se lee), '
     '"telefono": str|null (telefono del emisor IMPRESO en el documento), '
+    '"numero_factura_suplidor": str|null (el numero PROPIO del proveedor, '
+    "distinto del NCF: suele decir Factura No., No. Factura, Invoice, "
+    "Documento o Pedido, y suele traer letras y guion como FTGAZ-025375), "
     '"items": [{"descripcion": str, "cantidad": number, "precio": number '
     "(unitario sin ITBIS), "
     '"itbis": number (ITBIS de ese renglon, 0 si exento)}] '
@@ -746,6 +749,22 @@ RNC=$(leer_campo rnc)
 # Se prueban solo las candidatas de borrar un digito, cada una re-validada por
 # el MISMO regex antes de tocar la red, y gana la primera que DGII de VIGENTE.
 # Si ninguna verifica, NCF sigue vacio: no se adivina.
+# Numero propio del suplidor (el `Reference` de ADM, no el NCF). Formato
+# libre entre proveedores, asi que solo se acota largo y juego de
+# caracteres: entra a un campo de texto de la API, nunca a SQL ni a URLs.
+NUM_SUPLIDOR=$(leer_campo numero_factura_suplidor)
+[[ "$NUM_SUPLIDOR" =~ ^[A-Za-z0-9][A-Za-z0-9./-]{1,39}$ ]] || NUM_SUPLIDOR=""
+
+# Si la vision no lo saco pero hay texto (los e-CF en PDF se leen por texto),
+# se busca impreso: "Factura No.: FTGAZ-025375" y sus variantes.
+if [ -z "$NUM_SUPLIDOR" ] && [ -f "$DIR/texto.txt" ]; then
+  NUM_SUPLIDOR=$(grep -aoiE "(factura|invoice|documento|pedido)[[:space:]]*(no\.?|num(ero)?\.?|#)?[[:space:]]*:?[[:space:]]*[A-Za-z0-9][A-Za-z0-9./-]{2,39}" "$DIR/texto.txt" 2>/dev/null \
+    | head -1 | grep -aoE "[A-Za-z0-9][A-Za-z0-9./-]{2,39}$" || true)
+  [[ "$NUM_SUPLIDOR" =~ ^[A-Za-z0-9][A-Za-z0-9./-]{1,39}$ ]] || NUM_SUPLIDOR=""
+  # El NCF no es el numero del suplidor: si el regex agarro el NCF, se descarta.
+  [ "$NUM_SUPLIDOR" = "$NCF" ] && NUM_SUPLIDOR=""
+fi
+
 NCF_CRUDO=$(leer_campo ncf)
 NCF_RESCATADO=""
 if [ -z "$NCF" ] && [ -n "$RNC" ] && [[ "$NCF_CRUDO" =~ ^B[0-9]{11}$ ]] \
@@ -1000,6 +1019,7 @@ if PREP="$PREP" DIRW="$DIR" TRABAJO_ID="$ID" ROW_UPD="$UPD" \
    DUP_VERIFICADO="$DUP_VERIFICADO" DUP_MOTIVO="$DUP_MOTIVO" \
    NCF_OK="$NCF" MONTO_OK="$MONTO_FMT" \
    NCF_CRUDO="$NCF_CRUDO" NCF_RESCATADO="$NCF_RESCATADO" \
+   NUM_SUPLIDOR="$NUM_SUPLIDOR" \
    "$PY" - <<'PY'
 import json, os
 
@@ -1054,6 +1074,13 @@ d["dgii"] = dgii
 
 # Si el NCF se rescato, el agente TIENE que saberlo: el numero que va a la
 # propuesta no es el que dice la foto, y eso se explica en el detalle.
+# El numero propio del suplidor: va al `Reference` de ADM, que ademas es una
+# de las dos claves de unicidad del server. Si no se leyo, el agente lo busca
+# en el documento antes de registrar; no se inventa.
+num_sup = os.environ.get("NUM_SUPLIDOR", "")
+if num_sup:
+    extr["numero_factura_suplidor"] = num_sup
+
 crudo = os.environ.get("NCF_CRUDO", "")
 rescatado = os.environ.get("NCF_RESCATADO", "")
 if crudo and not os.environ.get("NCF_OK"):

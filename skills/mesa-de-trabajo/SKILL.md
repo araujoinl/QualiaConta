@@ -476,9 +476,90 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
   Si la decisión trae Alcance, actualizá tu memoria curada (proveedores.md /
   criterios.md) para no volver a preguntar lo mismo.
 
-  **NO registres en ADM Cloud.** El registro real llega en la Entrega 2; hoy el
-  trabajo queda en `aprobada` y eso es correcto. Cerrá con un evento `nota`:
-  «Anotado en el libro. Queda pendiente de registro en ADM Cloud.»
+  **REGISTRÁ EN ADM CLOUD.** Encendido el 2026-08-02 con la primera factura real
+  (TUPAQ → `FP00001061`). El orden no se negocia: **ADM primero, libro después**,
+  para que la entrada nazca con su número. Si el registro falla, el libro NO se
+  escribe: el trabajo queda en `error` y se reintenta. Jamás una entrada de libro
+  sin el documento que la generó.
+
+  ### El flujo, paso a paso
+
+  **1. ¿Existe el proveedor?** Buscalo por RNC en `/api/Vendors` (paginando:
+  `skip` es obligatorio y `take` se ignora). El match es por `FiscalID`, exacto —
+  **nunca por nombre**, que se escribe de veinte formas distintas.
+
+  Si NO existe, creálo con `POST /api/Vendors`. Un proveedor de esta empresa
+  lleva cinco campos y nada más (medido sobre los 169 existentes):
+
+  ```json
+  {"Name": "<razón social de DGII>", "FiscalID": "<RNC>", "IsVendor": true,
+   "CurrencyID": "DOP", "PaymentTermID": "<uuid del término>"}
+  ```
+
+  El **nombre sale de la consulta a DGII**, no de lo impreso: `razon_social_emisor`
+  es la razón social oficial y es lo que la contable espera ver. (ADM tiene consulta
+  automática a DGII en su pantalla, pero **no la expone por API** — verificado sobre
+  los 801 endpoints publicados. Da igual: ya le preguntamos a DGII nosotros.)
+  Términos de pago: `Al contado` `94940a99-f119-4573-8bbd-08dd14abff09` ·
+  `30 días` `b002e9c1-0430-4809-8612-b27db42a35a0` ·
+  `45 días` `27e7f4f5-f179-40f0-6fb0-08dd14abefee` ·
+  `60 días` `a101c88e-5a4c-4860-17e0-08dd149772e6`. Sale del documento; si no dice,
+  `Al contado`. **Si el RNC no verifica en DGII, NO crees el proveedor**: preguntá.
+
+  **2. ¿Ya está registrada la factura?** Paginá `/api/VendorBills` y filtrá
+  **local** por NCF. **Prohibido `?Reference=` y `?DocID=`**: el primero devuelve
+  cero para referencias que sí existen y el segundo se ignora — buscar con ellos
+  es licenciar el doble registro.
+
+  ADM también lo frena por su cuenta, por DOS claves independientes (probado):
+  mismo NCF → *«de este RNC posee el mismo NCF»*; misma referencia → *«de este
+  proveedor posee la misma referencia»*. Es una red, no un permiso para saltarse
+  el chequeo: mejor avisar antes que gastar el POST.
+
+  **3. POST `/api/VendorBills`.** Único campo requerido: `DocDate`. Lo que
+  importa y no es obvio:
+
+  - **El ITBIS NO se manda como monto.** Va `TaxScheduleID` por línea
+    (`f980499b-4f32-48cb-8c6f-5fe74d245528` = ITBIS 18%) y el servidor calcula.
+    Las líneas exentas simplemente no lo llevan.
+  - **La base del impuesto es `Quantity × Price`, no `Price`.** Con cantidad 1 no
+    se nota; con 0.50 la diferencia fue de 10.63 contra 21.25 y el total se iba a
+    173.88 con `success:true`. Verificalo antes de mandar.
+  - **El asiento NO se manda.** ADM lo deriva: débito a la cuenta de cada línea,
+    débito a ITBIS Operativo, crédito a Cuentas por Pagar. Mandarlo descuadra.
+  - `Reference` = el número PROPIO del suplidor (`extraccion.numero_factura_suplidor`
+    del dossier), NO el NCF. Está poblado en las 1050/1050 facturas del libro.
+  - El e-CF se manda igual que un B01: el string en `NCF` y nada más. Registrar
+    una factura de proveedor **no emite, ni firma, ni declara** ante DGII.
+  - **Una sola vez.** No hay clave de idempotencia: si expira, NO reintentes —
+    volvé al paso 2 y contá. Reintentar a ciegas crea una segunda factura, y
+    revertir en ADM **borra** el documento (no lo anula).
+
+  **4. Leé de vuelta.** El POST devuelve **solo el UUID**; el número humano
+  (`FP########`) sale del readback, así que este paso es obligatorio, no una
+  verificación opcional. `GET /api/VendorBills/<uuid>` y **comprobá que el `ID`
+  devuelto sea el UUID que pediste**: pasarle un DocID, un NCF o una referencia
+  devuelve *otro documento* con `success:true`. Confirmá también que el asiento
+  derivado cuadre.
+
+  **5. Guardá los dos identificadores** en la fila (la web muestra el DocID como
+  "Documento ADM"; la base ya no deja `registrada` sin él):
+
+  ```sql
+  update qualia_trabajos
+     set propuesta = propuesta || jsonb_build_object('registro_adm',
+           jsonb_build_object('docid','<DocID>','uuid','<UUID>',
+                              'documento','VendorBills','fecha',now()::date,
+                              'reference','<numero del suplidor>'))
+   where id='<trabajo_id>' and empresa_id='$QUALIA_EMPRESA_ID';
+  ```
+
+  **6. Adjuntá el documento.** `POST /api/Storage?transactionID=<UUID>` con
+  **multipart/form-data**, campo `file`. El archivo lo bajás con
+  `bajar-documento.sh`. Sin adjunto la factura queda sin respaldo: no lo saltes.
+
+  **7. Recién ahora, el libro**, citando el DocID: «Registrada en ADM como
+  FP00001061».
 
   **Contrato para cuando la Entrega 2 encienda el registro real** (el diseño
   canónico y completo vive en `docs/plan-encendido-escritura.md` §4 — ante

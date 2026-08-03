@@ -140,7 +140,29 @@ cada una por su nombre.
   escalar pidiendo otro rol (`role=Administradores`) falla correctamente. El
   lookup del rol es *case-insensitive*: separar roles por mayúsculas no separa.
 
-**El Gate 0 sigue cerrado** hasta que `ElectronicSign`, `RemoveSign` y
+**ESTADO REAL (medido 2026-08-02, sondas del §1.3 corridas contra el rol de
+registro).** `Journals/Void` y los `DELETE` de Journals, VendorBills y
+CreditInvoices **YA responden `Unauthorized`**: esas puertas están cerradas.
+`ElectronicSign` y `RemoveSign` responden *"Este documento no existe"*, o sea
+que el rol **las permitiría**. Carlos decidió seguir igual porque no se puede
+recortar del lado de ADM, y el Gate 0 se abrió con esa deuda asumida.
+
+También se verificó que el límite del rol **no es ficción**: repetir una sonda
+negada con `role=Administradores` responde *"Este usuario no está vinculado a
+este grupo de usuarios"*, o sea que el servidor valida la pertenencia real y no
+obedece el parámetro de la query.
+
+**La barrera compensatoria es `approvals.deny`** en el `config.yaml` de la
+empresa: los patrones `*electronicsign*`, `*removesign*` y `*journals/void*`.
+Hermes corta esos comandos ANTES de cualquier bypass, incluido `yolo`, y está
+probado que deja pasar el `POST /api/Journals` legítimo. **Ese archivo está
+gitignoreado**: si el contenedor se recrea desde cero, el candado NO vuelve
+solo y la firma electrónica queda abierta sin que nada avise. Al montar una
+instancia nueva, ese bloque se pone a mano y se verifica con
+`_match_user_deny_rule` antes de habilitar la escritura.
+
+El texto original de esta sección decía que **el Gate 0 sigue cerrado** hasta
+que `ElectronicSign`, `RemoveSign` y
 `Journals/Void` respondan `Unauthorized`. La regla 5 del CLAUDE.md (los límites
 viven en los permisos de ADM, no en el prompt) se sostiene — pero sólo sobre las
 acciones que estén explícitamente negadas y verificadas una por una.

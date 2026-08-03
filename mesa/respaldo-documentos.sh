@@ -11,7 +11,9 @@
 # Log:     /home/codebox/qualia-docs/respaldo.log — SIN URLs (llevan token firmado)
 #
 # Idempotente: lo ya bajado (archivo con bytes) no se vuelve a bajar.
-# Tolerante: URL vencida o red caída => cuenta el fallo y sigue; nunca aborta.
+# Tolerante: cualquier fallo cuenta y sigue; nunca aborta. El motivo se lee
+# del cuerpo del error: un objeto borrado (NoSuchKey) no es lo mismo que una
+# firma vencida, y mandan a arreglar cosas distintas.
 #
 # Uso:      ./respaldo-documentos.sh
 # Cron:     0 3 * * * (crontab de codebox; el server corre en UTC → 23:00 RD)
@@ -73,14 +75,25 @@ while IFS='|' read -r empresa trabajo nombre url; do
   mkdir -p "$dir"
   tmp="${archivo}.part"
   # La URL SIEMPRE entre comillas (trae query string firmado con & y =).
-  if curl -fsS -m 120 -o "$tmp" "$url" 2>/dev/null && [ -s "$tmp" ]; then
+  # -f oculta el cuerpo del error, y el cuerpo es justo lo que distingue un
+  # objeto borrado de una firma vencida. Se baja sin -f y se decide leyendo.
+  cuerpo=$(curl -sS -m 120 -o "$tmp" -w '%{http_code}' "$url" 2>/dev/null || echo 000)
+  if [ "$cuerpo" = "200" ] && [ -s "$tmp" ]; then
     mv "$tmp" "$archivo"
     nuevos=$((nuevos + 1))
     log "bajado: ${empresa}/${trabajo}/${nombre} ($(stat -c%s "$archivo") bytes)"
   else
+    motivo="HTTP $cuerpo"
+    if grep -q 'NoSuchKey\|not_found' "$tmp" 2>/dev/null; then
+      # El archivo ya no esta en el bucket. Reintentar no lo va a traer: esto
+      # se arregla subiendo el documento de nuevo, no esperando.
+      motivo="el archivo YA NO EXISTE en el bucket (borrado); no se recupera reintentando"
+    elif grep -qi 'jwt\|expired\|signature' "$tmp" 2>/dev/null; then
+      motivo="la firma de la URL no sirve; abrir «Ver original» en la web la regenera"
+    fi
     rm -f "$tmp"
     fallidos=$((fallidos + 1))
-    log "FALLO: ${empresa}/${trabajo}/${nombre} (¿URL vencida? la web la regenera sola)"
+    log "FALLO: ${empresa}/${trabajo}/${nombre} — ${motivo}"
   fi
 done <<< "$filas"
 

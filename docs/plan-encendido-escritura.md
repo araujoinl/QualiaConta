@@ -163,8 +163,11 @@ Hoy `registrada` es un estado sin evidencia. Cambios mínimos:
 
 1. **Congelar**: activar `modo_propuesta_global` (todo vuelve a propuesta; no se investiga con el grifo abierto).
 2. **Identificar**: `adm_ref` del trabajo → `GET` del documento; confirmar con Carlos qué está mal.
-3. **Anular (humano, en la UI de ADM)**: Void del documento — queda `Void=true`, fuera de balances, rastro intacto. DELETE jamás. Si el documento ya está conciliado (`Conciliated` en las líneas) o el mes ya fue remitido a la contable externa (606/607), coordinar con ella ANTES de anular.
-4. **Verificar** por API (`Void=true`) y re-registrar corregido como documento nuevo vía nueva propuesta en la mesa (nunca editar el anulado).
+3. **Revertir (humano, en la UI de ADM)**. ⚠️ **CORRECCIÓN medida el 2026-08-02**: este paso decía que la reversa dejaba el documento con `Void=true`, fuera de balances y con el rastro intacto. **Es falso.** Se revirtió el asiento del Gate 0 (`ED00000182`) y el documento **desapareció**: `GET` por su UUID devuelve `data:null` y no figura en el listado. No hay lápida que auditar y el número puede reutilizarse.
+   Consecuencias que hay que tener presentes al revertir: si el documento ya está conciliado (`Conciliated` en las líneas) o el mes ya fue remitido a la contable externa (606/607), coordinar con ella ANTES — y con más razón ahora, porque después del borrado no queda evidencia de qué se fue.
+   **Antes de tocar nada, guardar el documento completo**: `GET` del documento y volcar la respuesta al libro de acción. Es la única copia que va a existir.
+4. **Verificar** que ya no está (`GET` por UUID → `data:null`, y ausencia en el listado del período) y re-registrar corregido como documento nuevo vía nueva propuesta en la mesa.
+   El agente no puede hacer nada de esto: su rol niega `DELETE` y `Journals/Void` (verificado 2026-08-02, responden `Unauthorized`). La reversa es siempre humana.
 5. **Aprender**: entrada del libro de acción con causa, regla corregida, `Aprobó:` y `Alcance:`; actualizar `memoria/` si el precedente estaba mal escrito.
 6. **Regresar la graduación** del tipo afectado según §3.3 y, revisado todo, desactivar el kill-switch.
 
