@@ -482,7 +482,42 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
   escribe: el trabajo queda en `error` y se reintenta. Jamás una entrada de libro
   sin el documento que la generó.
 
-  ### El flujo, paso a paso
+  ### Un solo comando hace todo
+
+  ```bash
+  python3 /opt/data/memoria/scripts/registrar-en-adm.py --trabajo <trabajo_id>
+  ```
+
+  Crea el proveedor si no existe, chequea duplicado, registra, lee de vuelta,
+  guarda el DocID en la fila y te dice el número. **Agregá `--simular` para ver
+  el payload sin escribir nada** — hacelo la primera vez con cada proveedor nuevo.
+
+  **Usá el script, no armes los `curl` a mano.** No es comodidad: cada `curl`
+  que pipeás a `python3 -c` para leer la respuesta despierta al guardián de
+  comandos, que consulta a otro modelo y tarda 15-30 segundos — el 2026-08-03 el
+  registro quedó atascado ahí más de un minuto. Además el script trae escritas
+  las trampas de esta API (el ITBIS sobre cantidad×precio, el término de pago
+  obligatorio, el readback que devuelve documentos ajenos) para que no las
+  re-deduzcas en cada factura.
+
+  Si el script muere, **leé su mensaje**: dice exactamente qué falta. Los casos
+  previstos son proveedor sin RNC válido, cuenta contable que no existe en el
+  catálogo, factura ya registrada y NCF que no verifica en DGII. Ninguno se
+  resuelve insistiendo: o falta un dato de la propuesta o hay que preguntarle al
+  humano.
+
+  Después del script queda **una sola cosa a mano, el adjunto**:
+
+  ```bash
+  ruta=$(bash /opt/data/memoria/scripts/bajar-documento.sh <trabajo_id>)
+  curl -s -H "Authorization: Basic $(printf '%s:%s' "$ADMCLOUD_REG_USER" "$ADMCLOUD_REG_PASSWORD" | base64 -w0)" \
+       -F "file=@$ruta" \
+       "https://api.admcloud.net/api/Storage?transactionID=<uuid>&company=$ADMCLOUD_COMPANY&role=$ADMCLOUD_REG_ROLE&appid=$ADMCLOUD_APPID"
+  ```
+
+  Y recién ahí el libro, citando el DocID.
+
+  ### El detalle de cada paso (por si el script falla y hay que entender qué hacía)
 
   **1. ¿Existe el proveedor?** Buscalo por RNC en `/api/Vendors` (paginando:
   `skip` es obligatorio y `take` se ignora). El match es por `FiscalID`, exacto —
