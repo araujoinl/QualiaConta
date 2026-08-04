@@ -107,6 +107,120 @@ with mapa(prio, dir, rx, cuenta, cuenta_nombre, revisar) as (
 bancos_gl(numero, gl_codigo, gl_nombre) as (
   values {bancos_values}
 ),
+-- ===========================================================================
+-- CARRIL A — los cargos que el banco SÍ factura, agrupados por comprobante.
+--
+-- Un NCF ampara todos los cargos de (cuenta + concepto + día): las 7 comisiones
+-- LBTR del 30/07 son UN comprobante de RD$700, y así es como la contabilidad
+-- los registra (un documento por NCF, verificado contra los 159 históricos).
+-- ===========================================================================
+lineas_comprobante as (
+  select c.ncf, c.fecha_emision, c.monto_dop as monto_comprobante,
+         l->>'cuenta'            as cuenta,
+         l->>'concepto'          as concepto,
+         (l->>'montoDop')::numeric as monto_linea,
+         (l->>'fecha')::date     as fecha_linea,
+         a.id as account_id, a.moneda, a.banco, a.nombre as cuenta_banco
+    from openbanking_comprobantes c
+    cross join lateral jsonb_array_elements(c.lineas) l
+    -- El join por cuenta es lo que ata el comprobante a ESTA empresa, y de paso
+    -- deja fuera solos a los productos que no son cuenta corriente (un leasing,
+    -- un préstamo): su cargo no aparece en ningún estado de cuenta, así que no
+    -- hay nada que conciliar y se tratan aparte.
+    join openbanking_accounts a
+      on a.numero = l->>'cuenta' and a.empresa_id = '{empresa_id}'
+   where c.fecha_emision >= current_date - interval '60 days'
+     and not exists (
+       select 1 from qualia_trabajos q
+        where q.empresa_id = '{empresa_id}'
+          and q.propuesta->>'documento_adm' = 'BankCharges'
+          and q.propuesta->>'ncf' = c.ncf
+     )
+),
+-- Los cargos de esa cuenta y concepto sumados DÍA POR DÍA. Sumar la ventana
+-- entera mezclaría comprobantes vecinos: el 31/07 hay dos NCF del mismo
+-- impuesto, uno por los cargos del 30 y otro por los del 31.
+por_dia as (
+  select li.ncf, li.concepto, li.cuenta, li.monto_linea, li.moneda,
+         t.fecha_posteo as dia,
+         count(*)                       as movs,
+         round(sum(abs(t.monto)), 2)    as suma,
+         -- Los ids viajan como texto separado por comas y no como array: un
+         -- array_agg de arrays da un multidimensional que unnest no sabe abrir.
+         string_agg(t.id::text, ',' order by t.id) as ids
+    from lineas_comprobante li
+    join openbanking_transactions t
+      on t.account_id = li.account_id
+     and t.monto < 0
+     and upper(trim(t.descripcion)) = upper(li.concepto)
+     -- 4 días hacia atrás: el comprobante se emite el día hábil siguiente y un
+     -- lunes tiene que poder alcanzar al viernes.
+     and t.fecha_posteo between li.fecha_linea - 4 and li.fecha_linea
+   group by li.ncf, li.concepto, li.cuenta, li.monto_linea, li.moneda, t.fecha_posteo
+),
+-- El día bueno es aquel cuya suma CIERRA. En cuentas en dólares nunca va a
+-- cerrar —el comprobante viene en pesos— así que ahí se valida que la tasa
+-- implícita sea plausible y se guarda para que el humano la vea.
+dia_bueno as (
+  select *, case when moneda = 'USD' then round(monto_linea / nullif(suma, 0), 4) end as tasa
+    from por_dia
+   where (moneda <> 'USD' and abs(suma - monto_linea) < 0.01)
+      or (moneda =  'USD' and monto_linea / nullif(suma, 0) between 40 and 90)
+),
+-- Un solo día candidato = resuelto sin ambigüedad. Si hay dos, no se adivina.
+linea_resuelta as (
+  select ncf, concepto, cuenta, monto_linea, moneda,
+         min(dia) as dia, min(movs) as movs, min(suma) as suma_banco,
+         min(tasa) as tasa, (array_agg(ids order by dia))[1] as ids,
+         count(*) as dias_candidatos
+    from dia_bueno
+   group by ncf, concepto, cuenta, monto_linea, moneda
+),
+comprobantes as (
+  select li.ncf, li.fecha_emision, li.monto_comprobante, li.banco,
+         li.moneda, li.cuenta, li.cuenta_banco,
+         count(*)                                             as lineas_total,
+         count(r.ncf) filter (where r.dias_candidatos = 1)     as lineas_ok,
+         sum(coalesce(r.movs, 0))                              as movs_total,
+         max(r.tasa)                                           as tasa,
+         string_agg(distinct li.concepto, ' + ')               as conceptos,
+         coalesce(string_to_array(string_agg(r.ids, ','), ','), '{{}}'::text[]) as movimiento_ids,
+         jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+           'concepto', li.concepto,
+           'cuenta_banco', li.cuenta,
+           'monto', li.monto_linea,
+           'fecha_cargo', r.dia,
+           'movimientos', r.movs,
+           'suma_banco', r.suma_banco,
+           'tasa_usd', r.tasa,
+           'cuenta', m.cuenta,
+           'cuenta_nombre', m.cuenta_nombre,
+           'sin_resolver', case when r.dias_candidatos is distinct from 1 then true end
+         )) order by li.concepto)                              as desglose,
+         count(distinct m.cuenta)                              as cuentas_distintas,
+         min(m.cuenta)                                         as cuenta_unica,
+         min(m.cuenta_nombre)                                  as cuenta_unica_nombre,
+         min(b.gl_codigo)                                      as gl_codigo,
+         min(b.gl_nombre)                                      as gl_nombre
+    from lineas_comprobante li
+    left join linea_resuelta r
+           on r.ncf = li.ncf and r.concepto = li.concepto and r.cuenta = li.cuenta
+    left join lateral (
+      select * from mapa mm where mm.dir = 'cargo' and li.concepto ~* mm.rx
+       order by mm.prio limit 1
+    ) m on true
+    left join bancos_gl b on b.numero = li.cuenta
+   group by li.ncf, li.fecha_emision, li.monto_comprobante, li.banco,
+            li.moneda, li.cuenta, li.cuenta_banco
+),
+-- ===========================================================================
+-- CARRIL B — lo que NINGÚN comprobante ampara: el banco no lo factura (la
+-- retención del 1%, los intereses que paga) o todavía no emitió el NCF. Sigue
+-- yendo de a un movimiento, como siempre.
+-- ===========================================================================
+amparados as (
+  select unnest(movimiento_ids)::uuid as id from comprobantes
+),
 candidatos as (
   select t.id, t.fecha_posteo as fecha, abs(t.monto) as monto, a.moneda,
          trim(t.descripcion) as descripcion,
@@ -121,6 +235,7 @@ candidatos as (
        or
        ( t.monto > 0 and t.descripcion ~* '(capitalizaci|credito por pago|interes|reverso|devoluci)' )
      )
+     and t.id not in (select id from amparados)
      and not exists (
        select 1 from qualia_trabajos q
         where q.empresa_id = '{empresa_id}'
@@ -139,7 +254,78 @@ clasificados as (
        order by m.prio limit 1
     ) m on true
     left join bancos_gl b on b.numero = c.cuenta_numero
-)
+),
+ins_comprobantes as (
+insert into qualia_trabajos (empresa_id, tipo, origen, estado, resumen, propuesta)
+select '{empresa_id}', 'sugerencia', 'cron_conciliacion', 'propuesta',
+       'Comprobante ' || k.ncf || ' ' || to_char(k.fecha_emision, 'DD/MM') || ': ' ||
+         left(k.conceptos, 45) || ' — RD$' || to_char(k.monto_comprobante, 'FM999,999,990.00') ||
+         ' (' || k.movs_total || ' cargo' || case when k.movs_total = 1 then '' else 's' end || ')' ||
+         ' (' || k.banco || ' · ' || coalesce(k.cuenta_banco, k.cuenta) || ')',
+       jsonb_strip_nulls(jsonb_build_object(
+         'ncf', k.ncf,
+         'direccion', 'cargo',
+         'fecha', k.fecha_emision,
+         -- El comprobante SIEMPRE viene en pesos, aunque los cargos sean de una
+         -- cuenta en dólares: es lo que el banco declaró a DGII y lo que se
+         -- registra. La tasa que usó queda en 'tasa_usd' para que se pueda ver.
+         'monto', k.monto_comprobante,
+         'moneda', 'DOP',
+         'tasa_usd', k.tasa,
+         'descripcion', k.conceptos,
+         'banco', k.banco,
+         'cuenta_banco', coalesce(k.cuenta_banco, ''),
+         'cuenta_numero', k.cuenta,
+         'proveedor', 'Banco ' || k.banco,
+         'metodo', 'script',
+         'documento_adm', 'BankCharges',
+         -- Los movimientos que este comprobante ampara. Van adentro para que la
+         -- conciliación sepa qué cubre el documento: sin esto, registrar por
+         -- comprobante perdería el vínculo con el estado de cuenta.
+         'movimientos', to_jsonb(k.movimiento_ids),
+         'movimientos_n', k.movs_total,
+         'desglose', k.desglose,
+         'confianza', case when k.lineas_ok = k.lineas_total and k.cuentas_distintas = 1 then 0.9
+                           when k.lineas_ok = k.lineas_total then 0.7 else 0.4 end,
+         -- Cabecera sólo si TODAS las líneas caen en la misma cuenta; si el
+         -- comprobante mezcla naturalezas, cada una vive en su renglón.
+         'cuenta_contable', case when k.cuentas_distintas = 1 and k.cuenta_unica is not null
+           then jsonb_build_object('codigo', k.cuenta_unica, 'nombre', k.cuenta_unica_nombre) end,
+         'lineas', case when k.gl_codigo is not null and k.cuentas_distintas >= 1 then
+           coalesce((select jsonb_agg(jsonb_build_object(
+                       'cuenta', d->>'cuenta', 'cuenta_nombre', d->>'cuenta_nombre',
+                       'descripcion', d->>'concepto',
+                       'debito', (d->>'monto')::numeric, 'credito', 0))
+                      from jsonb_array_elements(k.desglose) d
+                     where d->>'cuenta' is not null), '[]'::jsonb)
+           || jsonb_build_array(jsonb_build_object(
+                'cuenta', k.gl_codigo, 'cuenta_nombre', k.gl_nombre,
+                'descripcion', k.banco || ' · ' || coalesce(k.cuenta_banco, k.cuenta),
+                'debito', 0, 'credito', k.monto_comprobante))
+           end,
+         'detalle', case
+           when k.lineas_ok < k.lineas_total then
+             'OJO: no pude atar todos los cargos de este comprobante a movimientos del banco. ' ||
+             'Revisá el desglose antes de aprobar.'
+           when k.cuentas_distintas > 1 then
+             'Se registrará en ADM como Cargo Bancario con NCF ' || k.ncf ||
+             ', por RD$' || to_char(k.monto_comprobante, 'FM999,999,990.00') ||
+             ', amparando ' || k.movs_total || ' cargo(s). Mezcla conceptos, así que la cuenta va por renglón.'
+           when k.cuenta_unica is null then
+             'Ninguna regla del mapa de cargos reconoce «' || k.conceptos ||
+             '». Asignale la cuenta antes de aprobar.'
+           else
+             'Se registrará en ADM como Cargo Bancario con NCF ' || k.ncf ||
+             ': débito a ' || k.cuenta_unica || ' ' || coalesce(k.cuenta_unica_nombre, '') ||
+             ', crédito al banco ' || coalesce(k.gl_codigo, '?') || ' ' || coalesce(k.gl_nombre, '') ||
+             ', por RD$' || to_char(k.monto_comprobante, 'FM999,999,990.00') ||
+             ' que ampara ' || k.movs_total || ' cargo(s) del banco.'
+         end
+       ))
+  from comprobantes k
+returning resumen
+),
+ins_movimientos as (
 insert into qualia_trabajos (empresa_id, tipo, origen, estado, resumen, propuesta)
 select '{empresa_id}', 'sugerencia', 'cron_conciliacion', 'propuesta',
        case when c.direccion = 'cargo' then 'Cargo' else 'Crédito' end ||
@@ -195,7 +381,11 @@ select '{empresa_id}', 'sugerencia', 'cron_conciliacion', 'propuesta',
          end
        ))
   from clasificados c
-returning id;
+returning resumen
+)
+select resumen from ins_comprobantes
+union all
+select resumen from ins_movimientos;
 """)
 PY
 )
@@ -208,16 +398,15 @@ PY
 # sembrar.
 if [ "${QUALIA_DRY_RUN:-0}" = "1" ]; then
   echo "=== ENSAYO (nada se guarda) ==="
-  # El RETURNING va por variable: bash se come las comillas simples dentro de
-  # un ${var/patron/reemplazo}.
-  RET="returning resumen;"
-  PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -q \
-    -c "begin; ${SQL/returning id;/$RET} rollback;"
+  # Los dos INSERT ya devuelven `resumen`, así que el ensayo corre el MISMO SQL
+  # que la corrida real: antes había que reescribir el RETURNING al vuelo y eso
+  # dejaba al ensayo probando una sentencia que no era la de producción.
+  PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -q -c "begin; $SQL rollback;"
   exit 0
 fi
 
 nuevas=$(PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -t -A -q -c "$SQL" | grep -c . || true)
 
 if [ "${nuevas:-0}" -gt 0 ]; then
-  echo "Mesa de trabajo: $nuevas movimiento(s) bancario(s) sin registrar, sembrados como sugerencia con su cuenta contable propuesta."
+  echo "Mesa de trabajo: $nuevas sugerencia(s) nueva(s) — comprobantes fiscales del banco y los cargos que ninguno ampara, con su cuenta contable propuesta."
 fi
