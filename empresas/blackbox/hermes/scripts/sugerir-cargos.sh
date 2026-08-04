@@ -6,10 +6,19 @@
 #
 #   EGRESOS  → comisiones, impuestos (Imp. 2.0 por 1000, Desc. 1% DGII),
 #              manejo/mantenimiento de cuenta, retención por estado de cuenta,
-#              sobregiro, intereses, notas de débito.
+#              sobregiro, intereses.
 #   INGRESOS → capitalización de intereses, créditos por pago total,
 #              reversos/devoluciones del banco. (Los pagos de clientes NO:
 #              esos viven en la conciliación de entradas.)
+#
+# Las NOTAS DE DÉBITO quedaron fuera a propósito (2026-08-03): no son gasto del
+# banco sino pagos a terceros —DGII, Aduanas, TSS— que el estado de cuenta
+# refleja con esa descripción genérica y sin beneficiario. Contablemente van
+# contra la obligación que cancelan, no contra 640.01, y el banco no da con qué
+# identificarlas: sólo el monto, la fecha y un número de referencia. Su lugar es
+# la conciliación, donde se cruzan con el recibo del pago. Sembrarlas acá sólo
+# lograba que engordaran la cola de decisión sin que nadie pudiera decidirlas
+# (9 en julio por RD$479.564,07).
 #
 # Las regex de detección salen del vocabulario REAL de los estados de cuenta
 # (query sobre openbanking_transactions, 2026-08-02). Dedup por
@@ -108,7 +117,7 @@ candidatos as (
    where a.empresa_id = '{empresa_id}'
      and t.fecha_posteo >= current_date - interval '30 days'
      and (
-       ( t.monto < 0 and t.descripcion ~* '(comisi|cargo|manejo|mantenim|retencion|imp\\.|impuesto|desc\\. *1|dgii|interes|sobregiro|est\\. *cta|nota de debito|transferencia internacional)' )
+       ( t.monto < 0 and t.descripcion ~* '(comisi|cargo|manejo|mantenim|retencion|imp\\.|impuesto|desc\\. *1|dgii|interes|sobregiro|est\\. *cta|transferencia internacional)' )
        or
        ( t.monto > 0 and t.descripcion ~* '(capitalizaci|credito por pago|interes|reverso|devoluci)' )
      )
