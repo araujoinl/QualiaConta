@@ -79,6 +79,11 @@ sql() {
 # se recorta a 5. Un error mío de zona horaria puede costar un aviso impreciso,
 # nunca medio día con el barrido congelado.
 CUOTA_TZ_OFFSET="${CUOTA_TZ_OFFSET:-+08}"
+# Qué tope disparó el bloqueo: 1308 = ventana de 5h, 1310 = semanal. Viaja
+# pegado a la hora ("<ISO>|<codigo>") en vez de por variable global, porque el
+# llamador usa $(cuota_bloqueada_hasta) y eso corre en un SUBSHELL: cualquier
+# asignación de adentro se pierde al volver (verificado probándolo).
+CUOTA_CODIGO=""
 
 cuota_bloqueada_hasta() {
   # Imprime la hora UTC (ISO) hasta la que la cuota está agotada, o nada si
@@ -88,9 +93,18 @@ cuota_bloqueada_hasta() {
   resp=$(curl -s -m 20 -X POST "https://api.z.ai/api/coding/paas/v4/chat/completions" \
     -H "Authorization: Bearer $GLM_API_KEY" -H 'Content-Type: application/json' \
     -d '{"model":"glm-4.6v","max_tokens":1,"messages":[{"role":"user","content":"."}]}' 2>/dev/null)
+  # Son DOS topes distintos y hay que separarlos, porque duran ordenes de
+  # magnitud diferentes:
+  #   1308 "Usage limit reached for 5 hour"  -> la ventana de 5h del plan.
+  #   1310 "Weekly/Monthly Limit Exhausted"  -> el tope SEMANAL. Dura DIAS.
+  # Hasta el 2026-08-03 acá sólo se miraba el 1308, así que el semanal caía al
+  # *) y se leía como "libre": qualia_servicio quedaba en NULL, la web no
+  # pintaba el banner y el aviso de WhatsApp no salía. Un corte de 66 horas pasó
+  # entero sin que nadie se enterara, quemando saldo del respaldo de OpenRouter.
   case "$resp" in
-    *'"code":"1308"'*) ;;
-    *) return 0 ;;   # sin 1308: o está libre, o es otro error que no nos toca
+    *'"code":"1308"'*) CUOTA_CODIGO=1308 ;;
+    *'"code":"1310"'*) CUOTA_CODIGO=1310 ;;
+    *) return 0 ;;   # otro error, o está libre: no nos toca
   esac
   local crudo
   crudo=$(printf '%s' "$resp" | grep -oE 'reset at [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}' \
@@ -99,14 +113,24 @@ cuota_bloqueada_hasta() {
   if [ -n "$crudo" ]; then
     hasta=$(date -u -d "${crudo}${CUOTA_TZ_OFFSET}" +%s 2>/dev/null)
   fi
-  local ahora tope
-  ahora=$(date +%s); tope=$(( ahora + 21600 ))          # 6 horas
-  # Sin hora legible, o una hora absurda (pasado, o más de 6h): 5 horas es el
-  # largo real de la ventana del plan y es la conjetura segura.
-  if [ -z "${hasta:-}" ] || (( hasta <= ahora )) || (( hasta > tope )); then
-    hasta=$(( ahora + 18000 ))
+  # El clamp va POR CODIGO, porque la ventana real es de otro tamaño. Con el
+  # tope de 6h parejo, un 1310 legítimo a tres días quedaba recortado a cinco
+  # horas y la web decía "vuelve en un rato" sobre un corte de tres días.
+  local ahora tope conjetura
+  ahora=$(date +%s)
+  if [ "${CUOTA_CODIGO}" = "1310" ]; then
+    tope=$(( ahora + 691200 ))      # 8 días: una semana con margen
+    conjetura=$(( ahora + 86400 ))  # sin hora legible: volver a preguntar mañana
+  else
+    tope=$(( ahora + 21600 ))       # 6 horas
+    conjetura=$(( ahora + 18000 ))  # 5h es el largo real de la ventana del plan
   fi
-  date -u -d "@$hasta" +%Y-%m-%dT%H:%M:%SZ
+  # Pasarse de largo no congela nada: el sondeo de los 300s levanta el bloqueo
+  # apenas z.AI vuelva a contestar, diga lo que diga la hora que anunció.
+  if [ -z "${hasta:-}" ] || (( hasta <= ahora )) || (( hasta > tope )); then
+    hasta=$conjetura
+  fi
+  printf '%s|%s\n' "$(date -u -d "@$hasta" +%Y-%m-%dT%H:%M:%SZ)" "$CUOTA_CODIGO"
 }
 
 cuota_libre() {
@@ -126,11 +150,14 @@ cuota_libre() {
 }
 
 registrar_cuota() {
-  # $1 = hora UTC ISO o vacío para liberar. Upsert de la fila de la empresa.
+  # $1 = hora UTC ISO o vacío para liberar. $2 = código del tope (1308/1310).
+  # Upsert de la fila de la empresa.
   local valor="null" detalle="null"
   if [ -n "${1:-}" ]; then
     valor="'$1'"
-    detalle="'cuota del LLM agotada (z.AI 1308); vuelve $1'"
+    local qtope="de 5 horas"
+    [ "${2:-}" = "1310" ] && qtope="semanal"
+    detalle="'cuota del LLM agotada (z.AI ${2:-?}, tope ${qtope}); vuelve $1'"
   fi
   sql "insert into qualia_servicio (empresa_id, cuota_bloqueada_hasta, cuota_detalle, actualizado_en)
        values ('${QUALIA_EMPRESA_ID}', ${valor}, ${detalle}, now())
@@ -224,11 +251,12 @@ while [ "$corriendo" -eq 1 ]; do
     estancado=$(sql "select count(*) from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and (estado in ('pendiente','analizando') or (estado='aprobada' and propuesta->'registro_adm'->>'docid' is null and updated_at < now() - interval '10 minutes'))")
     if [ -n "${estancado:-}" ] && (( estancado > 0 )); then
       cuota_sondeo=$ahora
-      if hasta=$(cuota_bloqueada_hasta) && [ -n "$hasta" ]; then
+      if par=$(cuota_bloqueada_hasta) && [ -n "$par" ]; then
+        hasta="${par%%|*}"; codigo="${par##*|}"
         cuota_hasta=$(date -u -d "$hasta" +%s 2>/dev/null || echo 0)
         cuota_avisado=$ahora
-        registrar_cuota "$hasta"
-        log "cuota de z.AI agotada hasta $hasta — $estancado en cola, siguen por el respaldo"
+        registrar_cuota "$hasta" "$codigo"
+        log "cuota de z.AI agotada (tope $codigo) hasta $hasta — $estancado en cola, siguen por el respaldo"
       fi
     fi
   fi

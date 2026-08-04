@@ -189,8 +189,12 @@ def subir_adjunto(guid, ruta):
         return json.loads(r.read().decode("utf-8", "replace"))
 
 
-def paginar(ruta):
-    """`skip` es obligatorio y `take` se ignora: se avanza por lo devuelto."""
+def paginar(ruta, cortar=None):
+    """`skip` es obligatorio y `take` se ignora: se avanza por lo devuelto.
+
+    `cortar(lote)` es opcional y se evalua DESPUES de sumar el lote: si devuelve
+    True se deja de pedir paginas. Sirve para los listados que vienen ordenados
+    y donde el resto del historico no aporta nada."""
     filas, skip = [], 0
     for _ in range(60):
         d = llamar("GET", ruta, params={"skip": skip})
@@ -199,7 +203,24 @@ def paginar(ruta):
             break
         filas.extend(lote)
         skip += len(lote)
+        if cortar is not None and cortar(lote):
+            break
     return filas
+
+
+def fecha_corte(doc_date, meses=6):
+    """La fecha del documento menos N meses, en ISO (dia 1, el borde conservador).
+
+    Sin dependencias de calendario: se resta sobre (anio, mes). Si la fecha no
+    se puede leer devuelve una fecha imposiblemente vieja, o sea NO cortar y
+    paginar todo — ante la duda se paga el tiempo, no se pierde el chequeo."""
+    iso = str(doc_date or "")[:10]
+    try:
+        anio, mes = int(iso[0:4]), int(iso[5:7])
+    except (ValueError, IndexError):
+        return "0000-01-01"
+    total = anio * 12 + (mes - 1) - meses
+    return "%04d-%02d-01" % (total // 12, total % 12 + 1)
 
 
 def sql(consulta, **variables):
@@ -391,9 +412,27 @@ def verificar_cuadre(p, payload):
                total_adm - total_papel))
 
 
-def verificar_duplicado(ncf, referencia):
-    """Aviso temprano. ADM tambien lo frena, pero mejor no gastar el POST."""
-    for f in paginar("VendorBills"):
+def verificar_duplicado(ncf, referencia, doc_date=None):
+    """Aviso temprano. ADM tambien lo frena, pero mejor no gastar el POST.
+
+    NO se pagina el historico entero. /api/VendorBills viene del mas NUEVO al
+    mas viejo (verificado 2026-08-03 contra produccion: pagina 0 arranca en
+    FP00001114 del 08-03 y la ultima fila es PI20240921 de 2024-12), asi que
+    alcanza con bajar hasta 6 meses antes de la fecha del documento y parar.
+    Medido: 1106 filas / 23 paginas / 9.04s el barrido completo, contra ~1.5s
+    con el corte, en CADA registro y creciendo con el historico.
+
+    Lo que queda afuera del corte no queda sin barrera: ADM frena el duplicado
+    por DOS claves independientes (mismo NCF para el RNC, o misma referencia
+    del proveedor) y devuelve un mensaje claro. Este chequeo es cortesia para
+    avisar ANTES de gastar el POST, no la unica defensa."""
+    corte = fecha_corte(doc_date)
+
+    def ya_es_viejo(lote):
+        ultimo = str(lote[-1].get("DocDate") or "")[:10]
+        return bool(ultimo) and ultimo < corte
+
+    for f in paginar("VendorBills", cortar=ya_es_viejo):
         if str(f.get("NCF") or "").strip().upper() == str(ncf).upper():
             morir("YA REGISTRADA: %s tiene ese NCF" % f.get("DocID"))
         if referencia and str(f.get("Reference") or "").strip() == str(referencia):
@@ -456,7 +495,7 @@ def main():
         return
 
     verificar_cuadre(p, payload)
-    verificar_duplicado(payload["NCF"], payload["Reference"])
+    verificar_duplicado(payload["NCF"], payload["Reference"], payload.get("DocDate"))
 
     d = llamar("POST", "VendorBills", cuerpo=payload)
     if not d.get("success") or not isinstance(d.get("data"), str):
