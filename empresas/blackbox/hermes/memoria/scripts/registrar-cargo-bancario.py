@@ -34,6 +34,11 @@ UUIDS_CONOCIDOS = {
     "150.06": "4cef27bb-50aa-4e94-1c6b-08dd4c3ef461",  # Retencion DGII 1%
 }
 
+# Tipo de gasto del 606 (catalogo DGII, /api/ExpenseTypes): "07 Gastos
+# Financieros". Es el que la contable le puso a los 51 cargos con NCF del
+# historico; los que no llevaban comprobante iban SIN tipo de gasto.
+EXPENSE_TYPE_GASTOS_FINANCIEROS = "aaee37e1-3cde-485d-92fd-a0db22efd789"
+
 
 def morir(msg):
     print(msg, file=sys.stderr)
@@ -126,14 +131,17 @@ def es_cuenta_banco(codigo):
 
 
 def referencia_de(p, trabajo_id):
-    """La llave que ata ESTE documento a ESTE movimiento del banco.
+    """La llave que ata ESTE documento a ESTE cargo del banco.
 
-    Un cargo bancario no tiene NCF: sin una llave propia, dos comisiones
-    iguales del mismo dia son indistinguibles en ADM. Se manda el
-    `banco_tx_id` (el movimiento en `openbanking_transactions`); si la
-    propuesta no lo trae, el id del trabajo, que igual es unico.
+    Con comprobante fiscal la llave es el NCF: es unico por empresa y ADM
+    frena duplicados por el (igual que con las facturas de proveedor), asi
+    que ademas de identificar, protege.
+
+    Sin comprobante no hay llave natural —dos comisiones iguales del mismo
+    dia son indistinguibles en ADM— y se cae al `banco_tx_id` (el movimiento
+    en `openbanking_transactions`); si tampoco esta, al id del trabajo.
     """
-    return str(p.get("banco_tx_id") or trabajo_id)
+    return str(p.get("ncf") or p.get("banco_tx_id") or trabajo_id)
 
 
 def docids_reclamados():
@@ -191,6 +199,7 @@ def main():
     fecha = p.get("fecha")
     descripcion = p.get("descripcion") or p.get("resumen") or ""
     direccion = p.get("direccion") or "credito"
+    ncf = str(p.get("ncf") or "").strip() or None
 
     cuentas = mapa_cuentas()
 
@@ -252,7 +261,11 @@ def main():
 
     monto = float(p.get("monto") or 0)
     total_amount = -abs(monto) if direccion == "credito" else abs(monto)
-    tasa = tasa_cambio(moneda)
+    # Con comprobante manda LA TASA DEL BANCO, no la configurada en ADM: es la
+    # que el propio banco uso para facturar (US$60 -> RD$3.477,17 = 57,9528) y
+    # es la unica con la que el monto fiscal del NCF reconstruye. La de ADM es
+    # una tasa de sistema y daria otro numero en el 606.
+    tasa = float(p.get("tasa_usd") or 0) or tasa_cambio(moneda)
 
     # Validar partida doble
     sum_d = sum(a["Debit"] for a in accounts)
@@ -281,6 +294,14 @@ def main():
         "Notes": descripcion[:500] if descripcion else None,
         "Accounts": accounts,
     }
+
+    # El comprobante fiscal del banco: es lo que soporta el gasto ante DGII y lo
+    # que decide la cuenta (con NCF va a 640.01 Cargos Bancarios; sin NCF, a
+    # 801.01 Gastos sin comprobante). Va con su tipo de gasto del 606, igual que
+    # los 159 cargos que registro la contable hasta mayo 2026.
+    if ncf:
+        payload["NCF"] = ncf
+        payload["ExpenseTypeID"] = EXPENSE_TYPE_GASTOS_FINANCIEROS
 
     if args.simular:
         print(json.dumps(payload, ensure_ascii=False, indent=1))

@@ -183,6 +183,10 @@ comprobantes as (
          count(r.ncf) filter (where r.dias_candidatos = 1)     as lineas_ok,
          sum(coalesce(r.movs, 0))                              as movs_total,
          max(r.tasa)                                           as tasa,
+         -- Lo que salió DE LA CUENTA, en su moneda. En pesos es igual al monto
+         -- del comprobante; en dólares NO, y es este el que manda para el
+         -- asiento: el comprobante declara RD$3.477,17 por un cargo de US$60.
+         round(sum(coalesce(r.suma_banco, 0)), 2)              as suma_banco,
          string_agg(distinct li.concepto, ' + ')               as conceptos,
          coalesce(string_to_array(string_agg(r.ids, ','), ','), '{{}}'::text[]) as movimiento_ids,
          jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
@@ -259,18 +263,26 @@ ins_comprobantes as (
 insert into qualia_trabajos (empresa_id, tipo, origen, estado, resumen, propuesta)
 select '{empresa_id}', 'sugerencia', 'cron_conciliacion', 'propuesta',
        'Comprobante ' || k.ncf || ' ' || to_char(k.fecha_emision, 'DD/MM') || ': ' ||
-         left(k.conceptos, 45) || ' — RD$' || to_char(k.monto_comprobante, 'FM999,999,990.00') ||
+         left(k.conceptos, 45) || ' — ' ||
+         case when k.moneda = 'USD'
+              then 'US$' || to_char(k.suma_banco, 'FM999,999,990.00') ||
+                   ' (NCF RD$' || to_char(k.monto_comprobante, 'FM999,999,990.00') || ')'
+              else 'RD$' || to_char(k.monto_comprobante, 'FM999,999,990.00') end ||
          ' (' || k.movs_total || ' cargo' || case when k.movs_total = 1 then '' else 's' end || ')' ||
          ' (' || k.banco || ' · ' || coalesce(k.cuenta_banco, k.cuenta) || ')',
        jsonb_strip_nulls(jsonb_build_object(
          'ncf', k.ncf,
          'direccion', 'cargo',
          'fecha', k.fecha_emision,
-         -- El comprobante SIEMPRE viene en pesos, aunque los cargos sean de una
-         -- cuenta en dólares: es lo que el banco declaró a DGII y lo que se
-         -- registra. La tasa que usó queda en 'tasa_usd' para que se pueda ver.
-         'monto', k.monto_comprobante,
-         'moneda', 'DOP',
+         -- El asiento va en la moneda de LA CUENTA y por lo que de verdad
+         -- salió de ella. El comprobante siempre está en pesos —DGII lo exige—
+         -- así que en una cuenta en dólares los dos números NO son el mismo:
+         -- US$60 de comisión se facturan como RD$3.477,17, y registrar el del
+         -- papel multiplicaría el gasto por la tasa. El monto fiscal queda en
+         -- 'monto_ncf' y el cambio que usó el banco en 'tasa_usd'.
+         'monto', case when k.moneda = 'USD' then k.suma_banco else k.monto_comprobante end,
+         'moneda', coalesce(k.moneda, 'DOP'),
+         'monto_ncf', k.monto_comprobante,
          'tasa_usd', k.tasa,
          'descripcion', k.conceptos,
          'banco', k.banco,
@@ -291,17 +303,23 @@ select '{empresa_id}', 'sugerencia', 'cron_conciliacion', 'propuesta',
          -- comprobante mezcla naturalezas, cada una vive en su renglón.
          'cuenta_contable', case when k.cuentas_distintas = 1 and k.cuenta_unica is not null
            then jsonb_build_object('codigo', k.cuenta_unica, 'nombre', k.cuenta_unica_nombre) end,
+         -- El asiento se arma con los montos de la CUENTA, no con los del papel
+         -- (ver el comentario de 'monto' más arriba).
          'lineas', case when k.gl_codigo is not null and k.cuentas_distintas >= 1 then
            coalesce((select jsonb_agg(jsonb_build_object(
                        'cuenta', d->>'cuenta', 'cuenta_nombre', d->>'cuenta_nombre',
                        'descripcion', d->>'concepto',
-                       'debito', (d->>'monto')::numeric, 'credito', 0))
+                       'debito', case when k.moneda = 'USD'
+                                      then (d->>'suma_banco')::numeric
+                                      else (d->>'monto')::numeric end,
+                       'credito', 0))
                       from jsonb_array_elements(k.desglose) d
                      where d->>'cuenta' is not null), '[]'::jsonb)
            || jsonb_build_array(jsonb_build_object(
                 'cuenta', k.gl_codigo, 'cuenta_nombre', k.gl_nombre,
                 'descripcion', k.banco || ' · ' || coalesce(k.cuenta_banco, k.cuenta),
-                'debito', 0, 'credito', k.monto_comprobante))
+                'debito', 0,
+                'credito', case when k.moneda = 'USD' then k.suma_banco else k.monto_comprobante end))
            end,
          'detalle', case
            when k.lineas_ok < k.lineas_total then
