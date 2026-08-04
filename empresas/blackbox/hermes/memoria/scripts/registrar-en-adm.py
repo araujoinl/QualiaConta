@@ -66,10 +66,13 @@ def resolver_tasa_linea(itbis, cantidad, precio):
     if base <= 0:
         return (None, 0.0)
     tasa = round((itbis / base) * 100, 1)
-    # Tolerancia de 1 punto porcentual para redondeos del documento
-    for t_key in TAX_SCHEDULES:
-        if abs(tasa - t_key) <= 1.0:
-            return TAX_SCHEDULES[t_key]
+    # Tolerancia de 1 punto porcentual para redondeos del documento, y gana el
+    # schedule MAS CERCANO, no el primero que caiga adentro: con una tasa de
+    # 17.0 el 16 y el 18 estan ambos a un punto y el orden del dict decidia en
+    # silencio cual de los dos se le cobraba al documento.
+    cerca = sorted((abs(tasa - t), t) for t in TAX_SCHEDULES if abs(tasa - t) <= 1.0)
+    if cerca:
+        return TAX_SCHEDULES[cerca[0][1]]
     morir("la linea (base %.2f, itbis %.2f, tasa %.1f%%) no calza con ningun "
           "schedule conocido (16%%, 18%%, 30%%). Revisar el documento." % (base, itbis, tasa))
 TERMINOS = {
@@ -371,6 +374,25 @@ def armar_payload(p, relationship_id, payment_term_id):
     }
 
 
+def lecturas_posibles(itbis_papel, total_papel):
+    """Que base y que exento harian falta, en cada tasa legal, para que la
+    cabecera del documento cierre. Devuelve [(tasa, base, exento)] ordenado por
+    |exento|: primero la lectura que menos obliga a inventar.
+
+    Es la pregunta que el cuadre solo no responde. Con total e ITBIS hay dos
+    incognitas y una ecuacion, asi que TODAS las tasas producen una lectura que
+    suma bien; la unica que es de verdad del documento es la que no necesita un
+    renglon exento que nadie leyo."""
+    posibles = []
+    for t in sorted(TAX_SCHEDULES):
+        base = itbis_papel / (t / 100.0)
+        exento = total_papel - itbis_papel - base
+        if exento < -0.05:      # la base sola pasaria el total: imposible
+            continue
+        posibles.append((t, round(base, 2), round(exento, 2)))
+    return sorted(posibles, key=lambda r: abs(r[2]))
+
+
 def verificar_cuadre(p, payload):
     """El ITBIS lo calcula ADM aplicando 18% a los precios: si el ITBIS impreso
     en la factura NO es el 18% de esas lineas, el documento va a quedar
@@ -410,6 +432,37 @@ def verificar_cuadre(p, payload):
             "preguntale al humano; NO se registra un documento que no coincide."
             % (total_papel, itbis_papel, total_adm, itbis_adm, base,
                total_adm - total_papel))
+
+    # Que sume es NECESARIO pero no suficiente, y esto es lo que faltaba. El
+    # chequeo de arriba aprueba a TODAS las tasas por igual: mientras se pueda
+    # repartir la base entre gravado y exento, cualquiera de ellas suma bien.
+    # Lo que las desempata es cuanto hay que inventar para llegar al total.
+    #
+    # Paso el 2026-08-04 con FP00001120 (Carrefour, cafe): al 18% sobraban 35.90
+    # que se fueron a un renglon "Productos exentos (no individualizados por el
+    # preparador)"; al 16% -la reducida del art. 343, la del cafe- la cabecera
+    # cierra sola con base 323.23 y cero exentos. Se registro al 18%, con un
+    # credito fiscal que el proveedor nunca facturo.
+    #
+    # Solo corre con UNA tasa en juego: una factura ya desglosada en 16 y 18
+    # sabe lo que hace, y ahi el exento es dato leido, no residuo.
+    usadas = {i["TaxPercent"] for i in payload["Items"] if i["TaxScheduleID"]}
+    if exento > 0.05 and len(usadas) == 1:
+        propia = next(iter(usadas))
+        limpias = [(t, b) for t, b, e in lecturas_posibles(itbis_papel, total_papel)
+                   if abs(e) <= 0.05 and abs(t - propia) > 0.5]
+        if limpias:
+            t_ok, base_ok = limpias[0]
+            morir(
+                "CUADRA PERO LA TASA NO SE SOSTIENE, no registro:\n"
+                "  esta propuesta cobra ITBIS %.0f%% sobre una base de %.2f y manda\n"
+                "  %.2f a renglones exentos para llegar al total.\n"
+                "  Al %.0f%% la misma cabecera cierra SOLA: base %.2f, exentos 0.00.\n"
+                "  Un exento que sale de la resta y no del papel es la firma de una\n"
+                "  tasa mal asumida — casi siempre la reducida del art. 343 (cafe,\n"
+                "  cacao, azucar, mantequilla, yogurt).\n"
+                "Volve al documento, mira que tasa dice impresa, y corregi las lineas."
+                % (propia, base, exento, t_ok, base_ok))
 
 
 def verificar_duplicado(ncf, referencia, doc_date=None):

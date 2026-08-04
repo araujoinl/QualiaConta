@@ -106,8 +106,25 @@ cat /tmp/mesa/<trabajo_id>/dossier.json
     imagen con `vision_analyze`; si algo de verdad no cierra, aplicá la regla
     de abajo (patrón conocido → renglón inferido; sin patrón → preguntá).
     **La aritmética correcta** (corrección del dueño, 2026-08-02): el ITBIS es
-    18% de la BASE GRAVADA, JAMÁS del total. La verificación es:
-    `base = itbis/0.18` y `base + itbis + exentos + propina/cargos == monto`.
+    un porcentaje de la BASE GRAVADA, JAMÁS del total. La verificación es
+    `base + itbis + exentos + propina/cargos == monto`.
+
+    **La tasa NO se asume: se despeja y se compara.** Son tres las legales —
+    18% general, 16% reducida (café, cacao, azúcar, mantequilla, yogurt: art.
+    343) y 0%/exento. Probá las que apliquen contra la cabecera: para cada una,
+    `base = itbis/tasa` y `exentos = monto - itbis - base`. La lectura buena es
+    la que deja `exentos` en CERO, o en renglones que de verdad leíste del
+    papel. **Si tenés que inventar un renglón exento para que cierre, esa tasa
+    está mal** — probá la otra ANTES de proponer.
+
+    Pasó el 2026-08-04 con la FP00001120 (Carrefour, café): dividir por 0.18
+    dio base 287.33 y dejó 35.90 sueltos, que se fueron a un renglón «Productos
+    exentos (no individualizados por el preparador)». Al 16% —la tasa del
+    café— la misma cabecera cierra sola: base 323.23, cero exentos. Se registró
+    en ADM con un 18% que el papel nunca dijo, reclamando un crédito fiscal de
+    más. Un renglón exento que sale de una resta y no del documento es la firma
+    de este error: si lo estás escribiendo, pará y probá la otra tasa.
+
     **Restaurantes: los cargos son DOS, siempre** (regla del dueño): ITBIS 18%
     + propina legal 10% (Ley 16-92), ambos impresos. Esperalos de ENTRADA como
     estructura del documento — si solo ves uno, el otro existe y está en los
@@ -495,6 +512,15 @@ update qualia_trabajos
      patron conocido → renglon inferido; sin patron → pregunta al humano con
      la diferencia exacta, sin releer. NO cierres una propuesta que no cuadra
      — la web la marca en rojo y no sirve para registrar.
+
+     **Que sume NO alcanza.** Esa verificación la podés hacer pasar siempre:
+     con la cabecera sola (total + ITBIS) elegís la base y el resto lo mandás a
+     un renglón exento, y da. Por eso, si alguna línea quedó exenta, revisá
+     ANTES de cerrar que ese exento salga del papel y no de la resta: probá las
+     otras tasas legales (`base = itbis/tasa`) y mirá si alguna cierra con
+     exento CERO. Si alguna cierra sola, esa es la tasa buena y la tuya está
+     mal. El script de registro tiene el mismo chequeo y te va a frenar ahí
+     (`verificar_cuadre`), pero para entonces el humano ya aprobó algo falso.
 
      Ejemplo restaurante (asi debe quedar): items de comida con su ITBIS + una
      linea "Propina legal 10%" con su precio y `itbis: 0` (la propina no se
