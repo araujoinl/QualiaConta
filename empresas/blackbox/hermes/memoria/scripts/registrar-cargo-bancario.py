@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+"""Registra en ADM Cloud un cargo bancario (BankCharges) aprobado en la mesa.
+
+Cubre capitalización de intereses y otros cargos/creditos bancarios:
+  - CashAccountID = la cuenta de banco (débito/crédito implícito en la cabecera)
+  - Accounts[] = las líneas contrapartida (intereses, retenciones, etc.)
+  - TotalAmount negativo para créditos (entra dinero al banco)
+
+Es ARCHIVO por la misma razón que registrar-en-adm.py: el guardián de comandos
+marca `python3 -c` y cobra 15-30s por llamada.
+
+Uso:
+    registrar-cargo-bancario.py --trabajo <uuid>            # registra
+    registrar-cargo-bancario.py --trabajo <uuid> --simular  # payload sin escribir
+"""
+import argparse
+import base64
+import json
+import os
+import re
+import subprocess
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+
+BASE = "https://api.admcloud.net"
+TIMEOUT = 90
+
+# Cuentas de ingreso (700.xx) y otras que no salen en el paginado de /api/Accounts
+# pero existen y se pueden leer por UUID directo.
+UUIDS_CONOCIDOS = {
+    "700.01": "576cbb2b-ab48-4b26-77fc-08dd1014e167",  # Intereses Bancarios
+    "150.06": "4cef27bb-50aa-4e94-1c6b-08dd4c3ef461",  # Retencion DGII 1%
+}
+
+
+def morir(msg):
+    print(msg, file=sys.stderr)
+    sys.exit(1)
+
+
+def env(nombre):
+    v = os.environ.get(nombre)
+    if not v:
+        morir("falta la variable de entorno %s" % nombre)
+    return v
+
+
+def sanear(txt):
+    return str(txt).replace(os.environ.get("ADMCLOUD_COMPANY", "\0"), "<company>")
+
+
+def llamar(metodo, ruta, cuerpo=None, params=None):
+    q = {
+        "company": env("ADMCLOUD_COMPANY"),
+        "role": env("ADMCLOUD_REG_ROLE"),
+        "appid": env("ADMCLOUD_APPID"),
+    }
+    q.update(params or {})
+    url = "%s/api/%s?%s" % (BASE, ruta, urllib.parse.urlencode(q))
+    datos = json.dumps(cuerpo).encode() if cuerpo is not None else None
+    cred = base64.b64encode(
+        ("%s:%s" % (env("ADMCLOUD_REG_USER"), env("ADMCLOUD_REG_PASSWORD"))).encode()
+    ).decode()
+    req = urllib.request.Request(url, data=datos, method=metodo)
+    req.add_header("Authorization", "Basic " + cred)
+    req.add_header("Accept", "application/json")
+    if datos:
+        req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+            return json.loads(r.read().decode("utf-8", "replace"))
+    except urllib.error.HTTPError as e:
+        morir("ADM respondio %s en %s" % (e.code, ruta))
+    except Exception as e:
+        morir("fallo la llamada a %s: %s (si era POST, NO reintentes)" % (ruta, type(e).__name__))
+
+
+def sql(consulta, **variables):
+    cmd = ["psql", env("QUALIA_DSN"), "-t", "-A", "-F", "\t", "-q"]
+    for k, v in variables.items():
+        cmd += ["-v", "%s=%s" % (k, v)]
+    r = subprocess.run(cmd, input=consulta, capture_output=True, text=True)
+    if r.returncode != 0:
+        morir("consulta a la mesa fallo: %s" % r.stderr.strip()[:200])
+    return [l.split("\t") for l in r.stdout.strip().splitlines() if l.strip()]
+
+
+def paginar(ruta):
+    filas, skip = [], 0
+    for _ in range(60):
+        d = llamar("GET", ruta, params={"skip": skip})
+        lote = d.get("data") or []
+        if not lote:
+            break
+        filas.extend(lote)
+        skip += len(lote)
+    return filas
+
+
+def mapa_cuentas():
+    """codigo de cuenta -> UUID. Pagina /api/Accounts."""
+    mapa = {}
+    for c in paginar("Accounts"):
+        cod = str(c.get("Code") or c.get("AccountCode") or "").strip()
+        if cod and c.get("ID"):
+            mapa.setdefault(cod, c["ID"])
+    return mapa
+
+
+def tasa_cambio(moneda):
+    """Lee la tasa de cambio configurada en ADM para la moneda dada."""
+    if moneda == "DOP":
+        return 1.0
+    for c in paginar("Currencies"):
+        if c.get("ID") == moneda:
+            return float(c.get("ExchangeRate") or 1.0)
+    return 1.0
+
+
+def es_cuenta_banco(codigo):
+    """Las cuentas de banco empiezan con 101 (caja) o 102 (bancos)."""
+    cod = str(codigo or "").strip()
+    return cod.startswith("101.") or cod.startswith("102.")
+
+
+def referencia_de(p, trabajo_id):
+    """La llave que ata ESTE documento a ESTE movimiento del banco.
+
+    Un cargo bancario no tiene NCF: sin una llave propia, dos comisiones
+    iguales del mismo dia son indistinguibles en ADM. Se manda el
+    `banco_tx_id` (el movimiento en `openbanking_transactions`); si la
+    propuesta no lo trae, el id del trabajo, que igual es unico.
+    """
+    return str(p.get("banco_tx_id") or trabajo_id)
+
+
+def docids_reclamados():
+    """DocIDs que la mesa ya se atribuye, con registro vivo.
+
+    Es la mitad que faltaba del chequeo de duplicados: ADM no sabe de quien es
+    cada cargo, pero la mesa si. Un gemelo que otro trabajo ya reclamo no puede
+    ser este movimiento.
+    """
+    filas = sql(
+        "select propuesta->'registro_adm'->>'docid' from qualia_trabajos "
+        " where empresa_id = :'emp' "
+        "   and propuesta->'registro_adm'->>'docid' is not null "
+        "   and coalesce(propuesta->'registro_adm'->>'eliminado_en','') = '' "
+        "   and coalesce(propuesta->'registro_adm'->>'anulado_en','') = '';",
+        emp=env("QUALIA_EMPRESA_ID"))
+    return {f[0].strip() for f in filas if f and f[0].strip()}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--trabajo", required=True)
+    ap.add_argument("--simular", action="store_true")
+    # Solo para el caso ambiguo, y solo despues de preguntarle al humano: hay un
+    # cargo igual en ADM que nadie reclama y el dueño confirmó que NO es este.
+    ap.add_argument("--forzar", action="store_true")
+    args = ap.parse_args()
+    if not re.match(r"^[0-9a-f-]{36}$", args.trabajo):
+        morir("trabajo_id invalido")
+
+    filas = sql("select estado, propuesta::text from qualia_trabajos "
+                "where id = :'id' and empresa_id = :'emp';",
+                id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
+    if not filas:
+        morir("ese trabajo no existe en la mesa")
+    estado, propuesta_txt = filas[0][0], filas[0][1]
+    if estado != "aprobada":
+        morir("el trabajo esta en '%s': solo se registra lo aprobado" % estado)
+    p = json.loads(propuesta_txt)
+
+    reg = p.get("registro_adm") or {}
+    muerto = reg.get("eliminado_en") or reg.get("anulado_en")
+    if reg.get("docid") and not muerto:
+        morir("ya tiene registro_adm vivo: %s" % reg["docid"])
+
+    documento = p.get("documento_adm") or "BankCharges"
+    if documento != "BankCharges":
+        morir("este script solo registra BankCharges; la propuesta dice '%s'" % documento)
+
+    lineas = p.get("lineas") or []
+    if not lineas:
+        morir("la propuesta no trae lineas")
+
+    moneda = p.get("moneda") or "DOP"
+    fecha = p.get("fecha")
+    descripcion = p.get("descripcion") or p.get("resumen") or ""
+    direccion = p.get("direccion") or "credito"
+
+    cuentas = mapa_cuentas()
+
+    # Identificar la linea del banco (CashAccountID): la cuenta que empieza con
+    # 101/102. Si hay mas de una, la primera. Si no hay ninguna, morir.
+    banco_idx = None
+    for i, l in enumerate(lineas):
+        if es_cuenta_banco(l.get("cuenta")):
+            banco_idx = i
+            break
+    if banco_idx is None:
+        morir("no encontre la cuenta de banco (101.xx/102.xx) en las lineas")
+
+    banco_cod = str(lineas[banco_idx].get("cuenta") or "").strip()
+    banco_uuid = cuentas.get(banco_cod)
+    if not banco_uuid:
+        morir("no encontre el UUID de la cuenta de banco '%s' en ADM" % banco_cod)
+
+    # Las demas lineas van en Accounts[] (contrapartida)
+    accounts = []
+    for i, l in enumerate(lineas):
+        if i == banco_idx:
+            continue  # el banco va en CashAccountID, no en Accounts[]
+        cod = str(l.get("cuenta") or "").strip()
+        uid = cuentas.get(cod) or UUIDS_CONOCIDOS.get(cod)
+        if not uid:
+            morir("no encontre el UUID de la cuenta '%s' (linea %d)" % (cod, i + 1))
+        debito = float(l.get("debito") or 0)
+        credito = float(l.get("credito") or 0)
+        accounts.append({
+            "RowOrder": len(accounts),
+            "RowType": 0,
+            "AccountID": uid,
+            "Debit": debito,
+            "Credit": credito,
+            "NetAmount": credito - debito,
+            "Quantity": 0.0,
+            "ExchangeRate": 0.0,
+            "LocalAmount": 0.0,
+            "NetLocalAmount": 0.0,
+            "Reference": None,
+            "ProjectID": None,
+            "DivisionID": None,
+            "LocationID": None,
+            "ClassID": None,
+            "DepartmentID": None,
+            "FixedAssetID": None,
+            "RelationshipID": None,
+            "IsHidden": False,
+            "Conciliated": False,
+            "ExpenseCategoryID": None,
+            "ItemID": None,
+            "TaxID": None,
+            "Notes": str(l.get("descripcion") or l.get("cuenta_nombre") or "")[:200],
+        })
+
+    if not accounts:
+        morir("no hay lineas de contrapartida (todas eran el banco?)")
+
+    monto = float(p.get("monto") or 0)
+    total_amount = -abs(monto) if direccion == "credito" else abs(monto)
+    tasa = tasa_cambio(moneda)
+
+    # Validar partida doble
+    sum_d = sum(a["Debit"] for a in accounts)
+    sum_c = sum(a["Credit"] for a in accounts)
+    if direccion == "credito":
+        dif = sum_c - sum_d - monto
+    else:
+        dif = sum_d - sum_c - monto
+    if abs(dif) > 0.05:
+        morir("no cuadra: contrapartida da %.2f, monto banco %.2f, dif %.4f"
+              % (sum_c - sum_d, monto, dif))
+
+    referencia = referencia_de(p, args.trabajo)
+
+    payload = {
+        "DocDate": fecha,
+        "DocType": "BANK_TRA",
+        "CashAccountID": banco_uuid,
+        "CurrencyID": moneda,
+        "ExchangeRate": tasa,
+        "TotalAmount": total_amount,
+        # La llave propia del documento. Los 166 cargos historicos la tienen en
+        # null porque nadie la mandaba nunca; desde acá va siempre, y el
+        # readback dice si ADM la persiste.
+        "Reference": referencia,
+        "Notes": descripcion[:500] if descripcion else None,
+        "Accounts": accounts,
+    }
+
+    if args.simular:
+        print(json.dumps(payload, ensure_ascii=False, indent=1))
+        print()
+        print("CashAccountID (banco): %s (%s)" % (banco_uuid, banco_cod))
+        print("TotalAmount: %.2f %s (direccion: %s)" % (total_amount, moneda, direccion))
+        print("ExchangeRate: %.4f" % tasa)
+        print("Accounts[] contrapartida:", len(accounts))
+        for a in accounts:
+            print("  D %.4f / C %.4f" % (a["Debit"], a["Credit"]))
+        print("cuadre: dif %.4f" % dif)
+        return
+
+    # ¿Ya está registrado ESTE movimiento? Ojo con la respuesta facil.
+    #
+    # Antes, cualquier cargo de mismo banco+fecha+monto abortaba con «YA
+    # REGISTRADO». Pero eso no es un duplicado: es como se ven DOS cargos
+    # distintos, porque el banco cobra dos comisiones iguales el mismo dia.
+    # El 2026-08-03 dos comisiones LBTR de RD$100 chocaron asi: el contable
+    # leyo «YA REGISTRADO: CB00000169», lo tomó por suyo, anotó ese DocID en la
+    # segunda fila y cerró — el mismo documento en dos trabajos y un cargo de
+    # menos en ADM.
+    #
+    # Dos preguntas separadas, entonces:
+    #   1. ¿Hay un cargo que traiga MI referencia? Ese si es mio, probado.
+    #   2. Si no, ¿los gemelos que hay en ADM ya los reclamó otro trabajo? Si
+    #      todos tienen dueño, ninguno puede ser este: falta registrarlo.
+    # Y si queda un gemelo sin dueño, no se sabe: para y que decida el humano.
+    gemelos = [d for d in paginar("BankCharges")
+               if d.get("BankAccountID") == banco_uuid
+               and str(d.get("DocDate") or "") == fecha
+               and abs(float(d.get("TotalAmount") or 0) - total_amount) < 0.01]
+
+    mios = [d for d in gemelos if str(d.get("Reference") or "").strip() == referencia]
+    if mios:
+        morir("YA REGISTRADO: %s — trae la referencia de este movimiento (%s)"
+              % (mios[0].get("DocID"), referencia))
+
+    huerfanos = [d for d in gemelos if str(d.get("DocID") or "").strip() not in docids_reclamados()]
+    if huerfanos and args.forzar:
+        print("--forzar: hay %d cargo(s) igual(es) sin dueño (%s) y se registra igual"
+              % (len(huerfanos), ", ".join(str(d.get("DocID")) for d in huerfanos)))
+    elif huerfanos:
+        morir(
+            "AMBIGUO, no registro nada. En ADM hay %d cargo(s) igual(es) a este "
+            "(banco %s, %s, %.2f) y %d no lo reclama ningun trabajo de la mesa: %s. "
+            "Ninguno trae referencia, asi que no se puede saber si alguno es este "
+            "movimiento o son cargos distintos que se ven iguales. Preguntale al "
+            "humano (evento 'pregunta' + estado 'esperando_respuesta') citando esos "
+            "DocID; si te confirma que este ya esta registrado, anotalo a mano, y si "
+            "te dice que no, volve a correr el script con --forzar."
+            % (len(gemelos), banco_cod, fecha, total_amount, len(huerfanos),
+               ", ".join(str(d.get("DocID")) for d in huerfanos)))
+
+    d = llamar("POST", "BankCharges", cuerpo=payload)
+    if not d.get("success") or not isinstance(d.get("data"), str):
+        morir("ADM rechazo el cargo bancario: %s" % sanear(d.get("message")))
+
+    guid = d["data"]
+    doc = llamar("GET", "BankCharges/%s" % guid).get("data") or {}
+    docid = doc.get("DocID")
+    if str(doc.get("ID") or "").lower() != guid.lower():
+        morir("el readback devolvio OTRO documento (%s). Buscar por fecha/banco."
+              % docid)
+    print("REGISTRADO: %s (uuid %s)" % (docid, guid))
+    print("  total %s | banco %s" % (doc.get("TotalAmount"), doc.get("BankAccountName")))
+
+    # ¿ADM se quedó con la referencia? De eso depende que el proximo cargo
+    # gemelo se pueda distinguir sin preguntarle a nadie. Si vuelve vacia, el
+    # documento igual quedó bien registrado — lo que se pierde es la llave, y
+    # eso hay que decirlo, no descubrirlo dentro de tres meses.
+    ref_vuelta = str(doc.get("Reference") or "").strip()
+    if ref_vuelta == referencia:
+        print("  referencia guardada en ADM: %s" % referencia)
+    else:
+        print("  OJO: mande Reference=%s y ADM devolvio %r — el campo no se "
+              "persiste. Avisalo en el hilo: sin llave, dos cargos gemelos "
+              "vuelven a ser indistinguibles." % (referencia, ref_vuelta))
+
+    sql("update qualia_trabajos set propuesta = propuesta || "
+        "jsonb_build_object('registro_adm', jsonb_build_object("
+        "'docid', :'doc', 'uuid', :'guid', 'documento', 'BankCharges', "
+        "'reference', :'ref', 'referencia_en_adm', (:'refok')::boolean, "
+        "'fecha', now()::date)) "
+        "where id = :'id' and empresa_id = :'emp';",
+        doc=docid, guid=guid, ref=referencia,
+        refok="true" if ref_vuelta == referencia else "false",
+        id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
+    print("  guardado en la mesa")
+
+    cerrado = sql("update qualia_trabajos set estado = 'registrada' "
+                  "where id = :'id' and empresa_id = :'emp' "
+                  "and estado = 'aprobada' returning id;",
+                  id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
+    if cerrado:
+        print("  estado: registrada")
+    else:
+        print("  OJO: el docid quedo guardado pero el estado NO se cerro")
+    print()
+    print("Falta solo el libro de accion, citando %s." % docid)
+
+
+if __name__ == "__main__":
+    main()
