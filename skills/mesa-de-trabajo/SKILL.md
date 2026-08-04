@@ -334,14 +334,24 @@ update qualia_trabajos set estado='analizando'
 
 4. **Chequeá duplicados ANTES de proponer** (el NCF es unico por emisor):
    - En la mesa: otro trabajo con el mismo NCF —
-     `psql ... "select id, estado from qualia_trabajos where empresa_id='$QUALIA_EMPRESA_ID' and propuesta->>'ncf' = '<NCF>' and id != '<trabajo_id>'"` —
+     `psql ... "select id, estado from qualia_trabajos where empresa_id='$QUALIA_EMPRESA_ID' and propuesta->>'ncf' = '<NCF>' and id != '<trabajo_id>' and propuesta->'registro_adm'->>'eliminado_en' is null and propuesta->'registro_adm'->>'anulado_en' is null"` —
      si existe y no esta rechazada/error: este trabajo va a `error` con
      `error_detalle='Duplicada: mismo NCF que el trabajo <id>'` y un evento nota.
+     **Un trabajo cuyo documento ADM ya no cuenta —`eliminado_en` o `anulado_en`
+     en `registro_adm`— NO es un duplicado**, y por eso el query de arriba lo
+     descarta: ese gasto quedo SIN registrar, y volver a subir el papel es justo
+     lo que corresponde hacer. Sin ese corte la resubida caia en `error` para
+     siempre, porque la fila vieja se queda en `registrada` —que no es rechazada
+     ni error— aunque el documento ya no exista (paso el 2026-08-04 con la
+     FP00001120 de Carrefour, borrada en ADM).
    - Contra ADM: busca el NCF en el historico local
      (`grep <NCF> /opt/data/preentrenamiento/raw/vendor-bills*.jsonl`) y, si no
      aparece, en las paginas recientes de VendorBills por API (GET). Si YA esta
      registrada: propuesta con `"posible_duplicado": {"docid": "FPxxxxx", "donde": "ADM"}`
-     y confianza baja — la web lo muestra en rojo y el humano decide.
+     y confianza baja — la web lo muestra en rojo y el humano decide. El
+     historico local es una FOTO vieja: si el NCF aparece ahi, confirma por API
+     que el docid sigue existiendo antes de marcar nada — un documento eliminado
+     en ADM no es un duplicado, es el que hay que volver a registrar.
 
 5. **Verificá el comprobante contra DGII — SIEMPRE llená el campo `dgii`**, aun
    cuando no aplique. Nunca lo dejes vacío: quien mira la propuesta no puede
