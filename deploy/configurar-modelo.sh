@@ -1,8 +1,33 @@
 #!/usr/bin/env bash
 # Aplica la configuración de modelos del contable. Idempotente.
 #
-#   ./configurar-modelo.sh                 -> empresa blackbox
+#   ./configurar-modelo.sh                      -> blackbox, modo normal
 #   ./configurar-modelo.sh otra-empresa
+#   ./configurar-modelo.sh blackbox respaldo    -> primario por OpenRouter
+#
+# El MODO decide quién atiende primero:
+#
+#   normal    z.AI adelante y OpenRouter al final de la fila. Es el estado de
+#             siempre: el trabajo corre sobre el plan de z.AI, que ya está pago.
+#   respaldo  OpenRouter adelante y los tres de z.AI detrás. Para cuando la
+#             cuota de z.AI está agotada, que es por CUENTA y no por modelo.
+#             Con el orden normal, cada turno del contable gasta TRES llamadas
+#             muertas —una por cada modelo de z.AI— antes de llegar al que
+#             atiende; y como el cooldown de Hermes es de 60 segundos fijos
+#             (`_rate_limited_until = time.monotonic() + 60` en
+#             agent/chat_completion_helpers.py, que ignora la hora de reset que
+#             el propio 429 trae), el turno siguiente vuelve a empezar por el
+#             principal y repite las tres. Una factura subida durante el tope
+#             se arrastra así hasta que el humano se cansa de mirar
+#             «analizando» — pasó el 2026-08-04 con la FC de flete de Pier 17.
+#
+# Los tres de z.AI NO se borran en modo respaldo, se mueven atrás: siguen
+# siendo la red buena para el otro fallo, el de un modelo suelto sobrecargado.
+# Lo que no sirve es probarlos cuando la que se agotó es la cuenta.
+#
+# Nadie llama al modo respaldo a mano: lo conmuta seguir-cuota.sh mirando
+# qualia_servicio.cuota_bloqueada_hasta, que es donde el poller ya deja anotado
+# hasta cuándo dura el tope.
 #
 # Existe porque config.yaml vive dentro del volumen del contenedor y está
 # fuera de git: si el volumen se rehace, esta configuración se pierde y no
@@ -26,6 +51,11 @@
 set -euo pipefail
 
 EMPRESA="${1:-blackbox}"
+MODO="${2:-normal}"
+case "$MODO" in
+  normal|respaldo) ;;
+  *) echo "Modo desconocido '$MODO' — usá: normal | respaldo"; exit 1 ;;
+esac
 RAIZ="/home/codebox/qualiaconta/repo"
 CONF="${RAIZ}/empresas/${EMPRESA}/hermes/config.yaml"
 ENV_EMPRESA="${RAIZ}/empresas/${EMPRESA}/.env"
@@ -67,13 +97,23 @@ OPENROUTER_API_KEY=$(leer_env OPENROUTER_API_KEY)
 DISPONIBLES=$(curl -s --max-time 20 -H "Authorization: Bearer ${GLM_API_KEY}" \
   "https://api.z.ai/api/coding/paas/v4/models" \
   | python3 -c 'import json,sys; print(" ".join(m["id"] for m in json.load(sys.stdin).get("data",[])))' 2>/dev/null)
-[ -n "$DISPONIBLES" ] || { echo "No pude listar los modelos de z.AI — reviso la llave"; exit 1; }
-for M in "$PRINCIPAL" "$RESPALDO" "$LIVIANO"; do
-  case " $DISPONIBLES " in
-    *" $M "*) ;;
-    *) echo "El modelo '$M' no existe en z.AI. Disponibles: $DISPONIBLES"; exit 1 ;;
-  esac
-done
+if [ -z "$DISPONIBLES" ]; then
+  # En modo respaldo esto NO es fatal, y la razón es la que da nombre al modo:
+  # se conmuta JUSTO cuando z.AI está topado o caído. Exigirle el catálogo para
+  # poder dejar de llamarlo es pedirle que conteste para dejar de molestarlo, y
+  # dejaría al contable clavado en el proveedor muerto — el fallo que este modo
+  # existe para evitar. Los nombres los validó el modo normal la última vez que
+  # corrió, y acá viajan a la COLA de la cadena, no al frente.
+  [ "$MODO" = respaldo ] || { echo "No pude listar los modelos de z.AI — reviso la llave"; exit 1; }
+  echo "AVISO: z.AI no contesta el catálogo — sigo, es lo esperable durante el tope"
+else
+  for M in "$PRINCIPAL" "$RESPALDO" "$LIVIANO"; do
+    case " $DISPONIBLES " in
+      *" $M "*) ;;
+      *) echo "El modelo '$M' no existe en z.AI. Disponibles: $DISPONIBLES"; exit 1 ;;
+    esac
+  done
+fi
 
 # $VISION queda FUERA de este guardia a propósito: el catálogo del endpoint de
 # coding no lo lista, pero sí lo atiende. La evidencia es la sonda de cuota de
@@ -104,6 +144,11 @@ SALDO=$(curl -s --max-time 20 -H "Authorization: Bearer ${OPENROUTER_API_KEY}" \
   "https://openrouter.ai/api/v1/credits" \
   | python3 -c 'import json,sys; d=json.load(sys.stdin)["data"]; print(round(d["total_credits"]-d["total_usage"],2))' 2>/dev/null)
 echo "Saldo de la red de seguridad (OpenRouter): US\$${SALDO:-desconocido}"
+if [ "$MODO" = respaldo ]; then
+  echo "Modo respaldo: atiende OpenRouter, z.AI queda de reserva"
+else
+  echo "Modo normal: atiende z.AI, OpenRouter queda de reserva"
+fi
 
 # --------------------------------------------------------------------------
 # Escritura
@@ -127,11 +172,12 @@ echo "Saldo de la red de seguridad (OpenRouter): US\$${SALDO:-desconocido}"
 #      sin leer imágenes ni comprimir contexto, que es una forma peor de estar
 #      caído porque desde afuera parece que funciona.
 CONF="$CONF" PRINCIPAL="$PRINCIPAL" RESPALDO="$RESPALDO" LIVIANO="$LIVIANO" VISION="$VISION" \
-OR_PRINCIPAL="$OR_PRINCIPAL" OR_LIVIANO="$OR_LIVIANO" OR_VISION="$OR_VISION" \
+OR_PRINCIPAL="$OR_PRINCIPAL" OR_LIVIANO="$OR_LIVIANO" OR_VISION="$OR_VISION" MODO="$MODO" \
 python3 - <<'PY'
 import os, shutil, yaml
 
 conf = os.environ["CONF"]
+MODO = os.environ["MODO"]
 OR_BASE, OR_KEY = "https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"
 PRINCIPAL, RESPALDO = os.environ["PRINCIPAL"], os.environ["RESPALDO"]
 LIVIANO, VISION = os.environ["LIVIANO"], os.environ["VISION"]
@@ -189,16 +235,32 @@ respaldo_archivo = conf + ".antes-configurar"
 shutil.copy2(conf, respaldo_archivo)
 lineas = open(conf, encoding="utf-8").read().split("\n")
 
-# --- 1) modelo principal ---
-lineas = reemplazar_bloque(lineas, "model", [
-    f"  default: {PRINCIPAL}", "  provider: zai", "  base_url: ''", "  api_key: ''",
-])
-
-# --- 3) cadena principal (el respaldo del modelo del chat) ---
-cadena = []
-for m in (RESPALDO, LIVIANO):
-    cadena += ["  - provider: zai", f"    model: {m}"]
-cadena += entrada_or(OR_PRINCIPAL, 2)
+# --- 1 y 3) modelo principal + su cadena, según el modo ---
+if MODO == "respaldo":
+    # Acá SÍ se fijan base_url y api_key, al revés que en modo normal. Con
+    # provider=openrouter no hay descubrimiento que valga, y el .env define
+    # OPENAI_API_KEY/OPENAI_BASE_URL apuntando a z.AI: si el cliente cae en esa
+    # resolución manda la llave equivocada al host equivocado. El síntoma sería
+    # un 401 justo durante el tope, o sea en el peor momento para descubrirlo.
+    lineas = reemplazar_bloque(lineas, "model", [
+        f"  default: {OR_PRINCIPAL}", "  provider: openrouter",
+        f"  base_url: {OR_BASE}", "  api_key: ${OPENROUTER_API_KEY}",
+    ])
+    # Los tres de z.AI pasan atrás en bloque, incluido el principal. No se
+    # borran: si el tope se levanta antes de que el vigilante lo note, la
+    # cadena los encuentra igual y el trabajo vuelve solo al plan que ya
+    # está pago.
+    cadena = []
+    for m in (PRINCIPAL, RESPALDO, LIVIANO):
+        cadena += ["  - provider: zai", f"    model: {m}"]
+else:
+    lineas = reemplazar_bloque(lineas, "model", [
+        f"  default: {PRINCIPAL}", "  provider: zai", "  base_url: ''", "  api_key: ''",
+    ])
+    cadena = []
+    for m in (RESPALDO, LIVIANO):
+        cadena += ["  - provider: zai", f"    model: {m}"]
+    cadena += entrada_or(OR_PRINCIPAL, 2)
 lineas = reemplazar_bloque(lineas, "fallback_providers", cadena)
 
 # --- 2 y 3) ranuras auxiliares, cada una con su cadena ---
@@ -239,14 +301,24 @@ try:
     cfg = yaml.safe_load(texto)
     cad = cfg.get("fallback_providers") or []
     assert len(cad) == 3, f"la cadena quedó con {len(cad)} entradas"
-    assert cad[-1].get("provider") == "openrouter", "la última entrada no es openrouter"
-    assert cad[-1].get("key_env") == OR_KEY, "la entrada de openrouter no declara key_env"
+    m_cfg = cfg.get("model") or {}
+    if MODO == "respaldo":
+        assert m_cfg.get("default") == OR_PRINCIPAL, "el primario no quedó en OpenRouter"
+        assert m_cfg.get("provider") == "openrouter", "el primario no quedó en OpenRouter"
+        assert m_cfg.get("base_url") == OR_BASE, "el primario no declara base_url"
+        # Que TODA la cadena sea de z.AI es la prueba de que el proveedor vivo
+        # quedó al frente y solo: si se colara una entrada de openrouter acá,
+        # sería que el bloque model no se conmutó y el orden sigue invertido.
+        assert all(e.get("provider") == "zai" for e in cad), "la cadena no quedó en z.AI"
+    else:
+        assert m_cfg.get("default") == PRINCIPAL, "el modelo principal no quedó"
+        assert cad[-1].get("provider") == "openrouter", "la última entrada no es openrouter"
+        assert cad[-1].get("key_env") == OR_KEY, "la entrada de openrouter no declara key_env"
     for tarea, (prov, modelo, _b, _k, respaldo_modelo) in AUX.items():
         r = cfg.get("auxiliary", {}).get(tarea) or {}
         assert r.get("provider") == prov and r.get("model") == modelo, f"{tarea}: mal escrita"
         c = r.get("fallback_chain") or []
         assert len(c) == 1 and c[0].get("model") == respaldo_modelo, f"{tarea}: sin red"
-    assert (cfg.get("model") or {}).get("default") == PRINCIPAL, "el modelo principal no quedó"
     # Lo que el script NO administra y no puede haber tocado.
     assert (cfg.get("approvals") or {}).get("deny"), "se perdió approvals.deny"
     assert "Candado de flujo contra la firma" in texto, "se perdieron los comentarios de approvals"
@@ -261,7 +333,8 @@ PY
 echo
 docker exec "$CONTENEDOR" hermes fallback list 2>&1 | grep -E "Primary|[0-9]\." | sed 's/^/  /'
 echo
-CONF="$CONF" PRINCIPAL="$PRINCIPAL" LIVIANO="$LIVIANO" VISION="$VISION" python3 - <<'PY'
+CONF="$CONF" PRINCIPAL="$PRINCIPAL" LIVIANO="$LIVIANO" VISION="$VISION" \
+OR_PRINCIPAL="$OR_PRINCIPAL" MODO="$MODO" python3 - <<'PY'
 import os, yaml
 c = yaml.safe_load(open(os.environ["CONF"], encoding="utf-8"))
 aux = c.get("auxiliary", {}) or {}
@@ -281,7 +354,17 @@ for k, (prov, v) in esperado.items():
     print(f"  {'OK ' if ok else 'MAL'} {k:<14} {s.get('provider') or '-':<7}"
           f" {s.get('model') or '-':<10} -> {red.get('model') or 'SIN RED'}")
 m = c.get("model", {}) or {}
-if m.get("base_url") or m.get("api_key"):
+modo, or_principal = os.environ["MODO"], os.environ["OR_PRINCIPAL"]
+if modo == "respaldo":
+    # Al revés que en normal: acá los dos campos son obligatorios (ver el
+    # comentario del bloque de escritura — sin ellos el cliente resuelve por
+    # OPENAI_* y le manda la llave de z.AI a OpenRouter).
+    ok = (m.get("provider") == "openrouter" and m.get("model", m.get("default")) == or_principal
+          and m.get("base_url") and m.get("api_key"))
+    malas += 0 if ok else 1
+    print(f"  {'OK ' if ok else 'MAL'} {'primario':<14} {m.get('provider') or '-':<7}"
+          f" {m.get('default') or '-'}")
+elif m.get("base_url") or m.get("api_key"):
     malas += 1
     print("  MAL model.base_url/api_key deberían estar vacíos con provider=zai")
 raise SystemExit(1 if malas else 0)
