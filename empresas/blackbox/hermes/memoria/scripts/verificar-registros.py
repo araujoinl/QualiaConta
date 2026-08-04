@@ -13,9 +13,29 @@ la factura FP00001063 que el dueno elimino por estar mal calculada).
 Sin este chequeo, la mesa seguiria diciendo "Subida" sobre algo que ya no
 existe, y el libro citaria un numero de documento fantasma.
 
-Marca los desaparecidos con `registro_adm.eliminado_en` y los reporta. NO los
-re-registra ni cambia el estado: que hacer con una factura eliminada es una
-decision del humano, no del script.
+**Se pregunta por UUID, uno por uno, contra el endpoint del tipo de documento
+de cada fila.** Antes se paginaba UNA vez el listado de `VendorBills` y se
+comparaba local. Estaba mal por dos motivos, los dos medidos el 2026-08-04:
+
+  1. Los cargos bancarios y las transferencias no estan en ese listado. Con 61
+     `BankCharges` y 3 `BankBankTransfers` ya registrados, una corrida con
+     --marcar los enterraba a todos con un `eliminado_en` falso — y en la mesa
+     esa lapida tacha la fila y la saca de "Te toca".
+  2. **El listado no trae los anulados.** `/api/BankCharges` devolvio 166 filas
+     y ninguna con Void; los CB00000164..171 que el dueno acababa de anular no
+     aparecian, y el campo `Void` ni siquiera viene en el listado. Por listado,
+     un anulado es indistinguible de un eliminado.
+
+El `GET {tipo}/{uuid}` si los distingue: del anulado devuelve el documento con
+`Void: true`, y del eliminado devuelve `data: null` — igual que de un UUID que
+no existe. Se conserva el guard de que el `ID` devuelto sea el pedido: a esta
+API se le puede pasar un DocID o un NCF y responde OTRO documento con
+success:true, y ese acierto casual es peor que un error.
+
+Marca los caidos con `registro_adm.eliminado_en` o `.anulado_en` y los reporta.
+NO los re-registra ni cambia el estado: que hacer con un documento caido es una
+decision del humano, no del script. Lo que no se pudo verificar (red, HTTP
+raro) NO se marca: una lapida falsa cuesta mas que un chequeo perdido.
 
 Uso:  verificar-registros.py [--marcar]
 Sin --marcar solo informa.
@@ -26,10 +46,15 @@ import json
 import os
 import subprocess
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
 BASE = "https://api.admcloud.net"
+
+# Los cuatro documentos que la mesa sabe registrar. El endpoint es el mismo
+# nombre que `propuesta.documento_adm`, que es lo que escribe el contable.
+ENDPOINTS = {"VendorBills", "BankCharges", "BankBankTransfers", "Journals"}
 
 
 def env(n):
@@ -53,15 +78,37 @@ def llamar(ruta, params=None):
         return json.loads(r.read().decode("utf-8", "replace"))
 
 
-def paginar(ruta):
-    filas, skip = [], 0
-    for _ in range(60):
-        lote = llamar(ruta, {"skip": skip}).get("data") or []
-        if not lote:
-            break
-        filas.extend(lote)
-        skip += len(lote)
-    return filas
+def estado_en_adm(documento, uuid):
+    """(estado, detalle) para un documento nuestro. Estado es uno de:
+    'vigente' | 'anulado' | 'eliminado' | 'indeterminado'.
+
+    'indeterminado' es un NO SE SABE, no un no: es lo que devuelve cuando la
+    API no contesta o contesta algo que no entendemos, y su unico efecto es
+    que la fila no se toca.
+    """
+    if documento not in ENDPOINTS:
+        return "indeterminado", "tipo de documento desconocido: %r" % documento
+    if not uuid:
+        return "indeterminado", "la fila no guardo el uuid del documento"
+    try:
+        r = llamar("%s/%s" % (documento, uuid))
+    except urllib.error.HTTPError as e:
+        # 404 es la respuesta honesta de "no esta", pero esta API no la usa
+        # para esto (devuelve 200 + data null), asi que un 404 aca es mas
+        # probable que sea la ruta mal armada que un documento borrado.
+        return "indeterminado", "HTTP %s" % e.code
+    except Exception as e:                                    # red, timeout, JSON roto
+        return "indeterminado", type(e).__name__
+
+    d = r.get("data")
+    if not isinstance(d, dict):
+        # Eliminado y uuid-que-no-existe dan lo mismo: success true, data null.
+        return "eliminado", "el documento ya no existe en ADM"
+    if str(d.get("ID") or "").lower() != str(uuid).lower():
+        # No es nuestro documento: la API resolvio otra cosa. Tratarlo como
+        # eliminado seria inventar; lo que corresponde es no concluir.
+        return "indeterminado", "el readback devolvio otro documento (%s)" % d.get("DocID")
+    return ("anulado", "Void=true") if d.get("Void") else ("vigente", "")
 
 
 def sql(consulta, **variables):
@@ -84,48 +131,58 @@ def main():
         "       propuesta->'registro_adm'->>'uuid', "
         "       coalesce(propuesta->'registro_adm'->>'eliminado_en','') "
         "       || coalesce(propuesta->'registro_adm'->>'anulado_en',''), "
-        "       coalesce(propuesta->>'proveedor','') "
+        # `documento_adm` es lo que el contable declaro registrar. Las facturas
+        # mas viejas nacieron antes de ese campo: para ellas el tipo se deduce
+        # del tipo del trabajo, que en esa epoca solo podia ser una factura.
+        "       coalesce(nullif(propuesta->>'documento_adm',''), "
+        "                case when tipo = 'factura' then 'VendorBills' else '' end), "
+        "       translate(coalesce(nullif(propuesta->>'proveedor',''), "
+        "                          left(coalesce(resumen,''), 40)), E'\\t\\n', '  ') "
         "  from qualia_trabajos "
         " where empresa_id = :'emp' "
-        "   and propuesta->'registro_adm'->>'docid' is not null;",
+        "   and propuesta->'registro_adm'->>'docid' is not null "
+        " order by propuesta->'registro_adm'->>'docid';",
         emp=env("QUALIA_EMPRESA_ID"))
 
     if not filas:
         print("no hay documentos registrados que verificar")
         return
 
-    # Se pagina UNA vez y se compara local: getbyid no sirve (con un id que no
-    # resuelve devuelve OTRO documento con success:true).
-    # DocID -> Void. El campo viene en el listado para las 1052 facturas.
-    enadm = {str(x.get("DocID") or ""): bool(x.get("Void")) for x in paginar("VendorBills")}
-    print("documentos registrados en la mesa: %d | facturas en ADM: %d (anuladas: %d)"
-          % (len(filas), len(enadm), sum(1 for v in enadm.values() if v)))
+    print("documentos registrados en la mesa: %d" % len(filas))
     print()
 
     caidos = []   # (trabajo, docid, campo, texto)
-    for tid, docid, uuid, ya_marcado, proveedor in filas:
+    dudosos = 0
+    for tid, docid, uuid, ya_marcado, documento, quien in filas:
         if ya_marcado:
-            estado = "ya marcado (%s)" % ya_marcado[:10]
-        elif docid not in enadm:
-            estado = "DESAPARECIO de ADM"
+            print("  %-12s %-40s ya marcado (%s)" % (docid, quien[:40], ya_marcado[:10]))
+            continue
+
+        estado, detalle = estado_en_adm(documento, uuid)
+        if estado == "eliminado":
             caidos.append((tid, docid, "eliminado_en",
                            "El documento %s ya no existe en ADM Cloud: fue eliminado. "
-                           "La factura queda sin registro." % docid))
-        elif enadm[docid]:
-            estado = "ANULADO en ADM"
+                           "El trabajo queda sin registro." % docid))
+        elif estado == "anulado":
             caidos.append((tid, docid, "anulado_en",
                            "El documento %s fue ANULADO en ADM Cloud: se conserva con "
                            "marca de anulado y fuera de balances." % docid))
-        else:
-            estado = "vigente"
-        print("  %-12s %-34s %s" % (docid, proveedor[:34], estado))
+        elif estado == "indeterminado":
+            dudosos += 1
 
+        print("  %-12s %-40s %s%s" % (
+            docid, quien[:40],
+            {"vigente": "vigente", "anulado": "ANULADO en ADM",
+             "eliminado": "DESAPARECIO de ADM"}.get(estado, "no se pudo verificar"),
+            " (%s)" % detalle if detalle and estado != "anulado" else ""))
+
+    print()
+    if dudosos:
+        print("%d documento(s) no se pudieron verificar — no se tocan." % dudosos)
     if not caidos:
-        print()
         print("todo en orden")
         return
 
-    print()
     print("%d documento(s) registrados ya no estan vigentes." % len(caidos))
     if not args.marcar:
         print("(corre con --marcar para anotarlo en la mesa)")
