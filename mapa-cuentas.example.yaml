@@ -38,9 +38,9 @@ empresas:
         direccion: cargo
         cuenta: "640.01"
         cuenta_nombre: "Cargos Bancarios"
-      - match: "nota de debito"
-        direccion: cargo
-        revisar: "descripción genérica — identificá el movimiento antes de registrar"
+      # Las notas de débito NO van acá: son pagos a terceros (DGII, Aduanas,
+      # TSS), no gasto del banco, y se resuelven en la conciliación contra el
+      # recibo del pago. El detector ya no las siembra.
       - match: "capitalizaci|interes"
         direccion: credito
         cuenta: "700.01"
