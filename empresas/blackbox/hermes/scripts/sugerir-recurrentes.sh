@@ -68,7 +68,7 @@ select json_build_object(
                           'prov', coalesce(propuesta->>'proveedor_id', propuesta->>'proveedor'),
                           'periodo', propuesta->>'periodo',
                           'llego', coalesce((propuesta->>'llego')::boolean, false),
-                          'aldia', (propuesta ? 'vencido')))
+                          'aldia', (propuesta ? 'monto_tipico')))
                         from qualia_trabajos
                         where empresa_id = '${QUALIA_EMPRESA_ID}'
                           and propuesta->>'clase' = 'factura_faltante'
@@ -103,6 +103,23 @@ for e in (estado.get("emitidas") or []):
     if e.get("periodo") == periodo and e.get("prov"):
         emitidas[e["prov"]] = e
 
+# El nombre CANÓNICO sale del catálogo de proveedores, no de la factura. El
+# `Beneficiary` es texto libre y cambia entre facturas del mismo proveedor: Claro
+# aparece con siete grafías —«Claro», «Claro-», «Claro'-Compañia Dominicana de
+# Teléfonos, S.A»— y el detector mostraba la primera que encontrara en el
+# archivo, o sea una cualquiera. El catálogo tiene una sola por RelationshipID.
+canonicos = {}
+try:
+    for line in open(f"{RAW}/vendors.jsonl"):
+        d = json.loads(line)
+        d = d.get("data", d)
+        ident = d.get("ID") or d.get("RelationshipID")
+        nombre = (d.get("Name") or "").strip()
+        if ident and nombre:
+            canonicos[ident] = nombre
+except FileNotFoundError:
+    pass  # sin catálogo se sigue con el Beneficiary: peor nombre, no menos filas
+
 facturas = collections.defaultdict(list)
 nombres = {}
 for line in open(f"{RAW}/vendor-bills-detalle.jsonl"):
@@ -111,12 +128,28 @@ for line in open(f"{RAW}/vendor-bills-detalle.jsonl"):
         continue
     p = d.get("RelationshipID")
     nombres.setdefault(p, d.get("Beneficiary") or "?")
-    facturas[p].append({"fecha": d["DocDate"][:10], "monto": c2(d.get("TotalAmount")),
-                        "docid": d.get("DocID")})
+    total = c2(d.get("TotalAmount"))
+    aplicado = c2(d.get("AppliedPayments"))
+    facturas[p].append({
+        "fecha": d["DocDate"][:10],
+        "monto": total,
+        "docid": d.get("DocID"),
+        # El UUID es lo que abre el documento en ADM y lo que engancha sus
+        # adjuntos en Storage (ahí el campo se llama `TransactionID`). El DocID
+        # es para leer, el UUID es para linkear: sin él la fila muestra el número
+        # pero no puede llevarte al documento.
+        "uuid": d.get("ID"),
+        # Pagada = lo aplicado cubre el total. Los centavos se toleran porque el
+        # total sale de un `numeric` y el aplicado se acumula pago a pago. En 0
+        # es impaga, no «sin dato»: el campo viene poblado en 890 de las 1.103
+        # del histórico, así que el 0 significa lo que dice.
+        "pagada": total > 0 and aplicado >= total - 0.005,
+        "aplicado": aplicado,
+    })
 
 inserts, updates = [], []
 for prov, fs in facturas.items():
-    nombre = nombres[prov]
+    nombre = canonicos.get(prov) or nombres[prov]
     if prov in rechazados or nombre in rechazados:
         continue                                   # dijiste que no. Nunca más.
     meses = sorted({f["fecha"][:7] for f in fs})
@@ -154,6 +187,9 @@ for prov, fs in facturas.items():
     dia_esperado = min(dia_habitual, calendar.monthrange(HOY.year, HOY.month)[1])
     fecha_esperada = HOY.replace(day=dia_esperado).isoformat()
 
+    # Lo que suele costar: mediana de los últimos seis, no promedio. Un mes
+    # atípico —la nómina de diciembre en Humano— corre el promedio y deja el
+    # aviso de desvío calibrado contra un número que no representa nada.
     montos = sorted(f["monto"] for f in fs[-6:])
     tipico = montos[len(montos) // 2]
     propuesta = {
@@ -170,6 +206,14 @@ for prov, fs in facturas.items():
         "llego": llego,
         "vencido": vencido,
         "dia_habitual": dia_habitual,
+        # Lo que suele costar, SIEMPRE — también en la que ya llegó: es contra
+        # esto que se mira si el monto de este mes se salió de lo normal.
+        "monto_tipico": tipico,
+        # La fila la escribe el proveedor y la lee la pantalla: el nombre no se
+        # repite en `descripcion`. Antes decía «Fulano — todavía no facturó
+        # 2026-08» y la fila mostraba eso Y el chip «Todavía no», el mismo dato
+        # escrito dos veces.
+        "descripcion": nombre,
         "historial": {"meses": len(meses), "facturas": len(fs),
                       "por_mes": round(len(fs) / len(meses), 2),
                       "dia_habitual": dia_habitual, "dispersion_dia": round(dispersion, 1)},
@@ -181,21 +225,22 @@ for prov, fs in facturas.items():
             # promedio: ahí ya no hay nada que estimar.
             "fecha": u["fecha"],
             "monto": u["monto"],
-            "descripcion": f"{nombre} — facturó {periodo}",
-            # El pago NO se declara: `AppliedPayments` viene en 0 y
-            # `UnappliedAmount` es 0 en las 1.103 facturas del histórico, así que
-            # no distingue «impaga» de «sin dato». Inventar un `pagada: false`
-            # sería peor que no decirlo. Sale de ADM en vivo, no de este dump.
-            "factura": {"docid": u["docid"], "fecha": u["fecha"], "monto": u["monto"]},
+            "pagada": u["pagada"],
+            # Cuánto se salió de lo normal, con signo: +0.18 es 18% por encima.
+            # Se guarda el número y no el veredicto para que el umbral se pueda
+            # mover en la pantalla sin re-emitir las filas ya escritas.
+            "desvio": round((u["monto"] - tipico) / tipico, 4) if tipico else 0,
+            "factura": {"docid": u["docid"], "uuid": u["uuid"], "fecha": u["fecha"],
+                        "monto": u["monto"], "pagada": u["pagada"]},
             "detalle": (f"Ya facturó {periodo}: {u['docid']} del {u['fecha']} por "
-                        f"RD${u['monto']:,.2f}. Factura {len(meses)} de los últimos meses, "
-                        f"siempre alrededor del día {dia_habitual}."),
+                        f"RD${u['monto']:,.2f} ({'pagada' if u['pagada'] else 'sin pagar'}). "
+                        f"Suele costar RD${tipico:,.2f}. Factura {len(meses)} de los últimos "
+                        f"meses, siempre alrededor del día {dia_habitual}."),
         })
         resumen = f"{nombre} facturó {periodo} ({u['docid']})"
     elif vencido:
         propuesta.update({
             "monto": tipico,
-            "descripcion": f"{nombre} — no facturó {periodo}",
             "detalle": (f"Facturó {len(meses)} de los últimos meses, siempre alrededor del día "
                         f"{dia_habitual}, por unos RD${tipico:,.2f}. De {periodo} no hay ninguna y "
                         f"hoy es {HOY.day}. Si no corresponde, rechazala con el motivo: no vuelvo "
@@ -208,7 +253,6 @@ for prov, fs in facturas.items():
         # una factura que aún no debería haber llegado.
         propuesta.update({
             "monto": tipico,
-            "descripcion": f"{nombre} — todavía no facturó {periodo}",
             "detalle": (f"Factura {len(meses)} de los últimos meses, alrededor del día "
                         f"{dia_habitual}, por unos RD${tipico:,.2f}. De {periodo} todavía no hay "
                         f"ninguna, pero hoy es {HOY.day}: está dentro de su fecha habitual."),
