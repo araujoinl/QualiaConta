@@ -529,7 +529,15 @@ update qualia_trabajos set estado='esperando_respuesta'
 
 Mirá el último evento con `autor='usuario'` del trabajo y el estado actual:
 
-- **`aprobada`**: escribí la entrada en tu libro de acción — archivo NUEVO en
+- **`aprobada`**: desde el 2026-08-04 esta rama es la EXCEPCIÓN, no el camino
+  normal. Las facturas y los cargos bancarios los registra el poller solo, y te
+  despierta después con el motivo `escribir_libro`. Acá llegás por lo que él no
+  automatiza —una transferencia, un `Journals`— o por una carrera en la que el
+  evento se leyó antes de que la fila dijera `aprobada`. **Mirá primero
+  `registro_adm.docid`**: si ya está, no registres nada, andá derecho a lo que
+  dice `escribir_libro`.
+
+  Escribí la entrada en tu libro de acción — archivo NUEVO en
   `libro-de-accion/` (append-only, jamás editar uno existente), con **Aprobó:**
   el `aprobado_por_nombre` de la fila, «por la mesa web», y su **Alcance**.
   Espejala en la tabla para la vista web:
@@ -608,6 +616,51 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
     trabajabas, no la pises.
   - **NO pongas `updated_at` en el SET.** No tenés grant sobre esa columna y el
     UPDATE entero muere con «permission denied». El trigger la sella sola.
+
+  ### Cargo bancario, transferencia o asiento: no hay NCF que te salve
+
+  El script de arriba es SOLO para facturas. Lo que sale de una sugerencia
+  —`BankCharges`, `BankBankTransfers`, `Journals`— lo armás vos con la API, y
+  ahí **no hay NCF**: ninguna de las dos redes que frenan el doble registro de
+  una factura existe. ADM te va a dejar crear el mismo cargo diez veces.
+
+  **REGLA DURA: un documento de ADM es «el tuyo» solo si podés PROBARLO.** El
+  parecido no prueba nada: mismo banco, misma fecha, mismo monto y mismo
+  concepto es exactamente cómo se ven DOS cargos distintos. El banco cobra dos
+  comisiones iguales el mismo día y las cobra de verdad.
+
+  Pasó el 2026-08-03: dos comisiones LBTR de RD$100 del mismo día se aprobaron
+  juntas, la segunda encontró en ADM el cargo que vos mismo habías creado 45
+  segundos antes para la primera, lo dio por suyo y cerró la fila con
+  `CB00000169` — el mismo DocID en dos trabajos, y un cargo de menos en ADM.
+  Nadie se enteró hasta que el dueño contó 61 en la mesa contra 59 en ADM.
+
+  Entonces, al registrar uno de estos:
+
+  - **Mandá `Reference` = el `banco_tx_id` de la propuesta** (el uuid del
+    movimiento del banco). Es lo único que distingue dos cargos gemelos.
+    **Verificá en el readback si volvió**: los 166 `BankCharges` de esta empresa
+    tienen `Reference` en null porque nunca nadie lo mandó (medido 2026-08-04),
+    así que la primera vez que lo mandes estás averiguando si el campo se
+    persiste. Si vuelve poblado, decilo en el evento `nota` y desde ahí es LA
+    llave. Si vuelve null, avisá — hay que buscar otra y no se puede seguir
+    registrando gemelos a ciegas.
+  - **Buscar antes del POST no es opcional**: paginá el listado de su tipo y
+    fijate si alguno trae TU referencia. **Ojo: el listado no trae los
+    anulados** (medido 2026-08-04: `/api/BankCharges` devolvió 166 filas, cero
+    con `Void`, y los que el dueño acababa de anular no estaban). No
+    encontrarlo es la respuesta correcta para registrar: si lo anularon, hay que
+    volver a registrarlo igual.
+  - **Leé de vuelta por UUID** (`GET <tipo>/<uuid>`) y comprobá que el `ID`
+    devuelto sea el que pediste, igual que hace el script con las facturas.
+    Recién ahí guardás `docid`, `uuid`, `documento` y `reference` en
+    `registro_adm`.
+  - **Si no podés probar que el documento es tuyo, NO lo adoptes y NO
+    re-registres**: preguntá por evento `pregunta` y dejá la fila en
+    `esperando_respuesta` con lo que viste («hay un CB00000169 idéntico del
+    mismo día; no puedo saber si es este movimiento o el otro»). Un DocID
+    prestado es un descuadre silencioso; una pregunta la contesta el dueño en
+    diez segundos.
 
   ### Referencia: qué hace el script por dentro
 
@@ -724,23 +777,70 @@ update qualia_trabajos set estado='analizando'
 
   — y seguí el análisis con la respuesta como dato nuevo.
 
+## Si el motivo es `escribir_libro`
+
+**El documento YA ESTÁ en ADM y la fila ya está en `registrada`.** Desde el
+2026-08-04 el poller registra las aprobaciones él mismo, corriendo el script del
+tipo de documento sin despertarte: al aprobar no queda nada que decidir, y hacer
+que un modelo lea esta skill entera para ejecutar un comando fijo costaba tokens
+y ataba el registro a que hubiera cupo de LLM. Te despierta después, para lo
+único que es tuyo acá: **escribir el libro de acción**.
+
+Hacé sólo eso, y en este orden:
+
+1. Leé la fila (`propuesta`, `aprobado_por_nombre`, `propuesta->'registro_adm'`).
+2. Escribí el archivo NUEVO en `libro-de-accion/` citando el DocID que ya está
+   en `registro_adm.docid`, con **Aprobó:** y **Alcance:** como siempre.
+3. Espejalo en `qualia_libro` (el mismo `insert` de la rama `aprobada`).
+4. Si la decisión trae Alcance, actualizá tu memoria curada.
+
+Tres cosas que NO tenés que hacer, y una que sí mirar:
+
+- **No registres nada.** No corras los scripts de registro, no toques ADM, no
+  pises `registro_adm`. Ya está hecho, y en un cargo bancario re-hacerlo crea el
+  documento dos veces (no hay NCF que lo frene).
+- **No cambies el estado.** `registrada` es terminal y ya está puesto.
+- **No dupliques el libro.** Este aviso también lo dispara el barrido de
+  «registrada sin libro», que reintenta a la media hora: revisá `qualia_libro`
+  por `trabajo_id` antes de escribir, porque puede que ya lo hayas hecho.
+- **Si el `registro_adm.docid` no está**, algo se salió del camino: no inventes
+  la entrada. Dejá un evento `nota` diciéndolo y no escribas libro — una entrada
+  sin documento es peor que ninguna.
+
 ## Si el motivo es `registro_pendiente`
 
-El poller encontró un trabajo en `aprobada` que lleva más de 10 minutos sin
-`registro_adm.docid`. **Es un reintento, no una novedad**: significa que un
-turno anterior tuyo murió a mitad de camino y nadie lo supo. Pasó el 2026-08-03
-con cuatro facturas: z.AI devolvió 429 durante una ráfaga de aprobaciones, los
-turnos se cayeron sin escribir nada, y las filas quedaron huérfanas.
+El poller tiene un trabajo en `aprobada` sin `registro_adm.docid` que él no pudo
+registrar. Tres razones posibles, y conviene saber cuál antes de actuar:
+
+1. **El script murió con un motivo.** El más importante es el `AMBIGUO` del
+   cargo bancario: hay un gemelo en ADM que nadie reclama y el script se niega a
+   adivinar. Eso NO se resuelve reintentando — se resuelve preguntando (ver la
+   regla dura de más arriba).
+2. **El `documento_adm` no tiene registro automático.** Hoy sólo lo tienen
+   `VendorBills` y `BankCharges`; una transferencia o un `Journals` caen acá y
+   los registrás vos, con todos los cuidados de la sección de arriba.
+3. **El registro se cayó sin dejar rastro** y lo agarró el barrido de los 10
+   minutos. Pasó el 2026-08-03 con cuatro facturas: z.AI devolvió 429 durante
+   una ráfaga de aprobaciones, los turnos se cayeron sin escribir nada, y las
+   filas quedaron huérfanas.
 
 Hacé exactamente lo mismo que en la rama `aprobada` de `accion_usuario`: leé la
 fila, registrá en ADM con el script, subí el adjunto, escribí el libro y cerrá
 la fila. Dos cuidados propios de un reintento:
 
-- **Puede estar registrada de verdad y vos no haberlo anotado.** El script ya lo
-  chequea (`verificar_duplicado` pagina VendorBills por NCF y por referencia) y
-  ADM también frena el duplicado, así que corré el script y leé su mensaje en
-  vez de suponer. Si te dice que ya existe, no re-registres: buscá el documento,
-  guardá su DocID en `registro_adm` y cerrá la fila.
+- **Puede estar registrada de verdad y vos no haberlo anotado.** En una FACTURA
+  eso se resuelve solo: el script lo chequea (`verificar_duplicado` pagina
+  VendorBills por NCF y por referencia) y ADM también frena el duplicado, así
+  que corré el script y leé su mensaje en vez de suponer. Si te dice que ya
+  existe, no re-registres: el NCF es único por emisor, así que ese documento es
+  este trabajo — guardá su DocID en `registro_adm` y cerrá la fila.
+
+  **En un cargo, transferencia o asiento NO vale el mismo razonamiento.** Sin
+  NCF, «encontré uno igual» no significa «es el mío»: significa que hay dos
+  movimientos que se ven iguales, que es lo normal en un banco. Solo lo adoptás
+  si el documento trae TU `banco_tx_id` en `Reference`; si no podés probarlo,
+  preguntá y dejá la fila en `esperando_respuesta`. Ver la regla dura de arriba
+  — se saltó una vez y costó el `CB00000169` duplicado.
 - **Si el libro ya tiene su entrada de la corrida anterior, no la dupliques.**
   El libro es append-only: revisá `qualia_libro` por `trabajo_id` antes de
   escribir.

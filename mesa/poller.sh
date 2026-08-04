@@ -5,19 +5,21 @@
 # (webhook local del gateway Hermes) solo cuando hay trabajo. No marca ningún
 # estado por sí mismo: todos los cambios los hace el contable o la web.
 #
-# Despierta por tres señales:
+# Despierta por cuatro señales:
 #   1) trabajos en estado 'pendiente' (factura recién arrastrada)
-#   2) eventos nuevos con autor='usuario' (aprobó / rechazó / respondió)
-#   3) aprobadas que llevan rato sin llegar a ADM (motivo registro_pendiente):
-#      red de seguridad para el turno del contable que muere después de que el
-#      aviso ya se entregó — sin esto la fila queda huérfana para siempre
+#   2) eventos nuevos con autor='usuario' (rechazó / respondió; la APROBACIÓN no
+#      lo despierta: la registra este mismo script — ver registrar_directo)
+#   3) aprobadas que llevan rato sin llegar a ADM: red de seguridad para el
+#      registro que murió a mitad — sin esto la fila queda huérfana para siempre
+#   4) registradas sin entrada en el libro de acción (motivo escribir_libro)
 #
 # Y suelta las reservas muertas: 'analizando' congelado 20 min vuelve a
-# 'pendiente'. La regla general detrás de los tres barridos: TODO estado que le
-# pertenece al contable —pendiente, analizando, aprobada-sin-docid— necesita su
-# red. Los que le pertenecen al humano —propuesta, esperando_respuesta— no se
-# tocan nunca, y los terminales —registrada, rechazada, error— tampoco. Si algún
-# día se agrega un estado del contable, hay que preguntarse quién lo rescata.
+# 'pendiente'. La regla general detrás de los barridos: TODO estado que le
+# pertenece al contable —pendiente, analizando, aprobada-sin-docid,
+# registrada-sin-libro— necesita su red. Los que le pertenecen al humano
+# —propuesta, esperando_respuesta— no se tocan nunca, y los terminales
+# —rechazada, error— tampoco. Si algún día se agrega un estado del contable, hay
+# que preguntarse quién lo rescata.
 #
 # Antes de avisar un trabajo nuevo corre el preparador determinista
 # (mesa/preparar-trabajo.sh, montado en /mesa): baja el documento, extrae,
@@ -26,6 +28,9 @@
 # prep falla, el aviso va igual y el contable completa con el protocolo viejo.
 # El único estado que el prep puede marcar es 'error' por descarga imposible;
 # el claim pendiente→analizando sigue siendo del contable.
+#
+# Y en la SALIDA hace lo simétrico: una aprobación se registra en ADM corriendo
+# el script del tipo de documento, sin despertar al LLM (ver registrar_directo).
 #
 # Corre como sidecar en el compose de cada empresa (servicio 'mesa'), red de
 # host, misma imagen qualiaconta:local (trae psql y curl).
@@ -186,6 +191,89 @@ poke() {
   fi
   log "no pude tocar el webhook ($2 $1) — ¿gateway abajo?"
   return 1
+}
+
+# ------------------------------------------------------- registro determinista
+# Registrar en ADM lo YA aprobado no necesita al contable. La propuesta está
+# fija —el humano la aprobó tal cual— y hay un script por tipo de documento que
+# hace el trabajo entero: arma el payload, chequea duplicado, hace el POST, lee
+# de vuelta el DocID, sube el adjunto, lo guarda en la fila y la cierra en
+# 'registrada'.
+#
+# Hasta el 2026-08-04 el poller despertaba al LLM para que corriera ESE script:
+# el modelo leía la SKILL entera y decidía ejecutar un comando que siempre es el
+# mismo. De los 120 registros de las 6 h previas, 64 eran sugerencias nacidas de
+# un cron --no-agent (cero tokens) que sólo pagaban al modelo de mensajero entre
+# dos programas — y encima durante el tope semanal de z.AI, o sea por OpenRouter,
+# que se cobra por token.
+#
+# Lo que se gana no es sólo el ahorro: el registro deja de depender de que el
+# modelo esté vivo y con cupo. Lo que sigue siendo del contable es el libro de
+# acción —texto redactado que va a git—, y para eso se lo despierta DESPUÉS, con
+# el documento ya en ADM.
+#
+# Sólo se automatiza lo que FALLA CERRADO. La condición para que un tipo entre
+# acá no es que exista el script: es que el script se niegue a registrar cuando
+# no puede PROBAR que el documento es suyo.
+#   - VendorBills: el NCF es único por emisor y ADM además frena el duplicado.
+#   - BankCharges: manda Reference=banco_tx_id y, si hay un cargo gemelo que
+#     ningún trabajo reclama, muere con AMBIGUO en vez de adoptarlo.
+#   - BankBankTransfers queda AFUERA a propósito (2026-08-04): su script todavía
+#     adopta el gemelo —misma fecha, monto y cuentas → «YA REGISTRADO: guardo y
+#     cierro»—, que es el error exacto que duplicó el CB00000169 en cargos. Dos
+#     traslados iguales el mismo día entre las mismas dos cuentas son normales,
+#     así que adoptar a ciegas deja uno sin registrar y el DocID en dos filas.
+#     Sin humano mirando eso se multiplica: hasta que tenga la barrera de los
+#     cargos, la registra el contable como hasta ahora.
+script_de_registro() {
+  case "${1:-}" in
+    VendorBills) echo "registrar-en-adm.py" ;;
+    BankCharges) echo "registrar-cargo-bancario.py" ;;
+    *)           return 1 ;;
+  esac
+}
+
+registrar_directo() {
+  # $1 = trabajo_id. Lanza el registro en BACKGROUND y vuelve enseguida: una
+  # factura con adjunto tarda decenas de segundos y el loop no puede esperarla
+  # (los pokes de las otras acciones del usuario quedarían atrás).
+  local id="$1" doc script
+  doc=$(sql "select propuesta->>'documento_adm' from qualia_trabajos where id='${id}' and empresa_id='${QUALIA_EMPRESA_ID}'")
+  if ! script=$(script_de_registro "$doc"); then
+    # Tipo sin script propio (Journals, o algo que se agregue mañana): lo hace
+    # el contable, exactamente como antes. Preferimos el camino caro al
+    # camino equivocado.
+    log "sin script para documento_adm='${doc:-vacío}': $id — que lo registre el contable"
+    poke "$id" "registro_pendiente" "$(date +%s)"
+    return 0
+  fi
+  (
+    # Lock por trabajo. El barrido de la red de seguridad puede volver a ver la
+    # fila mientras este registro todavía corre, y dos POST simultáneos crearían
+    # el documento DOS veces en ADM: los BankCharges no tienen la barrera de
+    # duplicados que sí tienen las facturas por NCF y por referencia. El segundo
+    # que llega se va sin hacer nada (flock -n) y el barrido lo reintenta luego.
+    exec 9>"/tmp/mesa/.reg-${id}.lock" 2>/dev/null || exit 0
+    flock -n 9 || exit 0
+    t0=$(date +%s)
+    # 300s: el camino largo es factura + adjunto (el paginado del duplicado son
+    # ~3s, el POST y el readback otros pocos, la subida ~6s), con margen de
+    # sobra para un ADM lento. -k 10 = KILL de respaldo si el TERM no alcanza.
+    salida=$(timeout -k 10 300 python3 "/memoria-scripts/${script}" --trabajo "$id" 2>&1)
+    rc=$?
+    dur=$(( $(date +%s) - t0 ))
+    if [ "$rc" -eq 0 ]; then
+      log "registrado sin LLM en ${dur}s: $id — $(printf '%s' "$salida" | grep -m1 -E '^REGISTRAD' || echo 'sin línea de resumen')"
+      poke "$id" "escribir_libro"
+    else
+      # El motivo vive en la ÚLTIMA línea de stderr: los scripts mueren con un
+      # mensaje escrito para leerse (proveedor sin RNC, cuenta inexistente, ya
+      # registrada). Se lo pasamos al contable, que decide si es un dato que
+      # falta o algo que arreglar — es el mismo camino de siempre.
+      log "registro directo falló (rc=$rc, ${dur}s): $id — $(printf '%s' "$salida" | tail -1)"
+      poke "$id" "registro_pendiente" "$(date +%s)"
+    fi
+  ) &
 }
 
 # Watermark de eventos de usuario: arranca en el máximo actual para no
@@ -360,17 +448,28 @@ while [ "$corriendo" -eq 1 ]; do
   done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='pendiente' order by created_at limit 3")
 
   # 2) acciones del usuario en la web. El watermark SOLO avanza si el aviso
-  # llegó: una aprobación con el gateway caído se reintenta el próximo tick
-  # en vez de perderse para siempre (antes wm avanzaba incondicional y el
-  # evento se consumía sin entregarse).
-  while IFS='|' read -r eid tid; do
+  # llegó: un rechazo con el gateway caído se reintenta el próximo tick en vez
+  # de perderse para siempre (antes wm avanzaba incondicional y el evento se
+  # consumía sin entregarse).
+  #
+  # La APROBACIÓN se bifurca: no despierta a nadie, la registra este script. El
+  # estado se lee acá y no se deduce del evento porque el evento no dice en qué
+  # quedó la fila — el que manda es el estado, como en todo el resto de la mesa.
+  # Si por una carrera todavía no dice 'aprobada', el poke normal la manda por
+  # el camino de siempre: degradar al camino viejo es correcto, saltearla no.
+  while IFS='|' read -r eid tid estado docid; do
     [ -z "${eid:-}" ] && continue
+    if [ "$estado" = "aprobada" ] && [ -z "$docid" ]; then
+      registrar_directo "$tid"
+      wm=$eid
+      continue
+    fi
     if poke "$tid" "accion_usuario"; then
       wm=$eid
     else
       break
     fi
-  done < <(sql "select e.id, e.trabajo_id from qualia_eventos e join qualia_trabajos t on t.id = e.trabajo_id where t.empresa_id='${QUALIA_EMPRESA_ID}' and e.autor='usuario' and e.id > ${wm} order by e.id limit 10")
+  done < <(sql "select e.id, e.trabajo_id, t.estado, coalesce(t.propuesta->'registro_adm'->>'docid','') from qualia_eventos e join qualia_trabajos t on t.id = e.trabajo_id where t.empresa_id='${QUALIA_EMPRESA_ID}' and e.autor='usuario' and e.id > ${wm} order by e.id limit 10")
 
   # 2b) reservas muertas: 'analizando' que no se movió en 20 minutos.
   #
@@ -440,19 +539,44 @@ while [ "$corriendo" -eq 1 ]; do
     (( ahora - antes > espera )) && pendientes_reg+=("${id}|${clave}|${edad}")
   done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='aprobada' and propuesta->'registro_adm'->>'docid' is null and updated_at < now() - interval '10 minutes' and updated_at > now() - interval '12 hours' order by updated_at limit 3")
 
-  # Ya no se saltea por cuota agotada: con el respaldo puesto, una aprobada sin
-  # registrar se reintenta igual, salga por z.AI o por OpenRouter. Dejarla
-  # esperando era lo que hacía que una factura aprobada a las 2 PM apareciera en
-  # ADM recién de noche.
+  # Ya no se saltea por cuota agotada, y desde que el reintento es el script y
+  # no el contable, la cuota directamente no lo roza: registrar dejó de pasar
+  # por el modelo. Dejarla esperando era lo que hacía que una factura aprobada a
+  # las 2 PM apareciera en ADM recién de noche.
   if (( ${#pendientes_reg[@]} > 0 )); then
     ahora=$(date +%s)
     for fila in "${pendientes_reg[@]}"; do
       IFS='|' read -r id clave edad <<< "$fila"
       avisado[$clave]=$ahora
       log "aprobada sin registrar hace $(( edad / 60 ))min: $id — reintento"
-      poke "$id" "registro_pendiente" "$ahora"
+      registrar_directo "$id"
     done
   fi
+
+  # 4) registradas sin libro de acción.
+  #
+  # La contracara del registro directo: el documento ya está en ADM y la fila
+  # cerrada, así que ningún otro barrido la mira nunca más — 'registrada' es
+  # terminal. Pero el libro es lo único que quedó del lado del contable, y se
+  # pierde igual que se perdía un registro: si el gateway estaba caído cuando se
+  # mandó el poke, o si el turno murió antes de escribir. Sin esta red, la
+  # decisión no queda asentada en ningún lado y nadie se entera, porque en la
+  # web la fila se ve perfecta.
+  #
+  # 5 minutos de gracia para no pisar al turno que está escribiendo ahora mismo,
+  # y 12 horas de tope como los demás barridos: más viejo que eso no es una
+  # entrega que se cayó, y despertar al contable por el histórico entero (las
+  # cuatro primeras facturas nunca tuvieron libro) sería peor que el agujero.
+  while IFS='|' read -r id; do
+    [ -z "$id" ] && continue
+    ahora=$(date +%s)
+    clave="libro:${id}"
+    antes=${avisado[$clave]:-0}
+    (( ahora - antes > 1800 )) || continue
+    avisado[$clave]=$ahora
+    log "registrada sin libro: $id — pido la entrada"
+    poke "$id" "escribir_libro" "$ahora"
+  done < <(sql "select t.id from qualia_trabajos t where t.empresa_id='${QUALIA_EMPRESA_ID}' and t.estado='registrada' and t.updated_at < now() - interval '5 minutes' and t.updated_at > now() - interval '12 hours' and not exists (select 1 from qualia_libro l where l.trabajo_id = t.id) order by t.updated_at limit 3")
 
   sleep "$INTERVALO" &
   wait $!
