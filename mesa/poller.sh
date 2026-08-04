@@ -181,6 +181,28 @@ except Exception:
     pass' 2>/dev/null
 }
 
+registrar_respaldo() {
+  # $1 = saldo en USD, o vacio si no se pudo medir.
+  #
+  # El saldo como NUMERO, que es lo que la web necesita para decidir un color.
+  # Vacio se escribe como NULL a proposito: "no pude preguntar" no es "no hay
+  # plata", y si se guardara cero la web pintaria el rojo de contable-muerto
+  # sobre un contable sano cada vez que a OpenRouter se le cae la API.
+  #
+  # Toca SOLO las dos columnas del respaldo. No pisa cuota_bloqueada_hasta ni
+  # cuota_detalle porque esto corre cada 10 minutos pase lo que pase, incluso
+  # con z.AI sana: si el upsert las incluyera, cada medicion borraria un tope
+  # que registrar_cuota acaba de anotar.
+  local valor="null"
+  [ -n "${1:-}" ] && valor="$1"
+  sql "insert into qualia_servicio (empresa_id, respaldo_saldo_usd, respaldo_medido_en, actualizado_en)
+       values ('${QUALIA_EMPRESA_ID}', ${valor}, now(), now())
+       on conflict (empresa_id) do update
+         set respaldo_saldo_usd = excluded.respaldo_saldo_usd,
+             respaldo_medido_en = now(),
+             actualizado_en = now()" > /dev/null
+}
+
 registrar_respaldo_bajo() {
   # $1 = saldo restante (USD), $2 = hora ISO hasta la que z.AI sigue topada.
   #
@@ -340,6 +362,8 @@ declare -A avisado
 # libre sola, sin que nadie tenga que limpiarla.
 cuota_avisado=0
 cuota_sondeo=0    # epoch del último sondeo, para no preguntar en cada tick
+respaldo_medido=0 # epoch de la última medición del saldo del respaldo
+respaldo_ultimo=""  # último saldo medido (USD); vacío = no se pudo averiguar
 
 # Se arranca con lo que diga la base, no en cero. Arrancar en cero dejaba
 # huérfana una fila con hora FUTURA: nadie la volvía a mirar y la web y el aviso
@@ -433,9 +457,24 @@ while [ "$corriendo" -eq 1 ]; do
   # aprobados esperando, la web diciendo que todo iba bien, y se descubrio de
   # casualidad al dia siguiente. Preguntar el saldo es gratis; no preguntarlo
   # costo eso.
+  # El saldo se mide SIEMPRE, no solo durante un tope. Antes esta medicion vivia
+  # dentro del if de abajo, asi que con z.AI sana la web no tenia ningun numero:
+  # el respaldo podia estar en cero durante dias y solo se descubria en el peor
+  # momento — al topar z.AI, que es justo cuando ya no hay margen para recargar.
+  # Preguntar es gratis (GET /credits no infiere ni gasta un token), asi que el
+  # unico motivo para no hacerlo era que el dato no tenia donde vivir.
+  if (( ahora - respaldo_medido > 600 )); then
+    respaldo_medido=$ahora
+    respaldo_ultimo=$(respaldo_saldo)
+    registrar_respaldo "${respaldo_ultimo:-}"
+  fi
+
   if (( cuota_hasta > ahora )) && (( ahora - cuota_avisado > 600 )); then
     cuota_avisado=$ahora
-    saldo=$(respaldo_saldo)
+    # El saldo que acaba de medir el bloque de arriba: los dos ciclos son de 600s
+    # y ese corre primero en el mismo tick. Volver a llamar a respaldo_saldo()
+    # aca seria un segundo GET para preguntar lo mismo.
+    saldo="${respaldo_ultimo:-}"
     hasta_iso=$(date -u -d "@$cuota_hasta" +%Y-%m-%dT%H:%M:%SZ)
     if [ -n "${saldo:-}" ] && awk "BEGIN{exit !($saldo <= $RESPALDO_PISO)}" 2>/dev/null; then
       registrar_respaldo_bajo "$saldo" "$hasta_iso"
