@@ -84,6 +84,9 @@ sql() {
 # se recorta a 5. Un error mío de zona horaria puede costar un aviso impreciso,
 # nunca medio día con el barrido congelado.
 CUOTA_TZ_OFFSET="${CUOTA_TZ_OFFSET:-+08}"
+# Saldo de OpenRouter (USD) por debajo del cual se avisa. NO es cero a proposito
+# —ver respaldo_saldo()—: el contable se apaga ANTES de llegar a cero.
+RESPALDO_PISO="${RESPALDO_PISO:-1.00}"
 # Qué tope disparó el bloqueo: 1308 = ventana de 5h, 1310 = semanal. Viaja
 # pegado a la hora ("<ISO>|<codigo>") en vez de por variable global, porque el
 # llamador usa $(cuota_bloqueada_hasta) y eso corre en un SUBSHELL: cualquier
@@ -152,6 +155,46 @@ cuota_libre() {
     *'"choices"'*) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+respaldo_saldo() {
+  # Imprime lo que queda en OpenRouter, en USD. Nada si no se pudo averiguar.
+  #
+  # `GET /credits` no infiere: no gasta un token ni cuenta como request de
+  # inferencia, asi que se puede preguntar seguido sin costo. Por eso se
+  # consulta el saldo en vez de sondear con una llamada real.
+  #
+  # Y por que un PISO y no "cero": el 402 de OpenRouter no dice "no hay plata",
+  # dice "no hay plata para la RESERVA que pediste". El 2026-08-03 a las
+  # 23:29:40Z fue literal — «You requested up to 65536 tokens, but can only
+  # afford 8090» — y el turno murio con "Non-retryable client error. Aborting.".
+  # O sea que el contable se apago CON saldo en la cuenta. Avisar recien en cero
+  # llegaria tarde.
+  [ -n "${OPENROUTER_API_KEY:-}" ] || return 0
+  curl -s -m 15 https://openrouter.ai/api/v1/credits \
+    -H "Authorization: Bearer $OPENROUTER_API_KEY" 2>/dev/null \
+  | python3 -c 'import sys, json
+try:
+    d = json.load(sys.stdin)["data"]
+    print("%.2f" % (float(d["total_credits"]) - float(d["total_usage"])))
+except Exception:
+    pass' 2>/dev/null
+}
+
+registrar_respaldo_bajo() {
+  # $1 = saldo restante (USD), $2 = hora ISO hasta la que z.AI sigue topada.
+  #
+  # Escribe la MISMA fila que registrar_cuota porque para el humano es un solo
+  # hecho: "el contable se va a quedar sin motor". La web pinta cuota_detalle y
+  # mesa/alerta-cuota.sh ya se cuelga de esa fila, asi que el aviso por WhatsApp
+  # sale sin tocar nada mas.
+  local det="z.AI topada hasta $2 y al respaldo de OpenRouter le quedan US\$$1 — cuando se acabe, el contable se apaga"
+  sql "insert into qualia_servicio (empresa_id, cuota_bloqueada_hasta, cuota_detalle, actualizado_en)
+       values ('${QUALIA_EMPRESA_ID}', '$2', '${det}', now())
+       on conflict (empresa_id) do update
+         set cuota_bloqueada_hasta = excluded.cuota_bloqueada_hasta,
+             cuota_detalle = excluded.cuota_detalle,
+             actualizado_en = now()" > /dev/null
 }
 
 registrar_cuota() {
@@ -382,9 +425,24 @@ while [ "$corriendo" -eq 1 ]; do
   # Lo único que cambia mientras dura es de dónde sale la inferencia, y eso
   # cuesta por token — de ahí el aviso. El tope de MAX_ANALIZANDO sigue igual,
   # que es lo que de verdad evita la estampida de sesiones.
+  #
+  # Y con z.AI topada, lo unico que sostiene al contable es el respaldo. Si ESE
+  # se queda corto el sistema se apaga entero, y hasta hoy lo hacia EN SILENCIO:
+  # el 2026-08-03 a las 23:29:40Z OpenRouter devolvio 402 y el turno murio con
+  # "Non-retryable client error. Aborting.". Fueron 23 minutos con 17 cargos
+  # aprobados esperando, la web diciendo que todo iba bien, y se descubrio de
+  # casualidad al dia siguiente. Preguntar el saldo es gratis; no preguntarlo
+  # costo eso.
   if (( cuota_hasta > ahora )) && (( ahora - cuota_avisado > 600 )); then
     cuota_avisado=$ahora
-    log "cuota de z.AI agotada hasta $(date -u -d "@$cuota_hasta" +%H:%M)Z — sigo trabajando por el respaldo de OpenRouter"
+    saldo=$(respaldo_saldo)
+    hasta_iso=$(date -u -d "@$cuota_hasta" +%Y-%m-%dT%H:%M:%SZ)
+    if [ -n "${saldo:-}" ] && awk "BEGIN{exit !($saldo <= $RESPALDO_PISO)}" 2>/dev/null; then
+      registrar_respaldo_bajo "$saldo" "$hasta_iso"
+      log "OJO: z.AI topada y al respaldo le quedan US\$$saldo — cuando se acabe, el contable se apaga"
+    else
+      log "cuota de z.AI agotada hasta $(date -u -d "@$cuota_hasta" +%H:%M)Z — sigo por el respaldo (quedan US\$${saldo:-?})"
+    fi
   fi
 
   # 1) trabajos nuevos
