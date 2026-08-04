@@ -1,20 +1,20 @@
 {
  "_meta": {
-  "generado": "2026-08-03T05:20:40Z",
+  "generado": "2026-08-04T05:21:36Z",
   "alcance": "GENERAL (DGII) — vale para cualquier empresa; el tipo de gasto 606 no depende de quién compra. La cuenta contable NO se comparte: vive en cada empresa.",
   "n_empresas_aportantes": 1,
-  "n_suplidores": 159,
-  "n_facturas": 1066,
+  "n_suplidores": 163,
+  "n_facturas": 1103,
   "n_sin_rnc": 26,
   "n_sin_tipo_gasto": 20,
-  "n_con_dominante": 41
+  "n_con_dominante": 40
  },
  "catalogo": [
   {
    "codigo": "02",
    "nombre": "Gastos por Trabajos, Suministros y Servicios",
-   "usos": 647,
-   "n_suplidores": 98
+   "usos": 684,
+   "n_suplidores": 103
   },
   {
    "codigo": "07",
@@ -107,13 +107,13 @@
   {
    "rnc": "132942248",
    "nombre": "Tupaq Cargo & Courier Srl",
-   "facturas": 118,
+   "facturas": 126,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 117,
+     "usos": 125,
      "pct": 99.2
     },
     {
@@ -127,13 +127,13 @@
   {
    "rnc": "101008172",
    "nombre": "Isla Dominicana De Petroleo Corporation",
-   "facturas": 93,
+   "facturas": 97,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 93,
+     "usos": 97,
      "pct": 100.0
     }
    ]
@@ -141,13 +141,13 @@
   {
    "rnc": "101767766",
    "nombre": "Mecari Srl",
-   "facturas": 86,
+   "facturas": 90,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 86,
+     "usos": 90,
      "pct": 100.0
     }
    ]
@@ -155,33 +155,33 @@
   {
    "rnc": "101830719",
    "nombre": "Estacion De Servicios H E Nuevo Milenio S R L",
-   "facturas": 53,
+   "facturas": 55,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 52,
-     "pct": 98.1
+     "usos": 54,
+     "pct": 98.2
     },
     {
      "codigo": "04",
      "nombre": "Gastos de Activo Fijo",
      "usos": 1,
-     "pct": 1.9
+     "pct": 1.8
     }
    ]
   },
   {
    "rnc": "101068744",
    "nombre": "Totalenergies Marketing Dominicana, Sa",
-   "facturas": 36,
+   "facturas": 37,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 36,
+     "usos": 37,
      "pct": 100.0
     }
    ]
@@ -189,20 +189,20 @@
   {
    "rnc": "133124981",
    "nombre": "Logistichause International R&M Srl",
-   "facturas": 24,
+   "facturas": 26,
    "dominante": "09",
    "tipos": [
     {
      "codigo": "09",
      "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
      "usos": 21,
-     "pct": 87.5
+     "pct": 80.8
     },
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 3,
-     "pct": 12.5
+     "usos": 5,
+     "pct": 19.2
     }
    ]
   },
@@ -269,13 +269,27 @@
   {
    "rnc": "101035129",
    "nombre": "Supermercado El Dragon De Oro S A",
-   "facturas": 14,
+   "facturas": 15,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 14,
+     "usos": 15,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130012271",
+   "nombre": "Megasuply Srl",
+   "facturas": 13,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 13,
      "pct": 100.0
     }
    ]
@@ -307,8 +321,8 @@
    ]
   },
   {
-   "rnc": "130012271",
-   "nombre": "Megasuply Srl",
+   "rnc": "133375338",
+   "nombre": "JSP EMPRESAS DR SRL",
    "facturas": 12,
    "dominante": "02",
    "tipos": [
@@ -321,8 +335,8 @@
    ]
   },
   {
-   "rnc": "133375338",
-   "nombre": "JSP EMPRESAS DR SRL",
+   "rnc": "101099161",
+   "nombre": "Amable Aristy Castro S R L",
    "facturas": 11,
    "dominante": "02",
    "tipos": [
@@ -349,8 +363,8 @@
    ]
   },
   {
-   "rnc": "101099161",
-   "nombre": "Amable Aristy Castro S R L",
+   "rnc": "101013834",
+   "nombre": "Almacenes Unidos Sas",
    "facturas": 10,
    "dominante": "02",
    "tipos": [
@@ -385,20 +399,6 @@
      "nombre": "Gastos de Representación",
      "usos": 1,
      "pct": 10.0
-    }
-   ]
-  },
-  {
-   "rnc": "101013834",
-   "nombre": "Almacenes Unidos Sas",
-   "facturas": 9,
-   "dominante": "02",
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 9,
-     "pct": 100.0
     }
    ]
   },
@@ -571,6 +571,32 @@
    ]
   },
   {
+   "rnc": "101805404",
+   "nombre": "Suena Electronica Srl",
+   "facturas": 5,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "04",
+     "nombre": "Gastos de Activo Fijo",
+     "usos": 3,
+     "pct": 60.0
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 20.0
+    },
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 20.0
+    }
+   ]
+  },
+  {
    "rnc": "131833799",
    "nombre": "Moon & Sea Logistics Srl",
    "facturas": 5,
@@ -581,6 +607,32 @@
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 5,
      "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131508006",
+   "nombre": "Grupo Rolling Srl",
+   "facturas": 5,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 2,
+     "pct": 40.0
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 40.0
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 20.0
     }
    ]
   },
@@ -683,20 +735,26 @@
    ]
   },
   {
-   "rnc": "101805404",
-   "nombre": "Suena Electronica Srl",
+   "rnc": "130389586",
+   "nombre": "Jade Teriyaki Srl",
    "facturas": 4,
-   "dominante": "04",
+   "dominante": null,
    "tipos": [
     {
-     "codigo": "04",
-     "nombre": "Gastos de Activo Fijo",
-     "usos": 3,
-     "pct": 75.0
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 50.0
     },
     {
-     "codigo": "10",
-     "nombre": "Adquisición de Activos",
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 1,
+     "pct": 25.0
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
      "usos": 1,
      "pct": 25.0
     }
@@ -705,6 +763,20 @@
   {
    "rnc": "131717535",
    "nombre": "Premier Wash Technology Pwt Srl",
+   "facturas": 4,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 4,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101744342",
+   "nombre": "Estacion Bella Vista Srl",
    "facturas": 4,
    "dominante": "02",
    "tipos": [
@@ -727,32 +799,6 @@
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 4,
      "pct": 100.0
-    }
-   ]
-  },
-  {
-   "rnc": "131508006",
-   "nombre": "Grupo Rolling Srl",
-   "facturas": 4,
-   "dominante": null,
-   "tipos": [
-    {
-     "codigo": "01",
-     "nombre": "Gastos de Personal",
-     "usos": 2,
-     "pct": 50.0
-    },
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 1,
-     "pct": 25.0
-    },
-    {
-     "codigo": "05",
-     "nombre": "Gastos de Representación",
-     "usos": 1,
-     "pct": 25.0
     }
    ]
   },
@@ -811,32 +857,6 @@
    ]
   },
   {
-   "rnc": "130389586",
-   "nombre": "Jade Teriyaki Srl",
-   "facturas": 3,
-   "dominante": null,
-   "tipos": [
-    {
-     "codigo": "01",
-     "nombre": "Gastos de Personal",
-     "usos": 1,
-     "pct": 33.3
-    },
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 1,
-     "pct": 33.3
-    },
-    {
-     "codigo": "05",
-     "nombre": "Gastos de Representación",
-     "usos": 1,
-     "pct": 33.3
-    }
-   ]
-  },
-  {
    "rnc": "101005831",
    "nombre": "La Innovacion Srl",
    "facturas": 3,
@@ -867,20 +887,6 @@
      "nombre": "Gastos de Activo Fijo",
      "usos": 1,
      "pct": 33.3
-    }
-   ]
-  },
-  {
-   "rnc": "101744342",
-   "nombre": "Estacion Bella Vista Srl",
-   "facturas": 3,
-   "dominante": "02",
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 3,
-     "pct": 100.0
     }
    ]
   },
@@ -935,6 +941,34 @@
   {
    "rnc": "101632501",
    "nombre": "Estacion De Servicios Ozama Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101171111",
+   "nombre": "Plaza Lama S A",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "123001339",
+   "nombre": "Erik Gas Del 2000 Srl",
    "facturas": 2,
    "dominante": null,
    "tipos": [
@@ -1133,6 +1167,20 @@
    ]
   },
   {
+   "rnc": "130218935",
+   "nombre": "Asogadom Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
    "rnc": "131937241",
    "nombre": "Bellems Srl",
    "facturas": 2,
@@ -1287,20 +1335,6 @@
    ]
   },
   {
-   "rnc": "101171111",
-   "nombre": "Plaza Lama S A",
-   "facturas": 1,
-   "dominante": null,
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 1,
-     "pct": 100.0
-    }
-   ]
-  },
-  {
    "rnc": "101801875",
    "nombre": "Pricesmart Dominicana Srl",
    "facturas": 1,
@@ -1317,20 +1351,6 @@
   {
    "rnc": "131667351",
    "nombre": "El Ferreton Srl",
-   "facturas": 1,
-   "dominante": null,
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 1,
-     "pct": 100.0
-    }
-   ]
-  },
-  {
-   "rnc": "123001339",
-   "nombre": "Erik Gas Del 2000 Srl",
    "facturas": 1,
    "dominante": null,
    "tipos": [
@@ -1723,20 +1743,6 @@
   {
    "rnc": "130256128",
    "nombre": "Wildfire Investments Srl",
-   "facturas": 1,
-   "dominante": null,
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 1,
-     "pct": 100.0
-    }
-   ]
-  },
-  {
-   "rnc": "130218935",
-   "nombre": "Asogadom Srl",
    "facturas": 1,
    "dominante": null,
    "tipos": [
@@ -2479,6 +2485,62 @@
   {
    "rnc": "131372228",
    "nombre": "FREEWAY ENTERPRISE SRL",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131674811",
+   "nombre": "MANAGE SRL",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131185381",
+   "nombre": "MONTAUK SRL",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "130277682",
+   "nombre": "THE BIG APPLE CLEANERS S R L",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131351697",
+   "nombre": "GRUPO LAS CANAS SRL",
    "facturas": 1,
    "dominante": null,
    "tipos": [

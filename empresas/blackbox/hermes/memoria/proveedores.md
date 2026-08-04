@@ -930,3 +930,4 @@ Un proveedor cuyo gasto se reparte ~50/50 entre dos cuentas se marca
 | Innovex Group Srl | 132917472 | 611.17 Dieta y Viáticos | 18% | B01 | Tarjeta | FP00000727 | 2,730.00 |
 | Inversiones A & C Five Wings Srl | 131319297 | 620.11 Combustible | sin | E31 | sin registro | FP00001025 | 750.00 |
 | Pulse Harmony J & G Srl | 133525844 | 630.05 Gastos de Representación | sin | E31 | Tarjeta | FP00001077 | 15,000.00 |
+| Carrefour (CDH SAS) | 101802456 | 620.06 Suministros de oficina y otros | 18% | E31 | Tarjeta | FP00001120 | 374.95 |
