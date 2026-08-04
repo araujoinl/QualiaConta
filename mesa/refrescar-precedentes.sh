@@ -62,7 +62,18 @@ fallas=0
 # esta registrada en ADM y no la vuelve a proponer. Sin refrescarlo, el detector
 # duplicaria todo lo asentado despues del ultimo snapshot. Son 203 docs y solo
 # GET: cuesta nada bajarlo con los otros dos.
-for recurso in vendor-bills vendors bank-transfers; do
+#
+# bill-payments y account-payments entran por la misma razon, y responden LA
+# pregunta que decide que hacer con una salida del banco que no es cargo
+# bancario: ¿ya la registro el humano? El banco escribe "Nota De Debito" a secas
+# y jamas dice a quien se le pago, asi que clasificarla por su descripcion es
+# imposible; lo unico que lo resuelve es preguntarle a ADM. Si esta registrada,
+# no hay nada que proponer (a lo sumo falta el volante del impuesto); si no
+# esta, es un pago que nadie asento —un prestamo, un abono a linea de credito— y
+# ahi si hay trabajo. Sus espejos estaban CONGELADOS en el volcado inicial
+# (2026-08-02), o sea que el cruce habria dicho "no registrado" para todo lo
+# posterior a esa fecha: la misma trampa que ya habia mordido a bank-transfers.
+for recurso in vendor-bills vendors bank-transfers bill-payments account-payments; do
     registrar "bajando $recurso (delta)"
     if salida=$(docker exec "$CONTENEDOR" python3 "$SCRIPTS/extraer-adm.py" \
                     --solo "$recurso" --desde "$DESDE" 2>&1); then
