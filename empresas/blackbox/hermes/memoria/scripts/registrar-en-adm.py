@@ -41,6 +41,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+# La aritmetica de ADM y el ajuste que hace que su cuenta caiga en el total del
+# papel. Vive aparte porque es una regla probada contra las 63 facturas reales.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cuadre  # noqa: E402
+
 BASE = "https://api.admcloud.net"
 TIMEOUT = 90
 
@@ -357,6 +362,21 @@ def armar_payload(p, relationship_id, payment_term_id):
               "Si el codigo esta bien escrito, esa cuenta no existe o esta inactiva "
               "en el catalogo: preguntale al humano antes de registrar." % faltan)
 
+    # Ajustar un precio para que la cuenta de ADM caiga en el total del papel.
+    # ADM recalcula Net y Tax renglon por renglon y redondea medio hacia arriba;
+    # si los precios no se eligen para eso, el documento queda registrado por
+    # otro total. Eran 13 de 63 en BlackBox al 2026-08-05, y ese centavo esta
+    # dentro del ITBIS que va al 606.
+    items, ajuste = cuadre.cuadrar_items(items, p.get("monto") or 0)
+    if ajuste:
+        # Se dice QUE renglon y de cuanto a cuanto, no solo el monto movido: con
+        # tres decimales el movimiento puede ser de milesimas y «+0.00» leido en
+        # un log parece que no se toco nada.
+        print("  cuadre: renglon %d, precio %s -> %s (%+0.2f en el total) para "
+              "que ADM llegue al total del papel"
+              % (ajuste["renglon"] + 1, ajuste["antes"], ajuste["despues"],
+                 float(ajuste["movido"])))
+
     return {
         "DocDate": p.get("fecha"),
         "Reference": p.get("numero_factura_suplidor") or p.get("ncf"),
@@ -404,16 +424,20 @@ def verificar_cuadre(p, payload):
     documento y ADM no deja anular.
     """
     # Suma por tasa: cada schedule tiene su %, y ADM lo aplica a su base.
+    # ADM redondea RENGLON POR RENGLON y medio hacia arriba. La version vieja
+    # sumaba los ITBIS sin redondear y redondeaba una sola vez al final, asi que
+    # su prediccion no era la de ADM y las diferencias de centavos se le
+    # escapaban por debajo de la tolerancia.
     itbis_adm = 0.0
     base_gravada = 0.0
     exento = 0.0
     for item in payload["Items"]:
-        b = item["Quantity"] * item["Price"]
+        neto = float(cuadre.r2(item["Quantity"] * item["Price"]))
         if item["TaxScheduleID"]:
-            base_gravada += b
-            itbis_adm += b * (item["TaxPercent"] / 100.0)
+            base_gravada += neto
+            itbis_adm += float(cuadre.r2(neto * item["TaxPercent"] / 100.0))
         else:
-            exento += b
+            exento += neto
     itbis_adm = round(itbis_adm, 2)
     total_adm = round(base_gravada + exento + itbis_adm, 2)
     base = base_gravada

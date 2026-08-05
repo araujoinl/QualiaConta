@@ -292,9 +292,21 @@ poke() {
 #     cargos, la registra el contable como hasta ahora.
 script_de_registro() {
   case "${1:-}" in
-    VendorBills) echo "registrar-en-adm.py" ;;
-    BankCharges) echo "registrar-cargo-bancario.py" ;;
-    *)           return 1 ;;
+    VendorBills)       echo "registrar-en-adm.py" ;;
+    BankCharges)       echo "registrar-cargo-bancario.py" ;;
+    # El script existia desde el 2026-08-03 —lo uso el contable para TE00000212
+    # y TE00000214— y nunca se engancho: el registro-sin-LLM se construyo antes
+    # de que se commiteara. Cada transferencia aprobada despertaba al modelo
+    # para nada.
+    BankBankTransfers) echo "registrar-transferencia-bancaria.py" ;;
+    # El pago de una factura de proveedor con la tarjeta. Lo pide la caja
+    # «Pagos con tarjeta de credito detectados» de la mesa, que ya trae la
+    # factura elegida por un humano: aca no hay nada que analizar.
+    BillPayments)      echo "registrar-pago-factura.py" ;;
+    # Journals sigue SIN script y es a proposito: un asiento contable no tiene
+    # forma fija y ahi el juicio hace falta. Preferimos el camino caro al
+    # camino equivocado.
+    *)                 return 1 ;;
   esac
 }
 
