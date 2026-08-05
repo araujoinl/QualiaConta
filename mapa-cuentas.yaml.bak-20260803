@@ -1,0 +1,97 @@
+# Mapa de cuentas bancarias. Es configuración, no algo que el contable adivine.
+#
+# El colector OpenBanking piensa en logins de banco; QualiaConta piensa en
+# empresas. Este archivo traduce entre los dos y dice, además, en qué cuenta
+# contable de ADM Cloud cae cada cuenta bancaria.
+#
+# `cuentas` se usa en la conciliación y en las sugerencias (contrapartida del
+# asiento). `cargos` es el mapa de sugerencias: descripción del movimiento →
+# cuenta contable. Ambos salen del histórico REAL de ADM (159 BankCharges,
+# catálogo Accounts, 2026-08-02) — no adivinar: ante un caso nuevo, mirar cómo
+# lo registró la contabilidad la última vez.
+
+empresas:
+  blackbox:
+    empresa_id: "1de77ce6-ed98-4a96-8b1f-d8b902f11cd5"   # admcloud_empresas.id
+
+    cuentas:
+      - banco: santacruz
+        numero: "11121000000801"
+        moneda: DOP
+        cuenta_contable: "101.04"
+        cuenta_nombre: "Banco Ingresos 801"
+        alias: "Ingresos"
+      - banco: santacruz
+        numero: "11122010014964"
+        moneda: DOP
+        cuenta_contable: "101.05"
+        cuenta_nombre: "Banco Impuestos 964"
+        alias: "Impuestos"
+      - banco: santacruz
+        numero: "11122010023874"
+        moneda: DOP
+        cuenta_contable: "101.06"
+        cuenta_nombre: "Banco Operaciones 874"
+        alias: "Operaciones"
+      - banco: santacruz
+        numero: "21122020001404"
+        moneda: USD
+        cuenta_contable: "102.01"
+        cuenta_nombre: "Banco Suplidores USD 404"
+        alias: "Suplidores"
+      - banco: santacruz
+        numero: "21122020002181"
+        moneda: USD
+        cuenta_contable: "102.02"
+        cuenta_nombre: "Banco Ganancia USD 181"
+        alias: "Ganancias"
+      # Las Visa 1877/2414 son tarjetas (pasivo), no cuentas de banco: sus
+      # movimientos no entran al mapa de cargos.
+
+    # Mapa de cargos: PRIMERA regla que matchea gana (el orden es la
+    # prioridad). `match` es regex case-insensitive sobre la descripción del
+    # movimiento; `direccion` es cargo (salió plata) o credito (entró).
+    # Una regla con `revisar` en vez de `cuenta` marca el movimiento como
+    # detectado pero SIN cuenta: exige ojo humano y el detalle dice por qué.
+    # Sin match ⇒ sin cuenta, con aviso genérico.
+    cargos:
+      # --- Cargos (egresos) ---
+      - match: "pago impuesto 0\\.(15|20)|imp dgii 0\\.(15|20)|imp\\.? *2\\.0|por *1000|imp\\.? *transferencia|transferencia o cheque"
+        direccion: cargo
+        cuenta: "640.02"
+        cuenta_nombre: "Cargos sobre cheques 0.15"
+      - match: "est\\.? *cta|estado de cuenta"
+        direccion: cargo
+        cuenta: "640.01"
+        cuenta_nombre: "Cargos Bancarios"
+      - match: "reten\\.? *ley *253|interes retenido"
+        direccion: cargo
+        cuenta: "150.03"
+        cuenta_nombre: "Otros Créditos de ISR"
+      - match: "desc\\.? *1|norma dgii|retencion dgii"
+        direccion: cargo
+        cuenta: "150.06"
+        cuenta_nombre: "Retencion DGII 1% Norma 07-19"
+      - match: "nota de debito"
+        direccion: cargo
+        revisar: "descripción genérica y monto usualmente grande — puede ser un préstamo o un pago; identificalo antes de registrar"
+      - match: "exi pag dgii"
+        direccion: cargo
+        revisar: "pago de impuestos DGII vía el banco — no es cargo bancario; verificalo contra la declaración"
+      - match: "comisi|exi com dgii|cargo|manejo|mantenim|renovacion|sobregiro|balance promedio|servicio"
+        direccion: cargo
+        cuenta: "640.01"
+        cuenta_nombre: "Cargos Bancarios"
+
+      # --- Créditos (ingresos del banco) ---
+      - match: "capitalizaci|interes"
+        direccion: credito
+        cuenta: "700.01"
+        cuenta_nombre: "Intereses Bancarios"
+      - match: "credito por pago|ahorro por compra|compensacion"
+        direccion: credito
+        cuenta: "701.01"
+        cuenta_nombre: "Ingresos Menores"
+      - match: "reverso|devoluci"
+        direccion: credito
+        revisar: "reverso o devolución — cruzalo contra el movimiento original antes de registrar"
