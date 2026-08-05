@@ -103,3 +103,9 @@ services:
       # Histórico de VendorBills para el chequeo de duplicados por grep,
       # sólo lectura. Si el mount no existe, el prep lo salta con motivo.
       - ./hermes/preentrenamiento:/preentrenamiento:ro
+      # Comprobantes fiscales del banco, uno por NCF, que se adjuntan al cargo
+      # en ADM. Los deja partir-comprobantes.py (del repo del colector) desde el
+      # PDF que el banco exporta por período. Se montan del disco y no se bajan
+      # de Storage a propósito: así este contenedor no necesita la service_role
+      # de Supabase para adjuntar un papel.
+      - /home/codebox/comprobantes-pdf/pdfs:/comprobantes:ro
