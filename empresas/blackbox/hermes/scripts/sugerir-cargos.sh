@@ -100,6 +100,41 @@ for c in bloque.get("cuentas") or []:
 mapa_values = ",\n         ".join(reglas) or "(0, 'nunca', '___nunca___', null, null, null)"
 bancos_values = ",\n         ".join(bancos) or "('__sin_mapa__', null, null)"
 
+
+# El prefiltro de `candidatos` sale de ESTAS reglas, no de una lista aparte.
+# Mientras fueron dos listas se separaron de verdad: el mapa tenía «ahorro por
+# compra» desde siempre y el prefiltro escrito a mano no, así que el cashback de
+# la Visa 1877 nunca llegó a la mesa y terminó registrado como un Journals que
+# la conciliación no puede ver (2026-08-05). Derivarlo es lo único que asegura
+# que agregar una regla arriba alcance para que el movimiento aparezca.
+def union_rx(direccion):
+    partes = [r["match"] for r in (bloque.get("cargos") or [])
+              if r.get("match") and r.get("direccion") == direccion]
+    unido = "|".join("(" + p + ")" for p in partes) or "___nunca___"
+    return unido.replace("'", "''")   # va dentro de un literal SQL
+
+
+rx_cargo = union_rx("cargo")
+rx_credito = union_rx("credito")
+
+# Ventana del carril B. Es configurable por una razón concreta: cuando entra una
+# cuenta nueva al mapa —las dos Visa entraron el 2026-08-05— llega con meses de
+# movimientos que ninguna corrida miró nunca, y con 30 días quedan invisibles
+# para siempre. Se hace UNA pasada larga y se vuelve al default. Alargar no
+# puede duplicar nada: lo ya reclamado lo frena el `not exists` de abajo.
+dias_ventana = max(1, int(os.environ.get("QUALIA_DIAS_CARGOS", "30")))
+
+# Filtro de cuentas para la pasada de recuperación, vacío en la corrida normal.
+# Va junto con la ventana larga y por la misma razón: alargarla PARA TODAS las
+# cuentas arrastra los cargos viejos que el humano ya registró a mano en ADM
+# antes de que existiera la mesa, y el detector no tiene cómo saberlo — su único
+# guardia es «ningún trabajo lo reclama», no «ningún documento existe en ADM».
+# Con el filtro, la recuperación toca sólo la cuenta que se acaba de mapear.
+_cuentas = [c.strip() for c in os.environ.get("QUALIA_CUENTAS_CARGOS", "").split(",") if c.strip()]
+filtro_cuentas = (
+    "     and a.numero in (" + ", ".join(lit(c) for c in _cuentas) + ")\n"
+) if _cuentas else ""
+
 print(f"""
 with mapa(prio, dir, rx, cuenta, cuenta_nombre, revisar) as (
   values {mapa_values}
@@ -130,11 +165,15 @@ lineas_comprobante as (
     join openbanking_accounts a
       on a.numero = l->>'cuenta' and a.empresa_id = '{empresa_id}'
    where c.fecha_emision >= current_date - interval '60 days'
+     -- Mismo criterio que el carril B: un trabajo con el documento anulado o
+     -- borrado en ADM deja de reclamar su NCF, para poder rehacerlo.
      and not exists (
        select 1 from qualia_trabajos q
         where q.empresa_id = '{empresa_id}'
           and q.propuesta->>'documento_adm' = 'BankCharges'
           and q.propuesta->>'ncf' = c.ncf
+          and q.propuesta->'registro_adm'->>'anulado_en' is null
+          and q.propuesta->'registro_adm'->>'eliminado_en' is null
      )
 ),
 -- Los cargos de esa cuenta y concepto sumados DÍA POR DÍA. Sumar la ventana
@@ -233,17 +272,38 @@ candidatos as (
     from openbanking_transactions t
     join openbanking_accounts a on a.id = t.account_id
    where a.empresa_id = '{empresa_id}'
-     and t.fecha_posteo >= current_date - interval '30 days'
+     and t.fecha_posteo >= current_date - interval '{dias_ventana} days'
+{filtro_cuentas}
      and (
-       ( t.monto < 0 and t.descripcion ~* '(comisi|cargo|manejo|mantenim|retencion|imp\\.|impuesto|desc\\. *1|dgii|interes|sobregiro|est\\. *cta|transferencia internacional)' )
+       ( t.monto < 0 and t.descripcion ~* '{rx_cargo}' )
        or
-       ( t.monto > 0 and t.descripcion ~* '(capitalizaci|credito por pago|interes|reverso|devoluci)' )
+       ( t.monto > 0 and t.descripcion ~* '{rx_credito}' )
      )
      and t.id not in (select id from amparados)
+     -- Ya reclamado por un trabajo VIVO. Las dos mitades importan:
+     --
+     -- Vivo: un documento anulado o borrado en ADM deja de reclamar su
+     -- movimiento, porque anular es casi siempre el paso previo a registrarlo
+     -- bien. Sin esto, la primera fila se quedaba con el movimiento para
+     -- siempre y corregir un registro equivocado no tenía salida.
+     --
+     -- Y hay que mirar las CUATRO formas de reclamar, no sólo `banco_tx_id`:
+     -- el comprobante fiscal reclama sus cargos por el array `movimientos` y
+     -- la transferencia por sus dos patas. El 2026-08-04 se pasó de un
+     -- documento por movimiento a uno por comprobante y se anularon los 54
+     -- viejos; mirando sólo `banco_tx_id`, esos 40 cargos volvían a sugerirse
+     -- uno por uno teniendo ya su comprobante vivo esperando decisión.
+     -- Mismo criterio que `idsLevantados()` en la mesa.
      and not exists (
        select 1 from qualia_trabajos q
         where q.empresa_id = '{empresa_id}'
-          and q.propuesta->>'banco_tx_id' = t.id::text
+          and q.propuesta->'registro_adm'->>'anulado_en' is null
+          and q.propuesta->'registro_adm'->>'eliminado_en' is null
+          and ( q.propuesta->>'banco_tx_id' = t.id::text
+             or q.propuesta->'origen'->>'banco_tx_id' = t.id::text
+             or q.propuesta->'destino'->>'banco_tx_id' = t.id::text
+             or q.propuesta->'banco_tx_ids' @> to_jsonb(t.id::text)
+             or q.propuesta->'movimientos' @> to_jsonb(t.id::text) )
      )
    order by t.fecha_posteo
    limit 40
