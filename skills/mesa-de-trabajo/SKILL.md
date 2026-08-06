@@ -486,11 +486,35 @@ update qualia_trabajos set estado='analizando'
 3. **Extraé los datos**: proveedor, RNC, NCF, fecha, moneda, monto, ITBIS.
    e-CF (XML) es dato exacto; PDF/foto se lee con cuidado y confianza menor.
 
+   **`fecha` es la FECHA DE EMISIÓN del comprobante**, la que el papel rotula
+   «Fecha de Factura», «Fecha de Emisión» o «Fecha» a secas. Un documento trae
+   varias y ninguna de las otras sirve: NO la **Fecha de Firma Digital** (cuándo
+   se firmó el XML), NO la **Fecha Límite de Pago**, NO el **Vencimiento del
+   e-NCF**. Decide en qué mes entra el gasto y en qué 606 se declara, así que
+   elegir mal no es un detalle de forma.
+
+   **Si la fecha que vas a escribir coincide con la Fecha de Firma que
+   extrajiste para el timbre (paso 5b), releé el papel antes de proponer.**
+   Pueden coincidir de verdad, pero es la señal de que agarraste la del pie en
+   vez de la del encabezado. Pasó el 2026-08-06 con Claro: el PDF decía «Fecha
+   de Factura: Agosto 04, 2026» y se registró con la firma, `2026-07-31`. La
+   factura de agosto entró en julio y el detector de recurrentes siguió
+   reclamando una factura que ya estaba cargada. Entender el período no alcanza
+   —el `detalle` de esa misma propuesta decía «por los servicios de agosto»—:
+   lo que se declara es lo que va en `fecha`.
+
+   Cuando el timbre e-CF verifica en DGII, **su `fecha_emision` manda** sobre lo
+   que hayas leído del PDF: es la fecha que el comprobante tiene ante la DGII.
+
    **La fecha se imprime DÍA/MES/AÑO**: `02/08/2026` es el 2 de agosto
    (`2026-08-02`), NO el 8 de febrero. La visión del preparador la voltea a la
    gringa cuando día y mes son ≤ 12 y ya pasó (ticket del 2026-08-02 guardado
    como `2026-02-08`). Cuando ambos números sean ≤ 12, releé la fecha impresa
    en el documento antes de proponer, no copies la del dossier a ciegas.
+
+   Y ojo con la emisión escrita en palabras («Agosto 04, 2026»): no matchea
+   ningún patrón numérico, así que es la que más fácil se pasa por alto — y
+   mientras tanto la firma del pie sí viene como `31-07-2026` y se ofrece sola.
 
    Si es Excel (.xlsx — nómina u otro), bajalo y leelo con Python
    (openpyxl/pandas); una nómina se propone como su asiento completo
@@ -567,7 +591,9 @@ update qualia_trabajos set estado='analizando'
 
    **(b) e-NCF (E31/E32/E34...): verificá el timbre.** La representacion
    impresa trae Fecha de Firma y Codigo de Seguridad (6 chars) — extraelos del
-   texto del PDF. Construi la URL publica de consulta (la misma del QR):
+   texto del PDF. **La Fecha de Firma se usa SOLO acá**: no es la fecha de la
+   factura, que sale del encabezado (paso 3). Construi la URL publica de
+   consulta (la misma del QR):
 
    `https://ecf.dgii.gov.do/ecf/ConsultaTimbre?RncEmisor=<rnc>&RncComprador=<rnc_blackbox>&ENCF=<encf>&FechaEmision=DD-MM-AAAA&MontoTotal=<total>&FechaFirma=DD-MM-AAAA%20HH:MM:SS&CodigoSeguridad=<code>`
 
