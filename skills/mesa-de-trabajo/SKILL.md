@@ -312,9 +312,38 @@ crédito a la cuenta banco de impuestos (101.05)». Ese asiento no existe: las
 1.109 facturas históricas acreditan Cuentas por Pagar sin una sola excepción. Lo
 que ese detalle describía era el SEGUNDO documento, el pago — y faltaba.
 
-Y **no nombres el banco emisor si no lo leíste del movimiento**: ese mismo
-detalle decía «Banca Electrónica del Banco Promérica» y no existe ninguna cuenta
-Promérica en el colector.
+**Y el banco que dice el papel NO es la cuenta de la que salió la plata.** Un
+comprobante de pago electrónico trae el banco **adquirente** —el que COBRÓ, del
+lado del que recibe— bajo rótulos como «Banco / Empresa de Adquirencia». Dice
+quién recibió, nunca de dónde salió. Pasó el 2026-08-06 con la liquidación de la
+DGA por RD$939.118,86: el PDF dice «BANCO MULTIPLE PROMERICA DE LA REPUBLICA» y
+el `detalle` salió diciendo «pago electrónico desde Banco Promérica». No existe
+ninguna cuenta Promérica entre las 19 del colector — el débito fue de Santa Cruz,
+cuenta «Impuestos» 11122010014964. Quien lea ese detalle busca donde no hay nada.
+
+**Sólo afirmás de dónde salió la plata si tenés el movimiento delante.** En una
+sugerencia del detector lo tenés: `propuesta.banco`, `cuenta_banco` y
+`cuenta_numero` SON el movimiento, y ahí nombralos con confianza. En una factura
+subida a la Bandeja NO lo tenés: escribí que el débito quedó pendiente de
+identificar y seguí. «No sé de dónde salió» es una respuesta válida; el banco del
+papel puesto en su lugar, no.
+
+**Monto y fecha no alcanzan para adivinarlo, ni se te ocurra.** Medido sobre las
+64 facturas de la mesa: buscar un movimiento del mismo monto a ±3 días acierta 18
+veces, se abstiene en 16 y **miente en 2** — y las dos mentiras son de las que no
+se descubren. A la FP00001114 (gasolina RD$750 pagada EN EFECTIVO) le ofrece el
+movimiento de la FP00001115, otra gasolina de RD$750 cargada seis segundos
+después: dos facturas saldadas cruzadas por el monto exacto. A la FP00001077
+(membresía de gimnasio, RD$15.000) le ofrece el pago de la tarjeta de crédito.
+Emparejar el movimiento con su factura es trabajo de `sugerir-asignacion.sh`, que
+lo hace desde el otro lado y sobre facturas ya registradas en ADM — 593 aciertos,
+20 empates declarados y CERO errores sobre 729 pagos históricos. No lo rehagas a
+ojo desde acá.
+
+Nombrar un banco por otro motivo —es el proveedor, el emisor, el asegurado, el
+cliente del documento— está bien y no lo toca esta regla: la FP00001067 dice
+«facturada a Banco Multiple Santa Cruz» y es correcto. Lo prohibido es afirmar DE
+DÓNDE SALIÓ LA PLATA sin un movimiento delante.
 
 ### Cómo clasificás la cuenta (con o sin dossier)
 
