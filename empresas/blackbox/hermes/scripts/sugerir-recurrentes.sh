@@ -31,6 +31,17 @@
 # algo que no correspondía y lo rechazaste, ese proveedor no vuelve a aparecer
 # nunca. En dos meses la lista se calibra con tus casos y no con estos umbrales.
 #
+# Y DESDE EL 2026-08-06 APRENDE TAMBIÉN DEL ALTA. Los proveedores que están en
+# `qualia_proveedores_vigilados` —los que se agregan a mano desde la mesa— se
+# saltean LOS TRES cortes. El detector sabía silenciar para siempre pero no
+# tenía cómo enterarse de un recurrente que no se parece a los que ya conoce, y
+# un contrato nuevo tarda medio año en poder demostrarlo.
+#
+# El caso que lo pidió: Emprendia Consulting factura la regencia farmacéutica
+# todos los meses por RD$6.490 y falla DOS de los tres cortes — 3 meses de los 6
+# que se piden, y dispersión 9,7 por una factura de febrero (día 9, RD$89.284,70)
+# que era otro concepto. Saltear sólo el de meses no lo habría arreglado.
+#
 # LA IDENTIDAD ES EL RelationshipID, NUNCA EL NOMBRE. Claro aparece en el
 # histórico con SIETE grafías distintas —«Claro», «Claro-», «Claro'-Compañia
 # Dominicana de Teléfonos, S.A»…— y Humano con tres, todas bajo un único
@@ -77,7 +88,10 @@ select json_build_object(
                           from qualia_trabajos
                           where empresa_id = '${QUALIA_EMPRESA_ID}'
                             and propuesta->>'clase' = 'factura_faltante'
-                            and estado = 'rechazada'), '[]'))
+                            and estado = 'rechazada'), '[]'),
+  'vigilados', coalesce((select json_agg(proveedor_id)
+                         from qualia_proveedores_vigilados
+                         where empresa_id = '${QUALIA_EMPRESA_ID}'), '[]'))
 ")
 
 SQL=$(RAW="$RAW" HOY="$HOY" ESTADO="$ESTADO" python3 - <<'PY'
@@ -88,6 +102,13 @@ HOY = datetime.date.fromisoformat(os.environ["HOY"])
 EMPRESA = os.environ["QUALIA_EMPRESA_ID"].strip()
 estado = json.loads(os.environ["ESTADO"])
 rechazados = set(estado.get("rechazados") or [])
+# Los que el usuario puso a mano desde la mesa (`qualia_proveedores_vigilados`).
+# Es el sentido que le faltaba a este detector: sabía silenciar para siempre
+# —el rechazo— pero no había forma de decirle «seguí a éste». Y son justo los
+# que no llegan solos: Emprendia factura la regencia todos los meses y falla DOS
+# de los tres cortes (3 meses de 6 y dispersión 9,7 por una factura de febrero
+# que era otro concepto).
+vigilados = set(estado.get("vigilados") or [])
 c2 = lambda x: round(float(x or 0), 2)
 esc = lambda s: "null" if s is None else "'" + str(s).replace("'", "''") + "'"
 
@@ -147,26 +168,44 @@ for line in open(f"{RAW}/vendor-bills-detalle.jsonl"):
         "aplicado": aplicado,
     })
 
+# Un proveedor recién puesto a vigilar puede no tener NINGUNA factura en el
+# histórico —un contrato que arranca este mes—, y entonces no existe en el
+# volcado y el loop no lo vería nunca. Se le crea la entrada vacía antes de
+# iterar: agregarla adentro reventaría el recorrido del dict.
+for prov in vigilados:
+    facturas.setdefault(prov, [])
+
 inserts, updates = [], []
 for prov, fs in facturas.items():
-    nombre = canonicos.get(prov) or nombres[prov]
+    nombre = canonicos.get(prov) or nombres.get(prov) or "?"
     if prov in rechazados or nombre in rechazados:
         continue                                   # dijiste que no. Nunca más.
+    vigilado = prov in vigilados
     meses = sorted({f["fecha"][:7] for f in fs})
-    if len(meses) < MESES_MINIMOS:
-        continue
-    if len(fs) / len(meses) > MAX_POR_MES:
-        continue                                   # factura seguido: es compra, no servicio
     dias = [int(f["fecha"][8:10]) for f in fs]
     dispersion = statistics.pstdev(dias) if len(dias) > 1 else 0.0
-    if dispersion > MAX_DISPERSION:
-        continue                                   # cae cualquier día: no es un contrato
+
+    # Los tres cortes existen para DESCUBRIR un patrón donde nadie lo declaró.
+    # Sobre un proveedor que pusiste vos en la lista no tienen nada que decidir:
+    # ya dijiste que es recurrente. Se saltean los tres y no sólo el de meses,
+    # porque el caso que motivó todo esto falla dos.
+    if not vigilado:
+        if len(meses) < MESES_MINIMOS:
+            continue
+        if len(fs) / len(meses) > MAX_POR_MES:
+            continue                               # factura seguido: es compra, no servicio
+        if dispersion > MAX_DISPERSION:
+            continue                               # cae cualquier día: no es un contrato
 
     fs.sort(key=lambda f: f["fecha"])
     delmes = [f for f in fs if f["fecha"][:7] == periodo]
     llego = bool(delmes)
 
-    dia_habitual = round(statistics.median(dias))
+    # Sin una sola factura previa no hay día ni monto que estimar, y NO se
+    # inventan: pasa sólo con un vigilado a mano que todavía no facturó nunca.
+    # Con `dia_habitual` en None la fila nunca se declara vencida — no se puede
+    # pasar de una fecha que nadie sabe cuál es.
+    dia_habitual = round(statistics.median(dias)) if dias else None
     margen = max(3, round(dispersion))
     # El margen YA NO decide si la fila existe, sino si la ausencia es un
     # problema. Cuando esta caja avisaba, esperar tenía sentido: decir «no llegó»
@@ -177,21 +216,24 @@ for prov, fs in facturas.items():
     #
     # Así que están los tres desde el día 1, y el margen se guarda en `vencido`:
     # false = todavía puede llegar, true = ya se pasó de su fecha habitual.
-    vencido = HOY.day >= min(28, dia_habitual + margen)
+    vencido = dia_habitual is not None and HOY.day >= min(28, dia_habitual + margen)
 
     # La fila va con la fecha en que ESTE proveedor factura, no con la de la
     # corrida: la columna del listado decía «hoy» para las tres y no informaba
     # nada. La que llegó lleva la fecha real de su factura; la que falta, la
     # esperada de este mes. Se recorta al último día del mes porque un proveedor
     # que factura el 31 no tiene 31 en febrero.
-    dia_esperado = min(dia_habitual, calendar.monthrange(HOY.year, HOY.month)[1])
+    # Sin día conocido, el último del mes: es lo más tarde que puede llegar, así
+    # que ordena la fila al final de la caja y no la da por atrasada.
+    ultimo_del_mes = calendar.monthrange(HOY.year, HOY.month)[1]
+    dia_esperado = min(dia_habitual, ultimo_del_mes) if dia_habitual else ultimo_del_mes
     fecha_esperada = HOY.replace(day=dia_esperado).isoformat()
 
     # Lo que suele costar: mediana de los últimos seis, no promedio. Un mes
     # atípico —la nómina de diciembre en Humano— corre el promedio y deja el
     # aviso de desvío calibrado contra un número que no representa nada.
     montos = sorted(f["monto"] for f in fs[-6:])
-    tipico = montos[len(montos) // 2]
+    tipico = montos[len(montos) // 2] if montos else None
     propuesta = {
         "clase": "factura_faltante",
         "metodo": "script",
@@ -205,6 +247,10 @@ for prov, fs in facturas.items():
         "confianza": 0.7,
         "llego": llego,
         "vencido": vencido,
+        # Quién lo puso en la caja. La pantalla lo usa para el chip «vigilado a
+        # mano»: al descubierto se le cree el patrón, a éste lo sostiene una
+        # persona, y son dos cosas distintas frente a una fila que sobra.
+        "vigilado_manual": vigilado,
         "dia_habitual": dia_habitual,
         # Lo que suele costar, SIEMPRE — también en la que ya llegó: es contra
         # esto que se mira si el monto de este mes se salió de lo normal.
@@ -215,7 +261,7 @@ for prov, fs in facturas.items():
         # escrito dos veces.
         "descripcion": nombre,
         "historial": {"meses": len(meses), "facturas": len(fs),
-                      "por_mes": round(len(fs) / len(meses), 2),
+                      "por_mes": round(len(fs) / len(meses), 2) if meses else 0,
                       "dia_habitual": dia_habitual, "dispersion_dia": round(dispersion, 1)},
     }
     if llego:
@@ -247,6 +293,18 @@ for prov, fs in facturas.items():
                         "a avisar por este proveedor."),
         })
         resumen = f"No llegó la factura de {nombre} ({periodo})"
+    elif not fs:
+        # Vigilado a mano y sin una sola factura en todo el histórico. No se
+        # dice ni cuándo suele facturar ni cuánto suele costar, porque no hay de
+        # dónde sacarlo: la fila existe para que veas que lo estás siguiendo, y
+        # dice exactamente eso y nada más.
+        propuesta.update({
+            "monto": None,
+            "detalle": (f"Lo pusiste a vigilar y todavía no tiene ninguna factura registrada en "
+                        f"ADM, así que no hay con qué estimarle el día ni el monto habitual. "
+                        f"De {periodo} tampoco hay ninguna."),
+        })
+        resumen = f"{nombre} todavía no facturó nunca"
     else:
         # Todavía en ventana. Se muestra igual —es uno de los recurrentes del
         # mes— pero NO se pide decidir nada: no hay ausencia que reclamar sobre
