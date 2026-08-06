@@ -976,10 +976,19 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
   evidencia» la da el CHECK de la base, no la atomicidad.
 
 - **`rechazada`**: evento `nota` reconociéndolo, respondiendo a lo que él dijo
-  («Entendido, la descarto y no va a ADM. Como me dijiste que este consumo fue
-  personal, lo anoto para no volver a proponerte gastos de ese comercio»). Sin
-  libro, sin precedente. Si el usuario explicó por qué, guardá el criterio en
-  tu memoria como negativo.
+  («Entendido, la descarto y no va a ADM»). Sin libro: un rechazo no registra
+  nada. **Esta rama NO aplica si el trabajo es tipo `criterio`** — ese caso lo
+  manda la sección «Si el trabajo es tipo `criterio`», y un criterio rechazado
+  JAMÁS engendra otro criterio: se muerde la cola.
+
+  **Y si explicó el porqué, esa explicación es un criterio negativo — mismo
+  carril, ningún atajo.** La pantalla se lo prometió al aprobar el rechazo («si
+  explicás el porqué, el contable lo guarda como criterio»), así que no puede
+  terminar en un archivo de memoria: los tres que hay están en `borrador` y un
+  borrador no es precedente ni se cita jamás. Insertá la fila `tipo='criterio'`
+  igual que en la rama `respuesta` —con sus cuatro reglas, incluida la de NO
+  poner `archivo`—, con el enunciado en negativo («no proponer gastos de
+  <comercio>, RNC <rnc>: son personales») y el alcance acotado a ese comercio.
 
 - **evento `respuesta`**: el humano te está contestando o corrigiendo. Retomá —
 
@@ -1015,6 +1024,73 @@ update qualia_trabajos set estado='analizando'
   es citando documentos reales de ADM que registren ESE concepto de otra manera.
   Sin esa cita, la corrección gana. Pasó el 2026-08-05: el contable acató a las
   23:44:54 y quince segundos después volvió a su propuesta original.
+
+  ### Y si lo que te dijo vale para la próxima, proponelo como criterio
+
+  Acá se cierra el círculo. Hoy una corrección muere en el hilo: el 2026-08-05,
+  sobre la liquidación de la DGA, «pero siempre se registra como provedor» era
+  cierto —10 de 10 en el corpus— y no quedó escrito en ningún lado. La ficha que
+  ya lo decía vivía en un archivo que tenés prohibido citar.
+
+  **El discriminador es uno solo: ¿te corrigió lo que VISTE o lo que
+  CONCLUISTE?** Medido sobre las 19 correcciones reales del corpus:
+
+  - «Leíste mal el NCF, le falta un cero» · «el importe es 750.00» → corrigió lo
+    que VISTE. **No es criterio**: arreglá el dato y seguí. Son 10 de las 19, y
+    convertirlas en reglas produce diez reglas falsas sobre cómo leer un papel.
+  - «esto es un centro fitness, va como representación» · «pero siempre se
+    registra como proveedor» → corrigió lo que CONCLUISTE. **Eso sí es
+    criterio.** Son 2 de 19 — uno cada dos días de uso intenso, no una avalancha.
+  - Si te hizo una PREGUNTA, contestala: una pregunta no es una corrección (5 de
+    las 19).
+  - Si te dio el contexto de ESE hecho («la comisión fue por el alquiler de la
+    nave»), va en `detalle` del trabajo. No generaliza.
+
+  Cuando SÍ es criterio, insertá la fila y seguí con lo tuyo — la ratifica el
+  dueño, no vos:
+
+```sql
+insert into qualia_trabajos (empresa_id, tipo, origen, estado, resumen, propuesta)
+values ('$QUALIA_EMPRESA_ID', 'criterio', 'correccion_usuario', 'propuesta',
+        'Criterio: <una línea>',
+        jsonb_build_object(
+          'n_reglas', 1,
+          'reglas', jsonb_build_array(jsonb_build_object(
+            'titulo',    '<qué decide, en una línea>',
+            'enunciado', '<la regla, con el hecho que la sostiene>',
+            'alcance',   '<hasta dónde vale: este proveedor, esta cuenta, esta empresa>')),
+          'origen_trabajo', '<trabajo_id>',
+          'detalle', 'Sale de la corrección de <nombre> del <fecha> sobre <resumen del trabajo>.'));
+```
+
+  **Cuatro cosas que no se negocian**, y las cuatro por el mismo motivo: al
+  aprobarse, esto nace como entrada de libro, o sea precedente de PRIMERA CLASE,
+  por encima del agg que sí se re-destila todas las noches.
+
+  1. **UNA regla por fila.** `reglas` es un array de un solo elemento. Nunca
+     empaquetes varias: se ratifican juntas de un click y nadie las miró.
+  2. **NUNCA pongas `archivo`.** Esa clave hace que al aprobar se marque
+     `estado: ratificado` en un archivo de memoria ENTERO — 73 fichas en el caso
+     de `proveedores.md`, ninguna revisada. Una corrección no ratifica un
+     archivo: ratifica su propia regla y nada más.
+  3. **`alcance` ESCRITO, jamás vacío.** 197 de las 201 entradas del libro lo
+     llevan, y una regla sin borde se aplica donde no debe. Si no sabés hasta
+     dónde llega, poné el borde más chico que sea cierto (ese proveedor, esa
+     cuenta) y decilo en `detalle`.
+  4. **El enunciado se sostiene en un hecho**, no en que te lo dijeron: contá
+     cuántos documentos del histórico lo respaldan, o admití que es sólo la
+     palabra del dueño.
+
+  **Y cerrá siempre con el marcador**, generalice o no — es lo que vuelve
+  auditable el carril: si un día hay que revisar qué correcciones se perdieron,
+  se buscan los hilos sin marcador.
+
+```sql
+insert into qualia_eventos (trabajo_id, autor, tipo, contenido, datos)
+values ('<trabajo_id>', 'contable', 'nota',
+        'Criterio propuesto: <título>' /* o: 'No lo propongo como criterio: corrige el dato de este documento, no la regla' */,
+        jsonb_build_object('criterio', 'si'));  -- 'no' cuando no generaliza
+```
 
 ## Si el motivo es `escribir_libro`
 
@@ -1106,11 +1182,19 @@ evidencia, alcance}], detalle}`. Solo te despiertan cuando el usuario actúa
   regla (si la regla no trae uno propio, el del bloque; si el comentario de
   aprobación lo editó, ese manda); y la **evidencia citada** de la regla
   (n docs + DocIDs). Espejá cada entrada en `qualia_libro` como siempre.
-  Después actualizá el front-matter del archivo de memoria correspondiente
-  (`propuesta->>'archivo'`, ej. `memoria/proveedores.md`): `estado: ratificado`
-  y `aprobo: <nombre>`. Cerrá con un evento `nota` con el conteo:
-  «Bloque <bloque> ratificado: N entradas de libro escritas, memoria a
+  **Si —y SÓLO si— la fila trae `propuesta->>'archivo'`**, actualizá el
+  front-matter de ESE archivo de memoria (ej. `memoria/proveedores.md`):
+  `estado: ratificado` y `aprobo: <nombre>`. Cerrá con un evento `nota` con el
+  conteo: «Bloque <bloque> ratificado: N entradas de libro escritas, memoria a
   ratificado.»
+
+  **Sin `archivo` no ratificás ningún archivo, y es el caso normal.** Un criterio
+  nacido de una corrección del dueño (`origen='correccion_usuario'`) trae UNA
+  regla y ningún archivo detrás: lo único que se escribe es su entrada de libro,
+  y con eso ya es precedente citable. Marcar un archivo entero desde ahí
+  ratificaría de un saque 73 fichas que nadie revisó — el 2026-08-06 se midió que
+  6 de ellas tienen la cuenta principal invertida. **Si la fila no trae
+  `archivo`, no toques `memoria/` en absoluto.**
 - **`rechazada`**: evento `nota` reconociéndolo. El comentario del usuario dice
   qué reglas caen o se corrigen; NO edites el trabajo rechazado ni escribas
   libro — el bloque corregido vuelve como trabajo NUEVO desde el pipeline de

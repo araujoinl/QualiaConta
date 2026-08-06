@@ -620,8 +620,19 @@ while [ "$corriendo" -eq 1 ]; do
   # quedó la fila — el que manda es el estado, como en todo el resto de la mesa.
   # Si por una carrera todavía no dice 'aprobada', el poke normal la manda por
   # el camino de siempre: degradar al camino viejo es correcto, saltearla no.
-  while IFS='|' read -r eid tid estado docid; do
+  while IFS='|' read -r eid tid tipo estado docid; do
     [ -z "${eid:-}" ] && continue
+    # Un criterio NO se registra en ADM: no es un documento, es una regla. Sin
+    # este corte, `registrar_directo` lee su `documento_adm` vacío, cae al `*)`
+    # de `script_de_registro` y lo despierta con motivo `registro_pendiente` —
+    # que es justo la rama que le ordena registrarlo en ADM. Y como la red de
+    # seguridad del bloque 3 lo vuelve a ver cada 10 minutos hasta las 12 horas,
+    # serían ~20 sesiones de LLM por criterio ratificado, con `error` como final
+    # probable: rojo en «Te toca» sobre una regla recién aprobada.
+    if [ "$tipo" = "criterio" ]; then
+      if poke "$tid" "accion_usuario"; then wm=$eid; else break; fi
+      continue
+    fi
     if [ "$estado" = "aprobada" ] && [ -z "$docid" ]; then
       registrar_directo "$tid"
       wm=$eid
@@ -632,7 +643,7 @@ while [ "$corriendo" -eq 1 ]; do
     else
       break
     fi
-  done < <(sql "select e.id, e.trabajo_id, t.estado, coalesce(t.propuesta->'registro_adm'->>'docid','') from qualia_eventos e join qualia_trabajos t on t.id = e.trabajo_id where t.empresa_id='${QUALIA_EMPRESA_ID}' and e.autor='usuario' and e.id > ${wm} order by e.id limit 10")
+  done < <(sql "select e.id, e.trabajo_id, t.tipo, t.estado, coalesce(t.propuesta->'registro_adm'->>'docid','') from qualia_eventos e join qualia_trabajos t on t.id = e.trabajo_id where t.empresa_id='${QUALIA_EMPRESA_ID}' and e.autor='usuario' and e.id > ${wm} order by e.id limit 10")
 
   # 2b) reservas muertas: 'analizando' que no se movió en 20 minutos.
   #
@@ -700,7 +711,11 @@ while [ "$corriendo" -eq 1 ]; do
     clave="reg:${id}:${upd}"
     antes=${avisado[$clave]:-0}
     (( ahora - antes > espera )) && pendientes_reg+=("${id}|${clave}|${edad}")
-  done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='aprobada' and propuesta->'registro_adm'->>'docid' is null and updated_at < now() - interval '10 minutes' and updated_at > now() - interval '12 hours' order by updated_at limit 3")
+  # `tipo <> 'criterio'`: una regla ratificada vive en `aprobada` sin docid para
+  # siempre —el CHECK de la base exige un DocID que una regla no tiene ni va a
+  # tener—, así que sin este corte cae acá cada 10 minutos durante 12 horas
+  # pidiendo un registro en ADM que no existe. Su red es el bloque 4.
+  done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and tipo <> 'criterio' and estado='aprobada' and propuesta->'registro_adm'->>'docid' is null and updated_at < now() - interval '10 minutes' and updated_at > now() - interval '12 hours' order by updated_at limit 3")
 
   # Ya no se saltea por cuota agotada, y desde que el reintento es el script y
   # no el contable, la cuota directamente no lo roza: registrar dejó de pasar
@@ -730,16 +745,39 @@ while [ "$corriendo" -eq 1 ]; do
   # y 12 horas de tope como los demás barridos: más viejo que eso no es una
   # entrega que se cayó, y despertar al contable por el histórico entero (las
   # cuatro primeras facturas nunca tuvieron libro) sería peor que el agujero.
-  while IFS='|' read -r id; do
+  # El CRITERIO entra por la otra pata de la condición, y por dos razones que no
+  # son la del documento. Su estado terminal es `aprobada`, no `registrada`: el
+  # CHECK `qualia_trabajos_registrada_con_evidencia` exige un DocID que una regla
+  # no tiene ni va a tener, así que sin esta pata ningún barrido lo mira nunca y
+  # un precedente que el dueño cree haber ratificado no existe en ningún lado.
+  #
+  # Y su motivo es `accion_usuario`, NO `escribir_libro`: esa rama de la skill
+  # arranca afirmando «el documento YA ESTÁ en ADM» y corta con «si el
+  # registro_adm.docid no está, no inventes la entrada» — la descripción exacta
+  # de un criterio. La rama que lo atiende es la de `criterio`, y se abre por
+  # `accion_usuario`.
+  #
+  # La marca de cierre es la MISMA de arriba —una fila en `qualia_libro`— y no
+  # una clave inventada dentro de `propuesta`: un `is null` que nadie apaga no es
+  # condición de salida, es un bucle. Mismo tope de 12 h que los demás, y acá
+  # fallar es fail-safe: la memoria pasa a `ratificado` recién al final del
+  # trabajo del contable, así que una ratificación que no se escribió deja el
+  # archivo en `borrador` — y un borrador no se cita jamás.
+  while IFS='|' read -r id tipo; do
     [ -z "$id" ] && continue
     ahora=$(date +%s)
     clave="libro:${id}"
     antes=${avisado[$clave]:-0}
     (( ahora - antes > 1800 )) || continue
     avisado[$clave]=$ahora
-    log "registrada sin libro: $id — pido la entrada"
-    poke "$id" "escribir_libro" "$ahora"
-  done < <(sql "select t.id from qualia_trabajos t where t.empresa_id='${QUALIA_EMPRESA_ID}' and t.estado='registrada' and t.updated_at < now() - interval '5 minutes' and t.updated_at > now() - interval '12 hours' and not exists (select 1 from qualia_libro l where l.trabajo_id = t.id) order by t.updated_at limit 3")
+    if [ "$tipo" = "criterio" ]; then
+      log "criterio ratificado sin libro: $id — pido la entrada"
+      poke "$id" "accion_usuario" "$ahora"
+    else
+      log "registrada sin libro: $id — pido la entrada"
+      poke "$id" "escribir_libro" "$ahora"
+    fi
+  done < <(sql "select t.id, t.tipo from qualia_trabajos t where t.empresa_id='${QUALIA_EMPRESA_ID}' and t.updated_at < now() - interval '5 minutes' and t.updated_at > now() - interval '12 hours' and not exists (select 1 from qualia_libro l where l.trabajo_id = t.id) and ( (t.tipo <> 'criterio' and t.estado='registrada') or (t.tipo = 'criterio' and t.estado='aprobada') ) order by t.updated_at limit 3")
 
   sleep "$INTERVALO" &
   wait $!

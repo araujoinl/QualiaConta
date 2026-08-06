@@ -28,6 +28,56 @@ concatenados en el SQL. INDEX.md y api-admcloud.md no se trocean (convención
 y conocimiento de herramienta: no requieren ratificación contable).
 """
 
+# ─────────────────────────────────────────────────────────────────────────────
+# NO CORRAS ESTE SCRIPT. Fuera de servicio desde el 2026-08-06. Se conserva
+# como registro de cómo se pensó la migración masiva del preentrenamiento.
+#
+# No está roto: la cadena entera lo atendería. Un click y se dispara. Por eso se
+# retira en vez de dejarse instalado.
+#
+# El motivo de fondo no es que empaquete mal: es QUÉ AUTORIDAD le da al
+# resultado. Al aprobarse un bloque, la skill mesa-de-trabajo pone
+# `estado: ratificado` al ARCHIVO ENTERO, y una memoria ratificada MANDA SOBRE
+# EL AGG. O sea: un click congela la foto del 2026-08-02 por encima del
+# destilado que `refrescar-precedentes.sh` regenera todas las noches a las 5:20.
+#
+# Tres razones, medidas el 2026-08-06 contra su propio --dry-run (5 bloques,
+# 79 reglas) y contra raw/vendor-bills-detalle.jsonl:
+#
+#   1. Emite bloques de 30 reglas, y adentro hay basura. Las fichas ponderan por
+#      MONTO y `buscar-precedente.py` cuenta DOCUMENTOS — nadie había notado que
+#      son dos ejes distintos. En 6 de las 73 fichas eso invierte la cuenta
+#      principal. La peor es la de mayor volumen, Banco Múltiple Santa Cruz:
+#      encabeza con 230.02 (57,8% del monto, pero 3 facturas de 203) y deja
+#      última a 640.02 (0,5% del monto, pero 136 de 203 — dos de cada tres).
+#      Ratificarla enseña a mandar a la cuenta del préstamo lo que casi siempre
+#      es un cargo por cheque de RD$0,15. Y ratificar 30 tratamientos con un
+#      click, en una mesa que aprobó 48 filas en un minuto (2026-08-03 23:24 UTC,
+#      verificado), es exactamente cómo se instala una regla equivocada.
+#
+#   2. Ratifica por ARCHIVO lo que trocea por BLOQUE. Aprobar el primero de los
+#      tres bloques de proveedores.md marca las 73 fichas, 43 de ellas sin que
+#      nadie las mire, y deja los otros dos bloques imposibles de re-emitir:
+#      este script sólo trocea BORRADORES. Lo mismo con nomina.md, que se
+#      autodeclara «estructura NO verificada línea a línea» y cuya cuarta
+#      «regla» es la sección «Qué falta confirmar en F4» — una lista de
+#      preguntas abiertas convertida en precedente de primera clase.
+#
+#   3. Las 79 reglas nacen con «(sin alcance)». Una regla sin borde se aplica
+#      donde no debe, y es justo lo que el mecanismo existía para evitar.
+#
+# El reemplazo no es otro script: la memoria se ratifica DE A UNA regla, cuando
+# el dueño corrige algo de verdad. Lo inserta el propio contable desde la rama
+# `respuesta` de skills/mesa-de-trabajo/SKILL.md, con una sola regla, su alcance
+# escrito y SIN `archivo` — para que ratificar una regla no ratifique un archivo.
+# ─────────────────────────────────────────────────────────────────────────────
+import sys as _sys
+
+_sys.exit(
+    "bloques-criterios.py está fuera de servicio desde el 2026-08-06 — "
+    "leé el comentario de la cabecera antes de revivirlo."
+)
+
 import argparse
 import json
 import os
