@@ -422,12 +422,15 @@ def armar_payload(p, relationship_id, payment_term_id):
               % (ajuste["renglon"] + 1, ajuste["antes"], ajuste["despues"],
                  float(ajuste["movido"])))
 
-    return {
+    payload = {
         "DocDate": p.get("fecha"),
         "Reference": p.get("numero_factura_suplidor") or p.get("ncf"),
         "NCF": p.get("ncf"),
         "RelationshipID": relationship_id,
-        "FiscalID": re.sub(r"\D", "", str(p.get("rnc") or "")),
+        # None y no "" cuando no hay RNC: asi quedo la FP00001133, que es la
+        # unica registrada contra una entidad de SIN_RNC y la unica evidencia
+        # de que ADM acepta el documento. Vacio y ausente no son lo mismo.
+        "FiscalID": re.sub(r"\D", "", str(p.get("rnc") or "")) or None,
         "Beneficiary": str(p.get("proveedor") or "")[:120],
         "CurrencyID": p.get("moneda") or "DOP",
         "ExchangeRate": 1.0,
@@ -437,6 +440,25 @@ def armar_payload(p, relationship_id, payment_term_id):
         "ExpenseTypeID": (p.get("tipo_gasto") or {}).get("adm_id") or TIPO_GASTO_DEFECTO,
         "Items": items,
     }
+
+    # ADM frena un duplicado por DOS claves independientes: el NCF y la
+    # referencia del proveedor. Sin NINGUNA de las dos deja pasar el mismo
+    # documento cuantas veces se lo mande, callado. Un papel sin NCF no es raro
+    # (el Estado no emite comprobante fiscal); lo que no puede faltar entonces
+    # es la referencia. Las 1120 facturas del historico traen una u otra, asi
+    # que esto no cierra un camino: deja escrito el porque.
+    #
+    # Va aca y no en verificar_duplicado() porque aquella NO corre con
+    # --simular, que es el modo con el que se comprueba si el registro va a
+    # andar. Simular en verde y morir al registrar es el desvio que este
+    # chequeo existe para evitar.
+    if not str(payload["NCF"] or "").strip() and not str(payload["Reference"] or "").strip():
+        morir("el documento no trae NCF ni referencia, y esas son las DOS claves "
+              "con las que ADM frena un duplicado: sin ninguna, la misma plata se "
+              "puede registrar dos veces sin que nadie se entere. Ponle la "
+              "referencia del papel — en una liquidacion de aduana, el numero de "
+              "DUA — y volve a intentar.")
+    return payload
 
 
 def lecturas_posibles(itbis_papel, total_papel):
@@ -547,18 +569,10 @@ def verificar_duplicado(ncf, referencia, doc_date=None):
     Lo que queda afuera del corte no queda sin barrera: ADM frena el duplicado
     por DOS claves independientes (mismo NCF para el RNC, o misma referencia
     del proveedor) y devuelve un mensaje claro. Este chequeo es cortesia para
-    avisar ANTES de gastar el POST, no la unica defensa."""
-    # ...salvo cuando no hay NINGUNA de las dos claves, que es el unico caso en
-    # que ADM deja pasar el mismo documento dos veces sin decir nada. Un papel
-    # sin NCF no es raro (el Estado no emite comprobante fiscal); lo que no
-    # puede faltar entonces es la referencia. Las 1120 facturas del historico
-    # traen una u otra: esto no cierra un camino, deja escrito el porque.
-    if not str(ncf or "").strip() and not str(referencia or "").strip():
-        morir("el documento no trae NCF ni referencia, y esas son las DOS claves "
-              "con las que ADM frena un duplicado: sin ninguna, la misma plata se "
-              "puede registrar dos veces sin que nadie se entere. Ponle la "
-              "referencia del papel — en una liquidacion de aduana, el numero de "
-              "DUA — y volve a intentar.")
+    avisar ANTES de gastar el POST, no la unica defensa.
+
+    Que el documento tenga al menos UNA de las dos claves lo garantiza
+    armar_payload(), que corre tambien con --simular."""
     corte = fecha_corte(doc_date)
 
     def ya_es_viejo(lote):
