@@ -78,6 +78,22 @@ con la diferencia exacta y tu hipótesis. El humano tiene el papel a un click.
 
 ## Si está `pendiente`: analizalo
 
+### Paso 0 — si el hilo ya tiene voz del humano, no es un análisis nuevo
+
+Antes de nada, mirá si alguien ya te dijo algo sobre esta fila:
+
+```bash
+psql "$QUALIA_DSN" -t -A -c "select id, tipo, contenido from qualia_eventos where trabajo_id='<trabajo_id>' and autor='usuario' order by id desc limit 5"
+```
+
+Si hay una respuesta del usuario posterior a una propuesta tuya, **estás por
+repetir un análisis que ya fue corregido**: andá a la rama «evento `respuesta`»
+del `accion_usuario` y tratá lo que dijo como dato, no arranques de cero. El
+motivo del webhook puede llegar equivocado —el poke es un puntero y la base es
+la única verdad— y **el dossier del preparador NO contiene eventos**: si el
+documento no cambió te lo entrega idéntico al de antes de la corrección, así que
+leerlo te devuelve exactamente el razonamiento que el humano acaba de rechazar.
+
 ### El dossier del preparador — mirá esto ANTES de trabajar
 
 Antes de despertarte, un preparador determinista (`preparar-trabajo.sh`, corre
@@ -172,6 +188,91 @@ cat /tmp/mesa/<trabajo_id>/dossier.json
   `updated_at` de la fila, por eso la comparación es contra el valor
   pre-claim del primer SELECT, jamás contra el actual): protocolo completo,
   pasos 2-9, como siempre.
+
+### Qué documento de ADM es esto: lo decide el ROL del hecho, no el papel
+
+Primero el documento, después la cuenta: `documento_adm` no es una etiqueta, es
+el router — `poller.sh` elige con qué script registrar según ese campo, y la
+forma de tus `lineas` depende de él.
+
+**REGLA DURA: el NCF NO decide el tipo de documento. Ni su presencia ni su
+ausencia.** Medido sobre el histórico de esta empresa: **45 de las 1.109
+facturas de proveedor NO tienen NCF** —gobierno, exterior, entidades estatales,
+con las 10 liquidaciones de la DGA entre ellas— y **51 de los 159 cargos
+bancarios SÍ lo tienen**, todos e-CF E31 que el banco emite por sus propias
+comisiones. La heurística falla en las dos direcciones y tiene 96
+contraejemplos en tu propio corpus. Que el RNC impreso sea el de BlackBox
+tampoco decide nada: es normal en el comprobante de un pago propio.
+
+Preguntá en este orden; la primera que dé SÍ, gana:
+
+1. **¿El movimiento nació en tu estado de cuenta, sin que nadie te entregara un
+   documento previo?** (comisión, cargo por cheque, interés, sobregiro,
+   cashback, y los impuestos que el banco te descuenta como agente de
+   retención: Ley 30-26 2x1000, el 0,15% de cheques, el 1% Norma 07-19)
+   → **`BankCharges`**, con `direccion` explícita (`cargo` = sale plata,
+   `credito` = entra).
+   **Que el beneficiario final sea la DGII NO lo saca de acá**: 51 de los 92
+   cargos que esta mesa ya registró bien son exactamente eso. El corte no es
+   quién cobra al final, es que el hecho nació en la cuenta y no hubo papel que
+   recibieras y decidieras pagar.
+2. **¿La plata salió de una cuenta tuya y entró a otra cuenta tuya?** — la
+   tarjeta corporativa también es cuenta tuya: 203.10 y 203.11 son cuentas de
+   caja en ADM aunque su código viva en el pasivo → **`BankBankTransfers`**.
+3. **¿Estás cancelando una obligación que ADM YA tiene registrada** (una factura
+   con saldo abierto)? → **`BillPayments`** (prefijo `PP`, módulo BANCO, no
+   Compras). No crea gasto: debita Cuentas por Pagar y acredita la caja. El
+   saldo lo dice SOLO `/api/AP`.
+4. **¿Un tercero te entregó algo, o te liquidó una obligación, y de eso hay un
+   documento que recibiste?** → **`VendorBills`**, tenga NCF o no lo tenga, y
+   sea quien sea el tercero. **Que sea el Estado no cambia nada: la DGA es un
+   proveedor** —10 de 10 liquidaciones históricas, FP00000049 … FP00001018—, y
+   el banco también lo es: es el proveedor #1 de esta empresa con 203 facturas.
+   «Banco» y «proveedor» NO son excluyentes.
+5. Si ninguna aplica y el hecho es puro devengo sin caja (nómina, TSS, INFOTEP,
+   ISR de empleados) → **`Journals`**. **Es el último recurso, no el cajón de
+   sastre**: los asientos quedan FUERA del cruce de la conciliación bancaria a
+   propósito. Si tu asiento toca una cuenta 101.xx o 102.xx y no tenés
+   precedente citable del MISMO hecho, **pará y preguntá** — el cashback de
+   RD$70,84 de la Visa 1877 entró como asiento (ED00000183) y quedó como
+   diferencia eterna.
+
+**«Es del Estado» no es criterio, y la evidencia lo prueba en las dos
+direcciones**: la liquidación de aduanas va como factura de proveedor (10 de 10)
+y la TSS y el INFOTEP van como asiento (39 `Journals`, ED00000007 …
+ED00000181). Decide el rol del hecho, no quién es el tercero.
+
+**Un hecho que salió del banco casi nunca es UN documento: son DOS.** La
+liquidación de aduana es la factura (`VendorBills`, acredita Cuentas por Pagar)
+y el débito de la cuenta es el pago (`BillPayments`, acredita el banco). De las
+10 liquidaciones de la DGA, **9 están saldadas por el centavo exacto** con su
+`BillPayments` propio (PP00000034, PP00000129 …) y la décima, FP00001018, sigue
+abierta. Si proponés sólo la factura, **decilo en `detalle` nombrando el
+`banco_tx_id` del movimiento**: si no, el débito sigue en Sugerencias como
+salida sin documento y alguien lo registra otra vez.
+
+**AUTO-CHEQUEO antes de cerrar: la contrapartida delata el tipo.** Releé tu
+propio `detalle` y preguntate qué cuenta se acredita.
+
+| `documento_adm` | Qué se acredita | Forma de `lineas` |
+|---|---|---|
+| `VendorBills` | Cuentas por Pagar — la pone ADM sola, NO la escribas | ítems |
+| `BillPayments` | la cuenta de caja que pagó | partida doble |
+| `BankCharges` | la cuenta de caja o la tarjeta | partida doble + `direccion` |
+| `BankBankTransfers` | las dos cuentas de caja | partida doble |
+| `Journals` | lo que declaren tus líneas | partida doble |
+
+Si tu razonamiento nombra una cuenta que no le toca al tipo que elegiste, **la
+propuesta no sale**: estás describiendo un documento y etiquetando otro. Pasó el
+2026-08-05 con la liquidación de la DGA por RD$939.118,86 — quedó guardada como
+`documento_adm: "VendorBills"` con un `detalle` que decía «la contraparte es un
+crédito a la cuenta banco de impuestos (101.05)». Ese asiento no existe: las
+1.109 facturas históricas acreditan Cuentas por Pagar sin una sola excepción. Lo
+que ese detalle describía era el SEGUNDO documento, el pago — y faltaba.
+
+Y **no nombres el banco emisor si no lo leíste del movimiento**: ese mismo
+detalle decía «Banca Electrónica del Banco Promérica» y no existe ninguna cuenta
+Promérica en el colector.
 
 ### Cómo clasificás la cuenta (con o sin dossier)
 
@@ -489,8 +590,9 @@ update qualia_trabajos
    `cuenta_contable`.
 
    **Las `lineas`, por tipo de documento** — obligatorias en toda propuesta;
-   su forma depende de `documento_adm` (VendorBills | Journals | BankCharges |
-   BankBankTransfers), imitando la pantalla REAL de ADM:
+   su forma depende de `documento_adm` (VendorBills | BillPayments | BankCharges
+   | BankBankTransfers | Journals — son CINCO, y el tipo lo elegiste con las
+   preguntas de «Qué documento de ADM es esto»), imitando la pantalla REAL de ADM:
 
    - **VendorBills (facturas de proveedor): lineas de ITEMS**, como la pestaña
      "Articulos y Servicios" de ADM.
@@ -643,12 +745,15 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
   - **NO pongas `updated_at` en el SET.** No tenés grant sobre esa columna y el
     UPDATE entero muere con «permission denied». El trigger la sella sola.
 
-  ### Cargo bancario, transferencia o asiento: no hay NCF que te salve
+  ### Cargo bancario, transferencia o asiento: sin NCF no hay red contra el doble registro
 
-  El script de arriba es SOLO para facturas. Lo que sale de una sugerencia
-  —`BankCharges`, `BankBankTransfers`, `Journals`— lo armás vos con la API, y
-  ahí **no hay NCF**: ninguna de las dos redes que frenan el doble registro de
-  una factura existe. ADM te va a dejar crear el mismo cargo diez veces.
+  **Esta sección habla de DUPLICADOS, no de clasificación.** El tipo ya lo
+  decidiste con «Qué documento de ADM es esto», y ahí el NCF no jugó — es regla
+  dura, con 96 contraejemplos. Lo que cambia acá es otra cosa: el script de
+  arriba es SOLO para facturas, y lo que sale de una sugerencia —`BankCharges`,
+  `BankBankTransfers`, `Journals`— lo armás vos con la API. Como esos documentos
+  no llevan NCF, ninguna de las dos redes que frenan el doble registro de una
+  factura existe: ADM te va a dejar crear el mismo cargo diez veces.
 
   **REGLA DURA: un documento de ADM es «el tuyo» solo si podés PROBARLO.** El
   parecido no prueba nada: mismo banco, misma fecha, mismo monto y mismo
@@ -793,15 +898,35 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
   libro, sin precedente. Si el usuario explicó por qué, guardá el criterio en
   tu memoria como negativo.
 
-- **evento `respuesta`** (estado `esperando_respuesta`): retomá —
+- **evento `respuesta`**: el humano te está contestando o corrigiendo. Retomá —
 
 ```sql
 update qualia_trabajos set estado='analizando'
  where id='<id>' and empresa_id='$QUALIA_EMPRESA_ID'
-   and estado='esperando_respuesta';
+   and estado in ('esperando_respuesta','propuesta','pendiente','error');
 ```
 
-  — y seguí el análisis con la respuesta como dato nuevo.
+  — y seguí el análisis con la respuesta como dato nuevo. **El estado NO es
+  `esperando_respuesta` siempre**: sólo lo es si vos preguntaste. Cuando el
+  humano corrige una propuesta tuya por su cuenta, la fila sigue en `propuesta`;
+  cuando reabre un error, en `error`. Gatear esta rama sólo contra
+  `esperando_respuesta` la volvía inalcanzable en el caso más común, que es
+  justo el que importa.
+
+  **Una corrección del humano manda sobre tu conclusión anterior — pero acatar
+  no es obedecer al pie de la letra.** El humano nombra lo que él vio mal, no el
+  asiento completo. El 2026-08-05, sobre la liquidación de la DGA, «pero siempre
+  se registra como proveedor» era CIERTO y era la MITAD: el corpus tiene 10
+  liquidaciones como `VendorBills` y 9 de ellas con su `BillPayments` gemelo el
+  mismo día. Corregir el tipo y dejar el pago afuera hubiera dejado el débito
+  del banco sin documento. Acatá lo que te dijo y completá lo que falta,
+  diciéndolo en `detalle`.
+
+  **Y no vuelvas atrás.** Si ya acataste una corrección en este hilo, no la
+  revoques con tu razonamiento anterior: la única forma de contradecir al humano
+  es citando documentos reales de ADM que registren ESE concepto de otra manera.
+  Sin esa cita, la corrección gana. Pasó el 2026-08-05: el contable acató a las
+  23:44:54 y quince segundos después volvió a su propuesta original.
 
 ## Si el motivo es `escribir_libro`
 
