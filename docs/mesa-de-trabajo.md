@@ -70,6 +70,7 @@ Una fila por documento arrastrado o sugerencia del contable.
 | `analizando → propuesta` | contable, con `propuesta` y `resumen` llenos |
 | `analizando → esperando_respuesta` | contable, tras evento `pregunta` |
 | `esperando_respuesta → analizando` | contable, al llegar la respuesta |
+| `propuesta`/`pendiente`/`error` `→ analizando` | contable, cuando el usuario corrige una propuesta suya. **`esperando_respuesta` NO es el único origen de una respuesta**: sólo lo es cuando el contable preguntó. El caso común es que el humano corrija por su cuenta y la fila siga en `propuesta` |
 | `propuesta → aprobada` / `rechazada` | usuario en la web. NUNCA el contable |
 | `aprobada → registrada` | contable, al registrar en ADM Cloud — **todavía no habilitado** (Entrega 2); mientras tanto los trabajos quedan en `aprobada` y eso es correcto |
 | `* → error` | contable, con `error_detalle` |
@@ -112,9 +113,19 @@ sus propios renglones. Las sugerencias de cargos bancarios sí llevan cuenta de
 cabecera, en `cuenta_contable`: son un movimiento y una cuenta.
 
 Desde 2026-08-02 la propuesta lleva además **`documento_adm`** (qué entidad se
-creará: VendorBills | Journals | BankCharges | BankBankTransfers) y
+creará: VendorBills | BillPayments | BankCharges | BankBankTransfers | Journals
+— son CINCO; `BillPayments` es el pago a una factura ya registrada, prefijo `PP`
+y módulo BANCO, no Compras) y
 **`lineas[]`**, cuya forma depende del documento — imitando la pantalla real
 de ADM (la web auto-detecta la forma por la presencia de `precio`/`cantidad`):
+
+**Quién decide el valor de `documento_adm`, y cómo**: en las sugerencias lo fija
+el script del carril (`sugerir-cargos.sh` → `BankCharges`, etc.); en una factura
+lo elige el contable con el criterio de la sección «Qué documento de ADM es esto»
+de `skills/mesa-de-trabajo/SKILL.md`, que decide por el ROL del hecho. **El NCF no
+entra en esa decisión** — 45 de 1.109 facturas de proveedor históricas no lo
+tienen y 51 de 159 cargos bancarios sí. No es una etiqueta: `poller.sh` elige con
+qué script registrar según este campo.
 
 - **VendorBills: líneas de ITEMS** — cada renglón del documento como
   `{descripcion, cantidad, precio, grupo_impuesto, itbis, cuenta, cuenta_nombre}`;
