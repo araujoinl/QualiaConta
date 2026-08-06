@@ -542,7 +542,27 @@ while [ "$corriendo" -eq 1 ]; do
         poke "$id" "trabajo_nuevo"
       ) &
     fi
-  done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='pendiente' order by created_at limit 3")
+    # Una fila con una acción del usuario todavía sin atender NO es trabajo
+    # nuevo: es el bloque 2 el que la despierta, con el motivo `accion_usuario`,
+    # que es el único que hace leer el hilo. Sin esta exclusión salían los DOS
+    # avisos con dos segundos de diferencia y corrían dos turnos en paralelo
+    # sobre la misma fila, ciegos entre sí. El 2026-08-05 con la liquidación de
+    # la DGA (fb0c5c71) se vio entero: el usuario corrigió a las 23:43:29, el
+    # turno que leyó la corrección la acató a las 23:44:54 —«te lo propongo como
+    # VendorBills»— y el turno gemelo la pisó a las 23:45:09 volviendo a «cargo
+    # bancario», arrancando de cero con el dossier anterior a la corrección
+    # («mismo documento sha 8d2d7885ffd3; reuso el dossier, no re-leo»). No fue
+    # que el contable se olvidara: eran dos.
+    #
+    # Se compara contra el MISMO watermark del bloque 2, así que la exclusión
+    # dura exactamente hasta que ese evento se entregó. Si el aviso falla, el
+    # watermark no avanza y la fila queda excluida un tick más — que es lo
+    # correcto: el reintento le toca al bloque 2, que sí sabe qué evento debe.
+    #
+    # `forzar_relectura` es la excepción y sigue por acá a propósito: pedir que
+    # vuelva a MIRAR el documento es lo único que necesita al preparador, y el
+    # preparador sólo corre en este bloque.
+  done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos t where empresa_id='${QUALIA_EMPRESA_ID}' and estado='pendiente' and not exists (select 1 from qualia_eventos e where e.trabajo_id = t.id and e.autor='usuario' and e.id > ${wm} and coalesce((e.datos->>'forzar_relectura')::boolean, false) = false) order by created_at limit 3")
 
   # 2) acciones del usuario en la web. El watermark SOLO avanza si el aviso
   # llegó: un rechazo con el gateway caído se reintenta el próximo tick en vez
