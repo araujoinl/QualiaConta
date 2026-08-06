@@ -212,6 +212,8 @@ Un proveedor cuyo gasto se reparte ~50/50 entre dos cuentas se marca
 - Cuenta(s) de gasto típica(s): 150.04 ITBIS Adelantado (74.0%), 130.02 Compras en Tránsito (14.9%), 210.01 Itbis Operativo (11.1%)
 - ITBIS / retenciones observados: 0 docs con ITBIS discriminado (10 sin). Sin retenciones.
 - NCF típico: sin NCF (entidad gubernamental no emite NCF)
+- Referencia: el número de DUA de la liquidación, en `numero_factura_suplidor` (ej. `10030-CL11-2608-000077`, FP00001133). Sin NCF, la referencia es la ÚNICA clave con la que ADM frena un duplicado: si falta, el registro se detiene a propósito.
+- Proveedor en ADM: existe sin FiscalID y se resuelve por nombre exacto (está en la lista `SIN_RNC` de `registrar-en-adm.py`). El RNC que trae el papel es el de BlackBox, el que paga — no el del emisor.
 - Vía de pago: Transferencia (9 pagos). Cuenta banco no identificada en agregado.
 - Plazo medio de pago: 0 días
 - Tratamiento típico: Liquidaciones de aduana por importaciones: ITBIS adelantado a 150.04 (mayoría del monto), valor CIF de la mercancía en tránsito a 130.02, y el ITBIS operativo de la operación a 210.01. Pagos por transferencia sin NCF (gobierno). Es el proveedor de mayor monto del bloque por naturaleza aduanera. Evidencia: 10 docs, DocIDs FP00001018, FP00000829.

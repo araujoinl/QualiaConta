@@ -88,6 +88,21 @@ TERMINOS = {
 }
 TIPO_GASTO_DEFECTO = "dcda501b-23df-4074-a8b8-039a153c6b44"  # 02 Trabajos y Servicios
 
+# Entidades que NO tienen RNC de emisor, y por eso son el unico caso que se
+# resuelve por nombre. El Estado no emite NCF ni imprime su RNC en el papel: la
+# liquidacion de aduana trae el RNC del CONTRIBUYENTE que paga, no el de la DGA,
+# asi que el match por RNC busca al comprador y no encuentra nada.
+#
+# Sin esto el registro moria en "la propuesta no trae un RNC valido" y el agente
+# terminaba creando la factura a mano. Paso el 2026-08-06 con la liquidacion de
+# RD$939,118.86 (FP00001133): 5 minutos y medio de desvio contra los 23 segundos
+# del camino normal, y el docid volvio a la mesa recien al final.
+#
+# La lista es CERRADA a proposito: la excepcion la revisa un humano una vez, no
+# la elige el modelo por parecido de nombre. Lo que no este aca muere igual que
+# siempre.
+SIN_RNC = ("DGA ADUANAS",)
+
 
 def morir(msg):
     print(msg, file=sys.stderr)
@@ -243,6 +258,33 @@ def sql(consulta, **variables):
 
 
 # ---------------------------------------------------------------- proveedor
+def nombre_plano(txt):
+    """Mayusculas y espacios colapsados. Alcanza para comparar contra una lista
+    cerrada; NO es un normalizador de nombres de proveedor y no debe usarse para
+    buscar uno cualquiera — de eso se encarga el RNC."""
+    return re.sub(r"\s+", " ", str(txt or "")).strip().upper()
+
+
+def proveedor_sin_rnc(p):
+    """El unico camino que resuelve un proveedor por NOMBRE, y solo para SIN_RNC.
+
+    Se BUSCA, nunca se crea: un proveedor dado de alta sin RNC queda en ADM como
+    una ficha que despues nadie puede casar con DGII. Si no existe, lo abre un
+    humano una vez y desde ahi este camino lo encuentra siempre."""
+    nombre = nombre_plano(p.get("proveedor"))
+    if nombre not in [nombre_plano(n) for n in SIN_RNC]:
+        morir("la propuesta no trae un RNC valido: no busco ni creo el proveedor")
+
+    for v in paginar("Vendors"):
+        if nombre_plano(v.get("Name")) == nombre:
+            print("proveedor: %s (entidad sin RNC, resuelta por nombre)" % v.get("Name"))
+            return v.get("ID"), v.get("PaymentTermID") or TERMINOS["al contado"]
+
+    morir("«%s» esta en la lista de entidades sin RNC pero no existe en ADM. Se "
+          "da de alta a mano una sola vez; no creo un proveedor sin RNC."
+          % p.get("proveedor"))
+
+
 def asegurar_proveedor(p, simular):
     """Devuelve el RelationshipID. Si el proveedor no existe, lo crea.
 
@@ -255,10 +297,13 @@ def asegurar_proveedor(p, simular):
     El padron es el que rescata al e-CF cuya foto no dejo leer el codigo de
     seguridad: sin el, un comprobante no verificable dejaba al proveedor sin
     nombre y el trabajo moria pudiendo resolverse con el RNC solo.
+
+    La UNICA excepcion al match por RNC son las entidades de SIN_RNC, que no
+    tienen uno que buscar. Ver proveedor_sin_rnc().
     """
     rnc = re.sub(r"\D", "", str(p.get("rnc") or ""))
     if len(rnc) not in (9, 11):
-        morir("la propuesta no trae un RNC valido: no busco ni creo el proveedor")
+        return proveedor_sin_rnc(p)
 
     for v in paginar("Vendors"):
         if re.sub(r"\D", "", str(v.get("FiscalID") or "")) == rnc:
@@ -503,6 +548,17 @@ def verificar_duplicado(ncf, referencia, doc_date=None):
     por DOS claves independientes (mismo NCF para el RNC, o misma referencia
     del proveedor) y devuelve un mensaje claro. Este chequeo es cortesia para
     avisar ANTES de gastar el POST, no la unica defensa."""
+    # ...salvo cuando no hay NINGUNA de las dos claves, que es el unico caso en
+    # que ADM deja pasar el mismo documento dos veces sin decir nada. Un papel
+    # sin NCF no es raro (el Estado no emite comprobante fiscal); lo que no
+    # puede faltar entonces es la referencia. Las 1120 facturas del historico
+    # traen una u otra: esto no cierra un camino, deja escrito el porque.
+    if not str(ncf or "").strip() and not str(referencia or "").strip():
+        morir("el documento no trae NCF ni referencia, y esas son las DOS claves "
+              "con las que ADM frena un duplicado: sin ninguna, la misma plata se "
+              "puede registrar dos veces sin que nadie se entere. Ponle la "
+              "referencia del papel — en una liquidacion de aduana, el numero de "
+              "DUA — y volve a intentar.")
     corte = fecha_corte(doc_date)
 
     def ya_es_viejo(lote):
