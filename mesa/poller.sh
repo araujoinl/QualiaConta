@@ -292,9 +292,21 @@ poke() {
 #     cargos, la registra el contable como hasta ahora.
 script_de_registro() {
   case "${1:-}" in
-    VendorBills) echo "registrar-en-adm.py" ;;
-    BankCharges) echo "registrar-cargo-bancario.py" ;;
-    *)           return 1 ;;
+    VendorBills)       echo "registrar-en-adm.py" ;;
+    BankCharges)       echo "registrar-cargo-bancario.py" ;;
+    # El script existia desde el 2026-08-03 —lo uso el contable para TE00000212
+    # y TE00000214— y nunca se engancho: el registro-sin-LLM se construyo antes
+    # de que se commiteara. Cada transferencia aprobada despertaba al modelo
+    # para nada.
+    BankBankTransfers) echo "registrar-transferencia-bancaria.py" ;;
+    # El pago de una factura de proveedor con la tarjeta. Lo pide la caja
+    # «Pagos con tarjeta de credito detectados» de la mesa, que ya trae la
+    # factura elegida por un humano: aca no hay nada que analizar.
+    BillPayments)      echo "registrar-pago-factura.py" ;;
+    # Journals sigue SIN script y es a proposito: un asiento contable no tiene
+    # forma fija y ahi el juicio hace falta. Preferimos el camino caro al
+    # camino equivocado.
+    *)                 return 1 ;;
   esac
 }
 
@@ -320,12 +332,46 @@ registrar_directo() {
     # que llega se va sin hacer nada (flock -n) y el barrido lo reintenta luego.
     exec 9>"/tmp/mesa/.reg-${id}.lock" 2>/dev/null || exit 0
     flock -n 9 || exit 0
+
+    # Turno para escribirle a ADM. El lock de arriba es por TRABAJO y no alcanza:
+    # dos trabajos distintos tienen locks distintos, salen juntos, y ADM le da a
+    # los dos el MISMO correlativo — el que pierde muere con «Ya existe una
+    # transacción con el número CB00000225». Pasó el 2026-08-05 aprobando dos
+    # cargos de un tirón: uno entró y el otro se quedó 10 minutos esperando al
+    # barrido. ADM asigna el número al GUARDAR, asi que no hay forma de pedirlo
+    # antes ni de reservarlo: la única defensa es no pisarse.
+    #
+    # Es por EMPRESA porque el correlativo lo es, y se ESPERA en vez de
+    # abandonar: al de atrás no le sobra nada, sólo le toca después. La espera
+    # cubre un registro entero (300s) con margen; si ni asi consigue turno, sale
+    # y queda para el barrido, que es exactamente lo que hacía antes.
+    exec 8>"/tmp/mesa/.registro-adm.lock" 2>/dev/null || exit 0
+    if ! flock -w 330 8; then
+      log "sin turno para ADM tras 330s: $id — queda para el barrido"
+      exit 0
+    fi
+
     t0=$(date +%s)
     # 300s: el camino largo es factura + adjunto (el paginado del duplicado son
     # ~3s, el POST y el readback otros pocos, la subida ~6s), con margen de
     # sobra para un ADM lento. -k 10 = KILL de respaldo si el TERM no alcanza.
     salida=$(timeout -k 10 300 python3 "/memoria-scripts/${script}" --trabajo "$id" 2>&1)
     rc=$?
+
+    # El choque de correlativo se reintenta UNA vez, y sólo ése. Con el turno de
+    # arriba ya no puede venir de nosotros, pero el contable registra por su
+    # cuenta y no pide turno, y ADM tampoco es sólo nuestro. Reintentar acá es
+    # seguro porque el script relee ADM antes de crear: si el documento ya
+    # existe con la referencia de este movimiento muere con YA REGISTRADO, y si
+    # hay gemelos que no puede distinguir muere con AMBIGUO. Sin esa barrera
+    # esto duplicaría documentos en vez de salvarlos.
+    if [ "$rc" -ne 0 ] && printf '%s' "$salida" | grep -qi 'ya existe una transacci.n con el n.mero'; then
+      log "ADM le dio el correlativo a otro documento: $id — reintento en 5s"
+      sleep 5
+      salida=$(timeout -k 10 300 python3 "/memoria-scripts/${script}" --trabajo "$id" 2>&1)
+      rc=$?
+    fi
+
     dur=$(( $(date +%s) - t0 ))
     if [ "$rc" -eq 0 ]; then
       log "registrado sin LLM en ${dur}s: $id — $(printf '%s' "$salida" | grep -m1 -E '^REGISTRAD' || echo 'sin línea de resumen')"

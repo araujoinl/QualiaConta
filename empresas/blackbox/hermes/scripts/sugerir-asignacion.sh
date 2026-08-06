@@ -92,9 +92,13 @@ esc = lambda s: "null" if s is None else "'" + str(s).replace("'", "''") + "'"
 BANCOS = {}
 _num = None
 for _l in io.open(os.environ.get("QUALIA_MAPA_CUENTAS", "/mapa-cuentas.yaml"), encoding="utf-8"):
-    _m = re.match(r'\s*numero:\s*"?([0-9]+)"?', _l)
+    # El número NO es siempre dígitos: las tarjetas entran como
+    # "407537XXXXXX1877-DOP". Con `[0-9]+` esto casaba el prefijo y guardaba
+    # "407537" como si fuera la cuenta — una clave que no existe y que además
+    # pisa a la de la otra tarjeta. Se toma el token entero.
+    _m = re.match(r'\s*numero:\s*"([^"]+)"|\s*numero:\s*(\S+)', _l)
     if _m:
-        _num = _m.group(1)
+        _num = _m.group(1) or _m.group(2)
         continue
     _m = re.match(r'\s*cuenta_contable:\s*"?([0-9.]+)"?', _l)
     if _m and _num:

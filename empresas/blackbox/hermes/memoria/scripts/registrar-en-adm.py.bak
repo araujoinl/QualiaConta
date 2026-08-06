@@ -41,45 +41,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-# La aritmetica de ADM y el ajuste que hace que su cuenta caiga en el total del
-# papel. Vive aparte porque es una regla probada contra las 63 facturas reales.
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import cuadre  # noqa: E402
-
 BASE = "https://api.admcloud.net"
 TIMEOUT = 90
 
 # Catalogos fijos de Blackbox, verificados contra el sistema vivo.
 TAX_ITBIS = "f980499b-4f32-48cb-8c6f-5fe74d245528"      # ITBIS 18%
-TAX_ITBIS_16 = "26b690b9-cc2a-4ced-d30b-08dd66faeff4"  # ITBIS 16% (tasa reducida: cafe, leche, etc.)
-TAX_ITBIS_30 = "264c13b2-286d-4b60-03b8-08dd34a31da8"  # ITBIS 30% (telecomunicaciones)
-
-# Mapea tasa efectiva -> TaxScheduleID. Se calcula por linea desde itbis/(precio*cantidad).
-TAX_SCHEDULES = {
-    18.0: (TAX_ITBIS, 18.0),
-    16.0: (TAX_ITBIS_16, 16.0),
-    30.0: (TAX_ITBIS_30, 30.0),
-}
-
-def resolver_tasa_linea(itbis, cantidad, precio):
-    """Dado el ITBIS y la base de una linea, devuelve (TaxScheduleID, TaxPercent).
-    Si itbis<=0 -> exento. Si la tasa no calza con un schedule conocido, morir."""
-    itbis = float(itbis or 0)
-    if itbis <= 0:
-        return (None, 0.0)
-    base = float(cantidad or 1) * float(precio or 0)
-    if base <= 0:
-        return (None, 0.0)
-    tasa = round((itbis / base) * 100, 1)
-    # Tolerancia de 1 punto porcentual para redondeos del documento, y gana el
-    # schedule MAS CERCANO, no el primero que caiga adentro: con una tasa de
-    # 17.0 el 16 y el 18 estan ambos a un punto y el orden del dict decidia en
-    # silencio cual de los dos se le cobraba al documento.
-    cerca = sorted((abs(tasa - t), t) for t in TAX_SCHEDULES if abs(tasa - t) <= 1.0)
-    if cerca:
-        return TAX_SCHEDULES[cerca[0][1]]
-    morir("la linea (base %.2f, itbis %.2f, tasa %.1f%%) no calza con ningun "
-          "schedule conocido (16%%, 18%%, 30%%). Revisar el documento." % (base, itbis, tasa))
 TERMINOS = {
     "al contado": "94940a99-f119-4573-8bbd-08dd14abff09",
     "30": "b002e9c1-0430-4809-8612-b27db42a35a0",
@@ -197,12 +163,8 @@ def subir_adjunto(guid, ruta):
         return json.loads(r.read().decode("utf-8", "replace"))
 
 
-def paginar(ruta, cortar=None):
-    """`skip` es obligatorio y `take` se ignora: se avanza por lo devuelto.
-
-    `cortar(lote)` es opcional y se evalua DESPUES de sumar el lote: si devuelve
-    True se deja de pedir paginas. Sirve para los listados que vienen ordenados
-    y donde el resto del historico no aporta nada."""
+def paginar(ruta):
+    """`skip` es obligatorio y `take` se ignora: se avanza por lo devuelto."""
     filas, skip = [], 0
     for _ in range(60):
         d = llamar("GET", ruta, params={"skip": skip})
@@ -211,24 +173,7 @@ def paginar(ruta, cortar=None):
             break
         filas.extend(lote)
         skip += len(lote)
-        if cortar is not None and cortar(lote):
-            break
     return filas
-
-
-def fecha_corte(doc_date, meses=6):
-    """La fecha del documento menos N meses, en ISO (dia 1, el borde conservador).
-
-    Sin dependencias de calendario: se resta sobre (anio, mes). Si la fecha no
-    se puede leer devuelve una fecha imposiblemente vieja, o sea NO cortar y
-    paginar todo — ante la duda se paga el tiempo, no se pierde el chequeo."""
-    iso = str(doc_date or "")[:10]
-    try:
-        anio, mes = int(iso[0:4]), int(iso[5:7])
-    except (ValueError, IndexError):
-        return "0000-01-01"
-    total = anio * 12 + (mes - 1) - meses
-    return "%04d-%02d-01" % (total // 12, total % 12 + 1)
 
 
 def sql(consulta, **variables):
@@ -341,8 +286,7 @@ def armar_payload(p, relationship_id, payment_term_id):
     cuentas = mapa_cuentas()
     items = []
     for i, l in enumerate(lineas, 1):
-        sched_id, sched_pct = resolver_tasa_linea(
-            l.get("itbis"), l.get("cantidad"), l.get("precio"))
+        gravada = float(l.get("itbis") or 0) > 0
         items.append({
             "RowOrder": i, "RowType": 0,
             "Name": str(l.get("descripcion") or "")[:200],
@@ -352,8 +296,8 @@ def armar_payload(p, relationship_id, payment_term_id):
             "AccountID": (l.get("account_id") or l.get("cuenta_id")
                           or cuentas.get(str(l.get("cuenta") or "").strip())),
             # El monto del ITBIS NO se manda: el server lo calcula del grupo.
-            "TaxScheduleID": sched_id,
-            "TaxPercent": sched_pct,
+            "TaxScheduleID": TAX_ITBIS if gravada else None,
+            "TaxPercent": 18.0 if gravada else 0.0,
         })
     faltan = [(items[j]["Name"], lineas[j].get("cuenta"))
               for j in range(len(items)) if not items[j]["AccountID"]]
@@ -361,21 +305,6 @@ def armar_payload(p, relationship_id, payment_term_id):
         morir("no encontre en ADM la cuenta de estas lineas (renglon, codigo): %s. "
               "Si el codigo esta bien escrito, esa cuenta no existe o esta inactiva "
               "en el catalogo: preguntale al humano antes de registrar." % faltan)
-
-    # Ajustar un precio para que la cuenta de ADM caiga en el total del papel.
-    # ADM recalcula Net y Tax renglon por renglon y redondea medio hacia arriba;
-    # si los precios no se eligen para eso, el documento queda registrado por
-    # otro total. Eran 13 de 63 en BlackBox al 2026-08-05, y ese centavo esta
-    # dentro del ITBIS que va al 606.
-    items, ajuste = cuadre.cuadrar_items(items, p.get("monto") or 0)
-    if ajuste:
-        # Se dice QUE renglon y de cuanto a cuanto, no solo el monto movido: con
-        # tres decimales el movimiento puede ser de milesimas y «+0.00» leido en
-        # un log parece que no se toco nada.
-        print("  cuadre: renglon %d, precio %s -> %s (%+0.2f en el total) para "
-              "que ADM llegue al total del papel"
-              % (ajuste["renglon"] + 1, ajuste["antes"], ajuste["despues"],
-                 float(ajuste["movido"])))
 
     return {
         "DocDate": p.get("fecha"),
@@ -394,25 +323,6 @@ def armar_payload(p, relationship_id, payment_term_id):
     }
 
 
-def lecturas_posibles(itbis_papel, total_papel):
-    """Que base y que exento harian falta, en cada tasa legal, para que la
-    cabecera del documento cierre. Devuelve [(tasa, base, exento)] ordenado por
-    |exento|: primero la lectura que menos obliga a inventar.
-
-    Es la pregunta que el cuadre solo no responde. Con total e ITBIS hay dos
-    incognitas y una ecuacion, asi que TODAS las tasas producen una lectura que
-    suma bien; la unica que es de verdad del documento es la que no necesita un
-    renglon exento que nadie leyo."""
-    posibles = []
-    for t in sorted(TAX_SCHEDULES):
-        base = itbis_papel / (t / 100.0)
-        exento = total_papel - itbis_papel - base
-        if exento < -0.05:      # la base sola pasaria el total: imposible
-            continue
-        posibles.append((t, round(base, 2), round(exento, 2)))
-    return sorted(posibles, key=lambda r: abs(r[2]))
-
-
 def verificar_cuadre(p, payload):
     """El ITBIS lo calcula ADM aplicando 18% a los precios: si el ITBIS impreso
     en la factura NO es el 18% de esas lineas, el documento va a quedar
@@ -423,24 +333,10 @@ def verificar_cuadre(p, payload):
     Se chequea ANTES del POST, porque despues la unica salida es borrar el
     documento y ADM no deja anular.
     """
-    # Suma por tasa: cada schedule tiene su %, y ADM lo aplica a su base.
-    # ADM redondea RENGLON POR RENGLON y medio hacia arriba. La version vieja
-    # sumaba los ITBIS sin redondear y redondeaba una sola vez al final, asi que
-    # su prediccion no era la de ADM y las diferencias de centavos se le
-    # escapaban por debajo de la tolerancia.
-    itbis_adm = 0.0
-    base_gravada = 0.0
-    exento = 0.0
-    for item in payload["Items"]:
-        neto = float(cuadre.r2(item["Quantity"] * item["Price"]))
-        if item["TaxScheduleID"]:
-            base_gravada += neto
-            itbis_adm += float(cuadre.r2(neto * item["TaxPercent"] / 100.0))
-        else:
-            exento += neto
-    itbis_adm = round(itbis_adm, 2)
-    total_adm = round(base_gravada + exento + itbis_adm, 2)
-    base = base_gravada
+    base = sum(i["Quantity"] * i["Price"] for i in payload["Items"] if i["TaxScheduleID"])
+    exento = sum(i["Quantity"] * i["Price"] for i in payload["Items"] if not i["TaxScheduleID"])
+    itbis_adm = round(base * 0.18, 2)
+    total_adm = round(base + exento + itbis_adm, 2)
 
     itbis_papel = round(float(p.get("itbis") or 0), 2)
     total_papel = round(float(p.get("monto") or 0), 2)
@@ -457,59 +353,10 @@ def verificar_cuadre(p, payload):
             % (total_papel, itbis_papel, total_adm, itbis_adm, base,
                total_adm - total_papel))
 
-    # Que sume es NECESARIO pero no suficiente, y esto es lo que faltaba. El
-    # chequeo de arriba aprueba a TODAS las tasas por igual: mientras se pueda
-    # repartir la base entre gravado y exento, cualquiera de ellas suma bien.
-    # Lo que las desempata es cuanto hay que inventar para llegar al total.
-    #
-    # Paso el 2026-08-04 con FP00001120 (Carrefour, cafe): al 18% sobraban 35.90
-    # que se fueron a un renglon "Productos exentos (no individualizados por el
-    # preparador)"; al 16% -la reducida del art. 343, la del cafe- la cabecera
-    # cierra sola con base 323.23 y cero exentos. Se registro al 18%, con un
-    # credito fiscal que el proveedor nunca facturo.
-    #
-    # Solo corre con UNA tasa en juego: una factura ya desglosada en 16 y 18
-    # sabe lo que hace, y ahi el exento es dato leido, no residuo.
-    usadas = {i["TaxPercent"] for i in payload["Items"] if i["TaxScheduleID"]}
-    if exento > 0.05 and len(usadas) == 1:
-        propia = next(iter(usadas))
-        limpias = [(t, b) for t, b, e in lecturas_posibles(itbis_papel, total_papel)
-                   if abs(e) <= 0.05 and abs(t - propia) > 0.5]
-        if limpias:
-            t_ok, base_ok = limpias[0]
-            morir(
-                "CUADRA PERO LA TASA NO SE SOSTIENE, no registro:\n"
-                "  esta propuesta cobra ITBIS %.0f%% sobre una base de %.2f y manda\n"
-                "  %.2f a renglones exentos para llegar al total.\n"
-                "  Al %.0f%% la misma cabecera cierra SOLA: base %.2f, exentos 0.00.\n"
-                "  Un exento que sale de la resta y no del papel es la firma de una\n"
-                "  tasa mal asumida — casi siempre la reducida del art. 343 (cafe,\n"
-                "  cacao, azucar, mantequilla, yogurt).\n"
-                "Volve al documento, mira que tasa dice impresa, y corregi las lineas."
-                % (propia, base, exento, t_ok, base_ok))
 
-
-def verificar_duplicado(ncf, referencia, doc_date=None):
-    """Aviso temprano. ADM tambien lo frena, pero mejor no gastar el POST.
-
-    NO se pagina el historico entero. /api/VendorBills viene del mas NUEVO al
-    mas viejo (verificado 2026-08-03 contra produccion: pagina 0 arranca en
-    FP00001114 del 08-03 y la ultima fila es PI20240921 de 2024-12), asi que
-    alcanza con bajar hasta 6 meses antes de la fecha del documento y parar.
-    Medido: 1106 filas / 23 paginas / 9.04s el barrido completo, contra ~1.5s
-    con el corte, en CADA registro y creciendo con el historico.
-
-    Lo que queda afuera del corte no queda sin barrera: ADM frena el duplicado
-    por DOS claves independientes (mismo NCF para el RNC, o misma referencia
-    del proveedor) y devuelve un mensaje claro. Este chequeo es cortesia para
-    avisar ANTES de gastar el POST, no la unica defensa."""
-    corte = fecha_corte(doc_date)
-
-    def ya_es_viejo(lote):
-        ultimo = str(lote[-1].get("DocDate") or "")[:10]
-        return bool(ultimo) and ultimo < corte
-
-    for f in paginar("VendorBills", cortar=ya_es_viejo):
+def verificar_duplicado(ncf, referencia):
+    """Aviso temprano. ADM tambien lo frena, pero mejor no gastar el POST."""
+    for f in paginar("VendorBills"):
         if str(f.get("NCF") or "").strip().upper() == str(ncf).upper():
             morir("YA REGISTRADA: %s tiene ese NCF" % f.get("DocID"))
         if referencia and str(f.get("Reference") or "").strip() == str(referencia):
@@ -572,7 +419,7 @@ def main():
         return
 
     verificar_cuadre(p, payload)
-    verificar_duplicado(payload["NCF"], payload["Reference"], payload.get("DocDate"))
+    verificar_duplicado(payload["NCF"], payload["Reference"])
 
     d = llamar("POST", "VendorBills", cuerpo=payload)
     if not d.get("success") or not isinstance(d.get("data"), str):

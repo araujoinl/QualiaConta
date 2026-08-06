@@ -1,0 +1,1673 @@
+[
+ {
+  "docid": "FP00001061",
+  "monto": 163.26,
+  "itbis": 11.96,
+  "lineas": [
+   {
+    "descripcion": "Flete Aereo Priority",
+    "cantidad": 0.5,
+    "precio": 118.08,
+    "itbis": 10.63
+   },
+   {
+    "descripcion": "Airport Fee",
+    "cantidad": 1.0,
+    "precio": 10.46,
+    "itbis": 0.0
+   },
+   {
+    "descripcion": "Combustible",
+    "cantidad": 1.0,
+    "precio": 66.42,
+    "itbis": 0.0
+   },
+   {
+    "descripcion": "Servicios DGA",
+    "cantidad": 1.0,
+    "precio": 8.0,
+    "itbis": 0.0
+   },
+   {
+    "descripcion": "Tasa DGA-Aerodom Res. No. 6859",
+    "cantidad": 1.0,
+    "precio": 7.38,
+    "itbis": 1.33
+   }
+  ]
+ },
+ {
+  "docid": "FP00001062",
+  "monto": 2624.0,
+  "itbis": 369.0,
+  "lineas": [
+   {
+    "descripcion": "Soda",
+    "cantidad": 2,
+    "precio": 125.0,
+    "itbis": 45.0
+   },
+   {
+    "descripcion": "Pechuga",
+    "cantidad": 1,
+    "precio": 850.0,
+    "itbis": 153.0
+   },
+   {
+    "descripcion": "Tort. Bolognese",
+    "cantidad": 1,
+    "precio": 950.0,
+    "itbis": 171.0
+   },
+   {
+    "descripcion": "Propina legal 10%",
+    "cantidad": 1,
+    "precio": 205.0,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001063",
+  "monto": 4520.47,
+  "itbis": 575.72,
+  "lineas": [
+   {
+    "descripcion": "APEROL SPRITZ",
+    "cantidad": 1,
+    "precio": 650.0,
+    "itbis": 104.35
+   },
+   {
+    "descripcion": "B4 SELECCION DE DIM",
+    "cantidad": 1,
+    "precio": 878.0,
+    "itbis": 140.95
+   },
+   {
+    "descripcion": "F5 CARNE DE RES HERV",
+    "cantidad": 1,
+    "precio": 1622.0,
+    "itbis": 260.4
+   },
+   {
+    "descripcion": "I2 TORTITAS DE CALAB",
+    "cantidad": 1,
+    "precio": 436.14,
+    "itbis": 70.02
+   },
+   {
+    "descripcion": "Propina legal 10% (XLEY)",
+    "cantidad": 1,
+    "precio": 358.61,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001064",
+  "monto": 2112.0,
+  "itbis": 297.0,
+  "lineas": [
+   {
+    "descripcion": "TONKOTSU SHOYU",
+    "cantidad": 1,
+    "precio": 650.0,
+    "itbis": 117.0
+   },
+   {
+    "descripcion": "CHASHU PORK",
+    "cantidad": 1,
+    "precio": 250.0,
+    "itbis": 45.0
+   },
+   {
+    "descripcion": "SODA AMARGA",
+    "cantidad": 1,
+    "precio": 100.0,
+    "itbis": 18.0
+   },
+   {
+    "descripcion": "SALSA PICANTE",
+    "cantidad": 1,
+    "precio": 50.0,
+    "itbis": 9.0
+   },
+   {
+    "descripcion": "ARROZ FRITO DE CHASHU",
+    "cantidad": 1,
+    "precio": 600.0,
+    "itbis": 108.0
+   },
+   {
+    "descripcion": "Propina legal 10% (Ley 16-92)",
+    "cantidad": 1,
+    "precio": 165.0,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001065",
+  "monto": 637.2,
+  "itbis": 97.2,
+  "lineas": [
+   {
+    "descripcion": "Bundle-One: Tax One Plus (outsourcing fi",
+    "cantidad": 1,
+    "precio": 540.0,
+    "itbis": 97.2
+   }
+  ]
+ },
+ {
+  "docid": "FP00001066",
+  "monto": 6351.0,
+  "itbis": 879.36,
+  "lineas": [
+   {
+    "descripcion": "Servicios telecomunicaciones (renta + da",
+    "cantidad": 1,
+    "precio": 4885.37,
+    "itbis": 879.36
+   },
+   {
+    "descripcion": "ISC 10% - Impuesto Selectivo al Consumo",
+    "cantidad": 1,
+    "precio": 488.56,
+    "itbis": 0
+   },
+   {
+    "descripcion": "CDT 2% - Otros impuestos",
+    "cantidad": 1,
+    "precio": 97.71,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001067",
+  "monto": 1856.0,
+  "itbis": 0,
+  "lineas": [
+   {
+    "descripcion": "Prima póliza RC Auto Exceso 30-35-89255 ",
+    "cantidad": 1,
+    "precio": 1600.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "ISC 16% sobre prima (Ley 146-02)",
+    "cantidad": 1,
+    "precio": 256.0,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001068",
+  "monto": 90000.0,
+  "itbis": 13728.81,
+  "lineas": [
+   {
+    "descripcion": "Comisión de corretaje por intermediación",
+    "cantidad": 1,
+    "precio": 76271.19,
+    "itbis": 13728.81
+   }
+  ]
+ },
+ {
+  "docid": "FP00001069",
+  "monto": 3763.2,
+  "itbis": 529.2,
+  "lineas": [
+   {
+    "descripcion": "NACHO CHESSE PEQ.",
+    "cantidad": 1,
+    "precio": 400.0,
+    "itbis": 72.0
+   },
+   {
+    "descripcion": "FAJITAS DE MIXTA",
+    "cantidad": 1,
+    "precio": 780.0,
+    "itbis": 140.4
+   },
+   {
+    "descripcion": "TACOS AL PASTOR",
+    "cantidad": 1,
+    "precio": 620.0,
+    "itbis": 111.6
+   },
+   {
+    "descripcion": "ALCOMAR CHICHARON",
+    "cantidad": 1,
+    "precio": 230.0,
+    "itbis": 41.4
+   },
+   {
+    "descripcion": "ALCOMAR CERDO",
+    "cantidad": 1,
+    "precio": 220.0,
+    "itbis": 39.6
+   },
+   {
+    "descripcion": "STELLA",
+    "cantidad": 1,
+    "precio": 270.0,
+    "itbis": 48.6
+   },
+   {
+    "descripcion": "AGUA CON SODA Y LIMON",
+    "cantidad": 2,
+    "precio": 100.0,
+    "itbis": 36.0
+   },
+   {
+    "descripcion": "PRESIDENTE NORMAL",
+    "cantidad": 1,
+    "precio": 220.0,
+    "itbis": 39.6
+   },
+   {
+    "descripcion": "Propina legal 10%",
+    "cantidad": 1,
+    "precio": 294.0,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001070",
+  "monto": 205.05,
+  "itbis": 18.33,
+  "lineas": [
+   {
+    "descripcion": "Flete Aereo Priority",
+    "cantidad": 0.8,
+    "precio": 118.07,
+    "itbis": 17.0
+   },
+   {
+    "descripcion": "Airport Fee",
+    "cantidad": 1,
+    "precio": 10.46,
+    "itbis": 0.0
+   },
+   {
+    "descripcion": "Combustible",
+    "cantidad": 1,
+    "precio": 66.42,
+    "itbis": 0.0
+   },
+   {
+    "descripcion": "Servicios DGA",
+    "cantidad": 1,
+    "precio": 8.0,
+    "itbis": 0.0
+   },
+   {
+    "descripcion": "Tasa DGA-Aerodom Res. No. 6859",
+    "cantidad": 1,
+    "precio": 7.38,
+    "itbis": 1.33
+   }
+  ]
+ },
+ {
+  "docid": "FP00001071",
+  "monto": 184.15,
+  "itbis": 15.14,
+  "lineas": [
+   {
+    "descripcion": "Flete Aereo Priority",
+    "cantidad": 0.65,
+    "precio": 118.08,
+    "itbis": 13.82
+   },
+   {
+    "descripcion": "Airport Fee",
+    "cantidad": 1,
+    "precio": 10.46,
+    "itbis": 0.0
+   },
+   {
+    "descripcion": "Combustible",
+    "cantidad": 1,
+    "precio": 66.42,
+    "itbis": 0.0
+   },
+   {
+    "descripcion": "Servicios DGA",
+    "cantidad": 1,
+    "precio": 8.0,
+    "itbis": 0.0
+   },
+   {
+    "descripcion": "Tasa DGA-Aerodom Res. No. 6859",
+    "cantidad": 1,
+    "precio": 7.38,
+    "itbis": 1.33
+   }
+  ]
+ },
+ {
+  "docid": "FP00001072",
+  "monto": 6490.0,
+  "itbis": 990.0,
+  "lineas": [
+   {
+    "descripcion": "REGENCIA DE ESTABLECIMIENTO FARMACEUTICO",
+    "cantidad": 1,
+    "precio": 5500.0,
+    "itbis": 990.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001073",
+  "monto": 594.99,
+  "itbis": 83.67,
+  "lineas": [
+   {
+    "descripcion": "Boz Pechuga Al Grill",
+    "cantidad": 1,
+    "precio": 347.66,
+    "itbis": 62.58
+   },
+   {
+    "descripcion": "Salteadas",
+    "cantidad": 1,
+    "precio": 0.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "Soda Anarga (Canada Dry)",
+    "cantidad": 1,
+    "precio": 117.19,
+    "itbis": 21.09
+   },
+   {
+    "descripcion": "Propina legal 10%",
+    "cantidad": 1,
+    "precio": 46.48,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001074",
+  "monto": 617.24,
+  "itbis": 59.84,
+  "lineas": [
+   {
+    "descripcion": "Flete Aereo Priority",
+    "cantidad": 2.65,
+    "precio": 118.08,
+    "itbis": 56.32
+   },
+   {
+    "descripcion": "Airport Fee",
+    "cantidad": 2.65,
+    "precio": 10.46,
+    "itbis": 0
+   },
+   {
+    "descripcion": "Combustible",
+    "cantidad": 2.65,
+    "precio": 66.42,
+    "itbis": 0
+   },
+   {
+    "descripcion": "Servicios DGA",
+    "cantidad": 2.65,
+    "precio": 8.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "Tasa DGA-Aerodom Res. No. 6859",
+    "cantidad": 2.65,
+    "precio": 7.38,
+    "itbis": 3.52
+   }
+  ]
+ },
+ {
+  "docid": "FP00001075",
+  "monto": 1200.0,
+  "itbis": 183.05,
+  "lineas": [
+   {
+    "descripcion": "BIO TRUE 300 ML (solución para lentes de",
+    "cantidad": 1,
+    "precio": 1016.95,
+    "itbis": 183.05
+   }
+  ]
+ },
+ {
+  "docid": "FP00001076",
+  "monto": 19417.07,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "Prima seguro medico poliza 30-95-238589 ",
+    "cantidad": 1,
+    "precio": 19417.07,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001077",
+  "monto": 15000.0,
+  "itbis": 0,
+  "lineas": [
+   {
+    "descripcion": "Membresia Alinea (centro fitness)",
+    "cantidad": 1,
+    "precio": 15000.0,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001078",
+  "monto": 2000.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "Diesel Regular",
+    "cantidad": 7.85,
+    "precio": 254.78,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001079",
+  "monto": 4460.8,
+  "itbis": 627.3,
+  "lineas": [
+   {
+    "descripcion": "Totopos S. Fr",
+    "cantidad": 1,
+    "precio": 195.0,
+    "itbis": 35.1
+   },
+   {
+    "descripcion": "Extra Pico Gallo",
+    "cantidad": 1,
+    "precio": 75.0,
+    "itbis": 13.5
+   },
+   {
+    "descripcion": "Tamarindo Marg",
+    "cantidad": 1,
+    "precio": 450.0,
+    "itbis": 81.0
+   },
+   {
+    "descripcion": "Her Spacy",
+    "cantidad": 1,
+    "precio": 575.0,
+    "itbis": 103.5
+   },
+   {
+    "descripcion": "Burrito Tradicio",
+    "cantidad": 1,
+    "precio": 675.0,
+    "itbis": 121.5
+   },
+   {
+    "descripcion": "Taco Al Pastor",
+    "cantidad": 2,
+    "precio": 495.0,
+    "itbis": 178.2
+   },
+   {
+    "descripcion": "Taco Res Costra",
+    "cantidad": 1,
+    "precio": 525.0,
+    "itbis": 94.5
+   },
+   {
+    "descripcion": "Propina legal 10%",
+    "cantidad": 1,
+    "precio": 348.5,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001080",
+  "monto": 244.55,
+  "itbis": 23.71,
+  "lineas": [
+   {
+    "descripcion": "Flete Aereo Priority",
+    "cantidad": 1.05,
+    "precio": 118.08,
+    "itbis": 22.32
+   },
+   {
+    "descripcion": "Airport Fee",
+    "cantidad": 1.05,
+    "precio": 10.46,
+    "itbis": 0
+   },
+   {
+    "descripcion": "Combustible",
+    "cantidad": 1.05,
+    "precio": 66.42,
+    "itbis": 0
+   },
+   {
+    "descripcion": "Servicios DGA",
+    "cantidad": 1.05,
+    "precio": 7.99,
+    "itbis": 0
+   },
+   {
+    "descripcion": "Tasa DGA-Aerodom Res. No. 6859",
+    "cantidad": 1.05,
+    "precio": 7.38,
+    "itbis": 1.4
+   }
+  ]
+ },
+ {
+  "docid": "FP00001081",
+  "monto": 1145.0,
+  "itbis": 161.02,
+  "lineas": [
+   {
+    "descripcion": "Consumo restaurante (picaría, soda y otr",
+    "cantidad": 1,
+    "precio": 894.53,
+    "itbis": 161.02
+   },
+   {
+    "descripcion": "Propina legal 10%",
+    "cantidad": 1,
+    "precio": 89.45,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001082",
+  "monto": 2320.91,
+  "itbis": 354.04,
+  "lineas": [
+   {
+    "descripcion": "Servicio Dry-Clean (11 prendas: 5 camisa",
+    "cantidad": 1,
+    "precio": 1966.87,
+    "itbis": 354.04
+   }
+  ]
+ },
+ {
+  "docid": "FP00001083",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "GASOLINA PREMIUM",
+    "cantidad": 2.22,
+    "precio": 337.84,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001084",
+  "monto": 163.26,
+  "itbis": 11.96,
+  "lineas": [
+   {
+    "descripcion": "TUMIA000820631 - LBS 0.30 ART PERSONAL",
+    "cantidad": 1,
+    "precio": 59.04,
+    "itbis": 10.63
+   },
+   {
+    "descripcion": "FLETE AEREO PRIORITY",
+    "cantidad": 1,
+    "precio": 10.46,
+    "itbis": 0
+   },
+   {
+    "descripcion": "AIRPORT FEE",
+    "cantidad": 1,
+    "precio": 66.42,
+    "itbis": 0
+   },
+   {
+    "descripcion": "COMBUSTIBLE",
+    "cantidad": 1,
+    "precio": 8.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "SERVICIOS DGA",
+    "cantidad": 1,
+    "precio": 7.38,
+    "itbis": 1.33
+   }
+  ]
+ },
+ {
+  "docid": "FP00001085",
+  "monto": 163.26,
+  "itbis": 11.96,
+  "lineas": [
+   {
+    "descripcion": "TUMIA000832619 - LBS 0.20",
+    "cantidad": 1,
+    "precio": 59.04,
+    "itbis": 10.63
+   },
+   {
+    "descripcion": "ARTICULO PERSONAL",
+    "cantidad": 1,
+    "precio": 10.46,
+    "itbis": 0
+   },
+   {
+    "descripcion": "FLETE AEREO PRIORITY",
+    "cantidad": 1,
+    "precio": 66.42,
+    "itbis": 0
+   },
+   {
+    "descripcion": "AIRPORT FEE",
+    "cantidad": 1,
+    "precio": 8,
+    "itbis": 0
+   },
+   {
+    "descripcion": "COMBUSTIBLE",
+    "cantidad": 1,
+    "precio": 7.38,
+    "itbis": 1.33
+   },
+   {
+    "descripcion": "SERVICIOS DGA",
+    "cantidad": 1,
+    "precio": 0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "TASA DGA-AERODOM RES. NO.",
+    "cantidad": 1,
+    "precio": 0,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001086",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "Gasolina regular 2.45 galones",
+    "cantidad": 1,
+    "precio": 750.0,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001087",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "Gasolina regular",
+    "cantidad": 2.45,
+    "precio": 306.12,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001088",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "GASOLINA REGULAR",
+    "cantidad": 2.42,
+    "precio": 309.92,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001089",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "GASOLINA PREMIUM (2.19 gal x 341.10)",
+    "cantidad": 1,
+    "precio": 750.0,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001090",
+  "monto": 11564.0,
+  "itbis": 1764.0,
+  "lineas": [
+   {
+    "descripcion": "GESTION ADUANAL Y DESPACHO - CARGA LCL G",
+    "cantidad": 1,
+    "precio": 9800.0,
+    "itbis": 1764.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001091",
+  "monto": 14000.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "Transporte",
+    "cantidad": 1,
+    "precio": 14000.0,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001092",
+  "monto": 4737.77,
+  "itbis": 443.72,
+  "lineas": [
+   {
+    "descripcion": "FLETE AEREO PRIORITY",
+    "cantidad": 1,
+    "precio": 2306.07,
+    "itbis": 415.09
+   },
+   {
+    "descripcion": "AIRPORT FEE",
+    "cantidad": 1,
+    "precio": 225.41,
+    "itbis": 0
+   },
+   {
+    "descripcion": "COMBUSTIBLE",
+    "cantidad": 1,
+    "precio": 1431.35,
+    "itbis": 0
+   },
+   {
+    "descripcion": "SERVICIOS DGA",
+    "cantidad": 1,
+    "precio": 172.18,
+    "itbis": 0
+   },
+   {
+    "descripcion": "TASA DGA-AERODOM",
+    "cantidad": 1,
+    "precio": 159.04,
+    "itbis": 28.63
+   }
+  ]
+ },
+ {
+  "docid": "FP00001093",
+  "monto": 714.53,
+  "itbis": 66.92,
+  "lineas": [
+   {
+    "descripcion": "TUMIA000832101 - LBS 3.25 BULTO",
+    "cantidad": 1,
+    "precio": 347.78,
+    "itbis": 62.6
+   },
+   {
+    "descripcion": "FLETE AEREO PRIORITY",
+    "cantidad": 1,
+    "precio": 34.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "AIRPORT FEE",
+    "cantidad": 1,
+    "precio": 215.87,
+    "itbis": 0
+   },
+   {
+    "descripcion": "COMBUSTIBLE",
+    "cantidad": 1,
+    "precio": 25.97,
+    "itbis": 0
+   },
+   {
+    "descripcion": "SERVICIOS DGA",
+    "cantidad": 1,
+    "precio": 23.99,
+    "itbis": 4.32
+   }
+  ]
+ },
+ {
+  "docid": "FP00001094",
+  "monto": 2117.98,
+  "itbis": 108.4,
+  "lineas": [
+   {
+    "descripcion": "TUMIA000828160 - LBS 4.80 ARTICULO PERSO",
+    "cantidad": 1,
+    "precio": 566.78,
+    "itbis": 102.02
+   },
+   {
+    "descripcion": "FLETE AEREO PRIORITY",
+    "cantidad": 1,
+    "precio": 50.16,
+    "itbis": 0
+   },
+   {
+    "descripcion": "AIRPORT FEE",
+    "cantidad": 1,
+    "precio": 318.82,
+    "itbis": 0
+   },
+   {
+    "descripcion": "COMBUSTIBLE",
+    "cantidad": 1,
+    "precio": 1000.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "GESTION ADUANAL",
+    "cantidad": 1,
+    "precio": 38.4,
+    "itbis": 0
+   },
+   {
+    "descripcion": "SERVICIOS DGA",
+    "cantidad": 1,
+    "precio": 35.42,
+    "itbis": 6.38
+   }
+  ]
+ },
+ {
+  "docid": "FP00001095",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "Gasolina Regular (2.48 gal)",
+    "cantidad": 2.48,
+    "precio": 302.41,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001096",
+  "monto": 1141.32,
+  "itbis": 110.66,
+  "lineas": [
+   {
+    "descripcion": "TUMIA000837499 - LBS 4.90 IMPRESORAS",
+    "cantidad": 1,
+    "precio": 578.59,
+    "itbis": 104.15
+   },
+   {
+    "descripcion": "FLETE AEREO PRIORITY",
+    "cantidad": 1,
+    "precio": 51.25,
+    "itbis": 0
+   },
+   {
+    "descripcion": "AIRPORT FEE",
+    "cantidad": 1,
+    "precio": 325.46,
+    "itbis": 0
+   },
+   {
+    "descripcion": "COMBUSTIBLE",
+    "cantidad": 1,
+    "precio": 39.2,
+    "itbis": 0
+   },
+   {
+    "descripcion": "SERVICIOS DGA",
+    "cantidad": 1,
+    "precio": 36.16,
+    "itbis": 6.51
+   }
+  ]
+ },
+ {
+  "docid": "FP00001097",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "GASOLINA PREMIUM",
+    "cantidad": 2.22,
+    "precio": 337.84,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001098",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "GASOLINA REGULAR",
+    "cantidad": 2.48,
+    "precio": 302.42,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001099",
+  "monto": 177.19,
+  "itbis": 14.08,
+  "lineas": [
+   {
+    "descripcion": "TUMIA000849133 - LBS 0.60 ART PERSONAL",
+    "cantidad": 1,
+    "precio": 70.85,
+    "itbis": 12.75
+   },
+   {
+    "descripcion": "FLETE AEREO PRIORITY",
+    "cantidad": 1,
+    "precio": 10.46,
+    "itbis": 0
+   },
+   {
+    "descripcion": "AIRPORT FEE",
+    "cantidad": 1,
+    "precio": 66.42,
+    "itbis": 0
+   },
+   {
+    "descripcion": "COMBUSTIBLE",
+    "cantidad": 1,
+    "precio": 8.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "SERVICIOS DGA",
+    "cantidad": 1,
+    "precio": 7.38,
+    "itbis": 1.33
+   }
+  ]
+ },
+ {
+  "docid": "FP00001100",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "Gasolina Premium (2.1988 gal)",
+    "cantidad": 1,
+    "precio": 750.0,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001101",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "GASOLINA PREMIUM",
+    "cantidad": 2.22,
+    "precio": 337.84,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001102",
+  "monto": 330.0,
+  "itbis": 50.33,
+  "lineas": [
+   {
+    "descripcion": "4126 - BANDITADE GOMA WORKER 2 ONZAS NO ",
+    "cantidad": 1,
+    "precio": 84.75,
+    "itbis": 15.25
+   },
+   {
+    "descripcion": "1153 - CINTA DE EMPAQUE WORKER 2 PULGADA",
+    "cantidad": 2,
+    "precio": 97.46,
+    "itbis": 35.08
+   }
+  ]
+ },
+ {
+  "docid": "FP00001103",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "GASOLINA PREMIUM 2.218 GLS (el documento",
+    "cantidad": 1,
+    "precio": 750.0,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001104",
+  "monto": 1464.01,
+  "itbis": 216.09,
+  "lineas": [
+   {
+    "descripcion": "Desinfectante floral",
+    "cantidad": 1,
+    "precio": 97.46,
+    "itbis": 17.54
+   },
+   {
+    "descripcion": "Rhica fda cocina 13g",
+    "cantidad": 2,
+    "precio": 38.14,
+    "itbis": 13.73
+   },
+   {
+    "descripcion": "Servilletas 400/1",
+    "cantidad": 1,
+    "precio": 50.85,
+    "itbis": 9.15
+   },
+   {
+    "descripcion": "Caramelos cherry",
+    "cantidad": 1,
+    "precio": 110.17,
+    "itbis": 19.83
+   },
+   {
+    "descripcion": "Colombina minibum",
+    "cantidad": 1,
+    "precio": 144.07,
+    "itbis": 25.93
+   },
+   {
+    "descripcion": "Moldy vasos",
+    "cantidad": 1,
+    "precio": 88.98,
+    "itbis": 16.02
+   },
+   {
+    "descripcion": "Cafe molido 1lbs 453g",
+    "cantidad": 1,
+    "precio": 426.72,
+    "itbis": 68.28
+   },
+   {
+    "descripcion": "Dragon papel",
+    "cantidad": 1,
+    "precio": 253.39,
+    "itbis": 45.61
+   }
+  ]
+ },
+ {
+  "docid": "FP00001105",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "GASOLINA PREMIUM 2.19 gal",
+    "cantidad": 1,
+    "precio": 750.0,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001106",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "GASOLINA REGULAR 2.48 gal",
+    "cantidad": 1,
+    "precio": 750.0,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001107",
+  "monto": 12350.0,
+  "itbis": 1883.9,
+  "lineas": [
+   {
+    "descripcion": "INVERSOR PHASE II 1.5KW 120VAC 12VDC DEL",
+    "cantidad": 1,
+    "precio": 10466.1,
+    "itbis": 1883.9
+   }
+  ]
+ },
+ {
+  "docid": "FP00001108",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "GASOLINA PREMIUM",
+    "cantidad": 2.218279,
+    "precio": 338.1,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001109",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "Gasolina Plus",
+    "cantidad": 1,
+    "precio": 750.0,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001110",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "Gasolina Premium",
+    "cantidad": 1,
+    "precio": 750.0,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001111",
+  "monto": 1081.68,
+  "itbis": 165.0,
+  "lineas": [
+   {
+    "descripcion": "Caja Cocina No.1 Gde #22218/#22214",
+    "cantidad": 1,
+    "precio": 275.42,
+    "itbis": 49.58
+   },
+   {
+    "descripcion": "Cemento PVC 4 oz. Azul SM-248-8 Lanco",
+    "cantidad": 1,
+    "precio": 269.49,
+    "itbis": 48.51
+   },
+   {
+    "descripcion": "Tee de Presion PVC 1/2\"",
+    "cantidad": 1,
+    "precio": 6.78,
+    "itbis": 1.22
+   },
+   {
+    "descripcion": "Adaptador Hembra PVC 3/4\"",
+    "cantidad": 1,
+    "precio": 5.72,
+    "itbis": 1.03
+   },
+   {
+    "descripcion": "Reduccion bushing PVC 3/4 a 1/2",
+    "cantidad": 1,
+    "precio": 4.19,
+    "itbis": 0.75
+   },
+   {
+    "descripcion": "Llave de bola r/ manguera Conex. manguer",
+    "cantidad": 1,
+    "precio": 355.08,
+    "itbis": 63.91
+   }
+  ]
+ },
+ {
+  "docid": "FP00001112",
+  "monto": 792.12,
+  "itbis": 72.94,
+  "lineas": [
+   {
+    "descripcion": "FLETE AEREO PRIORITY (TUMIA000867476)",
+    "cantidad": 1,
+    "precio": 165.31,
+    "itbis": 29.76
+   },
+   {
+    "descripcion": "AIRPORT FEE (TUMIA000867476)",
+    "cantidad": 1,
+    "precio": 14.64,
+    "itbis": 0
+   },
+   {
+    "descripcion": "COMBUSTIBLE (TUMIA000867476)",
+    "cantidad": 1,
+    "precio": 92.99,
+    "itbis": 0
+   },
+   {
+    "descripcion": "SERVICIOS DGA (TUMIA000867476)",
+    "cantidad": 1,
+    "precio": 11.19,
+    "itbis": 0
+   },
+   {
+    "descripcion": "TASA DGA-AERODOM (TUMIA000867476)",
+    "cantidad": 1,
+    "precio": 10.33,
+    "itbis": 1.86
+   },
+   {
+    "descripcion": "FLETE AEREO PRIORITY (TUMIA000868256)",
+    "cantidad": 1,
+    "precio": 59.04,
+    "itbis": 10.63
+   },
+   {
+    "descripcion": "AIRPORT FEE (TUMIA000868256)",
+    "cantidad": 1,
+    "precio": 10.46,
+    "itbis": 0
+   },
+   {
+    "descripcion": "COMBUSTIBLE (TUMIA000868256)",
+    "cantidad": 1,
+    "precio": 66.42,
+    "itbis": 0
+   },
+   {
+    "descripcion": "SERVICIOS DGA (TUMIA000868256)",
+    "cantidad": 1,
+    "precio": 8.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "TASA DGA-AERODOM (TUMIA000868256)",
+    "cantidad": 1,
+    "precio": 7.38,
+    "itbis": 1.33
+   },
+   {
+    "descripcion": "FLETE AEREO PRIORITY (TUMIA000868387)",
+    "cantidad": 1,
+    "precio": 153.5,
+    "itbis": 27.63
+   },
+   {
+    "descripcion": "AIRPORT FEE (TUMIA000868387)",
+    "cantidad": 1,
+    "precio": 13.59,
+    "itbis": 0
+   },
+   {
+    "descripcion": "COMBUSTIBLE (TUMIA000868387)",
+    "cantidad": 1,
+    "precio": 86.35,
+    "itbis": 0
+   },
+   {
+    "descripcion": "SERVICIOS DGA (TUMIA000868387)",
+    "cantidad": 1,
+    "precio": 10.39,
+    "itbis": 0
+   },
+   {
+    "descripcion": "TASA DGA-AERODOM (TUMIA000868387)",
+    "cantidad": 1,
+    "precio": 9.59,
+    "itbis": 1.73
+   }
+  ]
+ },
+ {
+  "docid": "FP00001113",
+  "monto": 754.0,
+  "itbis": 115.01,
+  "lineas": [
+   {
+    "descripcion": "ALICATE EXTENSION TOTAL THT281005",
+    "cantidad": 1,
+    "precio": 304.24,
+    "itbis": 54.76
+   },
+   {
+    "descripcion": "MANGUERA LIFEFLEX 1 2X25",
+    "cantidad": 1,
+    "precio": 334.75,
+    "itbis": 60.25
+   }
+  ]
+ },
+ {
+  "docid": "FP00001114",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "Gasolina Regular",
+    "cantidad": 1,
+    "precio": 750.0,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001115",
+  "monto": 750.0,
+  "itbis": 0.0,
+  "lineas": [
+   {
+    "descripcion": "Total Excellium Gasolina (2.218 gal x RD",
+    "cantidad": 1,
+    "precio": 750.0,
+    "itbis": 0.0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001116",
+  "monto": 1629.99,
+  "itbis": 248.64,
+  "lineas": [
+   {
+    "descripcion": "Happy Roll (12)",
+    "cantidad": 1,
+    "precio": 504.23,
+    "itbis": 90.76
+   },
+   {
+    "descripcion": "Tonkatsu Pork Bowl",
+    "cantidad": 1,
+    "precio": 444.91,
+    "itbis": 80.08
+   },
+   {
+    "descripcion": "Jazmin Rice",
+    "cantidad": 1,
+    "precio": 0.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "Jugo De Limón",
+    "cantidad": 1,
+    "precio": 135.59,
+    "itbis": 24.41
+   },
+   {
+    "descripcion": "TAMASHI Breeze",
+    "cantidad": 1,
+    "precio": 148.31,
+    "itbis": 26.7
+   },
+   {
+    "descripcion": "Cheesecake de Dulce de Leche",
+    "cantidad": 1,
+    "precio": 148.31,
+    "itbis": 26.7
+   }
+  ]
+ },
+ {
+  "docid": "FP00001117",
+  "monto": 2090.13,
+  "itbis": 318.83,
+  "lineas": [
+   {
+    "descripcion": "Res Teriyaki",
+    "cantidad": 1,
+    "precio": 389.84,
+    "itbis": 70.17
+   },
+   {
+    "descripcion": "Tostones",
+    "cantidad": 1,
+    "precio": 38.14,
+    "itbis": 6.87
+   },
+   {
+    "descripcion": "Jugo de Limon",
+    "cantidad": 1,
+    "precio": 127.2,
+    "itbis": 22.9
+   },
+   {
+    "descripcion": "Jugo de Chinola",
+    "cantidad": 2,
+    "precio": 135.59,
+    "itbis": 48.81
+   },
+   {
+    "descripcion": "Res Teriyaki",
+    "cantidad": 1,
+    "precio": 389.84,
+    "itbis": 70.17
+   },
+   {
+    "descripcion": "Arroz Blanco",
+    "cantidad": 1,
+    "precio": 0.0,
+    "itbis": 0.0
+   },
+   {
+    "descripcion": "Res Teriyaki",
+    "cantidad": 1,
+    "precio": 389.84,
+    "itbis": 70.17
+   },
+   {
+    "descripcion": "Arroz Frito",
+    "cantidad": 1,
+    "precio": 38.14,
+    "itbis": 6.87
+   },
+   {
+    "descripcion": "Tres Leches",
+    "cantidad": 1,
+    "precio": 127.12,
+    "itbis": 22.88
+   }
+  ]
+ },
+ {
+  "docid": "FP00001118",
+  "monto": 2306.15,
+  "itbis": 152.03,
+  "lineas": [
+   {
+    "descripcion": "agency fee",
+    "cantidad": 1,
+    "precio": 218.9,
+    "itbis": 0
+   },
+   {
+    "descripcion": "BL Printing",
+    "cantidad": 1,
+    "precio": 35.0,
+    "itbis": 6.3
+   },
+   {
+    "descripcion": "CAF",
+    "cantidad": 1,
+    "precio": 95.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "CERTIFICACION DE FLETE",
+    "cantidad": 1,
+    "precio": 25.0,
+    "itbis": 4.5
+   },
+   {
+    "descripcion": "CFS Surcharge",
+    "cantidad": 1,
+    "precio": 100.0,
+    "itbis": 18.0
+   },
+   {
+    "descripcion": "CISF",
+    "cantidad": 1,
+    "precio": 481.58,
+    "itbis": 0
+   },
+   {
+    "descripcion": "COLLECT FEE",
+    "cantidad": 1,
+    "precio": 65.48,
+    "itbis": 11.79
+   },
+   {
+    "descripcion": "FHC",
+    "cantidad": 1,
+    "precio": 306.46,
+    "itbis": 55.16
+   },
+   {
+    "descripcion": "H/C",
+    "cantidad": 1,
+    "precio": 30.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "Handling",
+    "cantidad": 1,
+    "precio": 50.0,
+    "itbis": 9.0
+   },
+   {
+    "descripcion": "OTHER CHARGE",
+    "cantidad": 1,
+    "precio": 65.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "PEAK SEASON SURCHARGE",
+    "cantidad": 1,
+    "precio": 131.34,
+    "itbis": 0
+   },
+   {
+    "descripcion": "PORT CONGESTION SURCHARGE",
+    "cantidad": 1,
+    "precio": 262.68,
+    "itbis": 0
+   },
+   {
+    "descripcion": "Port Services Charge (PSC)",
+    "cantidad": 1,
+    "precio": 25.0,
+    "itbis": 0
+   },
+   {
+    "descripcion": "THC",
+    "cantidad": 1,
+    "precio": 262.68,
+    "itbis": 47.28
+   }
+  ]
+ },
+ {
+  "docid": "FP00001119",
+  "monto": 760.0,
+  "itbis": 115.93,
+  "lineas": [
+   {
+    "descripcion": "HABIBI PLATTER",
+    "cantidad": 1,
+    "precio": 559.32,
+    "itbis": 100.68
+   },
+   {
+    "descripcion": "PAPAS + REFRESCO",
+    "cantidad": 1,
+    "precio": 84.75,
+    "itbis": 15.25
+   }
+  ]
+ },
+ {
+  "docid": "FP00001120",
+  "monto": 374.95,
+  "itbis": 51.72,
+  "lineas": [
+   {
+    "descripcion": "COLOR CAFE ORIG GR (gravado)",
+    "cantidad": 1,
+    "precio": 287.33,
+    "itbis": 51.72
+   },
+   {
+    "descripcion": "Productos exentos (no individualizados p",
+    "cantidad": 1,
+    "precio": 35.9,
+    "itbis": 0
+   }
+  ]
+ },
+ {
+  "docid": "FP00001121",
+  "monto": 374.95,
+  "itbis": 51.72,
+  "lineas": [
+   {
+    "descripcion": "COLOR CAFE ORIG GR",
+    "cantidad": 1,
+    "precio": 323.23,
+    "itbis": 51.72
+   }
+  ]
+ },
+ {
+  "docid": "FP00001122",
+  "monto": 637.2,
+  "itbis": 97.2,
+  "lineas": [
+   {
+    "descripcion": "Bundle-One: Tax One Plus (outsourcing fi",
+    "cantidad": 1,
+    "precio": 540.0,
+    "itbis": 97.2
+   }
+  ]
+ },
+ {
+  "docid": "FP00001123",
+  "monto": 620.0,
+  "itbis": 94.58,
+  "lineas": [
+   {
+    "descripcion": "ARCHIVO T/MALETIN PLASTICO 13 DIVIS",
+    "cantidad": 1,
+    "precio": 525.42,
+    "itbis": 94.58
+   }
+  ]
+ }
+]

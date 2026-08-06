@@ -124,10 +124,20 @@ def tasa_cambio(moneda):
     return 1.0
 
 
+# Las tarjetas de crédito TAMBIEN son cuentas de caja en ADM, aunque su código
+# viva en el pasivo: los 9 «AHORRO POR COMPRA» del histórico (CB00000070 …
+# CB00000113) son Cargos Bancarios con la tarjeta en CashAccountID. Van
+# enumeradas y no por prefijo "203." porque 203.xx es Cuentas por Pagar: tomar
+# el prefijo entero haría pasar por banco la línea de un proveedor.
+# Espejo de `cuentas` en mapa-cuentas.yaml; si agregás una tarjeta allá, va acá.
+CUENTAS_CAJA_TARJETA = {"203.10", "203.11"}
+
+
 def es_cuenta_banco(codigo):
-    """Las cuentas de banco empiezan con 101 (caja) o 102 (bancos)."""
+    """Cuentas de caja: 101 (caja), 102 (bancos) y las tarjetas del mapa."""
     cod = str(codigo or "").strip()
-    return cod.startswith("101.") or cod.startswith("102.")
+    return (cod.startswith("101.") or cod.startswith("102.")
+            or cod in CUENTAS_CAJA_TARJETA)
 
 
 def referencia_de(p, trabajo_id):
@@ -142,6 +152,48 @@ def referencia_de(p, trabajo_id):
     en `openbanking_transactions`); si tampoco esta, al id del trabajo.
     """
     return str(p.get("ncf") or p.get("banco_tx_id") or trabajo_id)
+
+
+def subir_adjunto(guid, ruta):
+    """Sube un archivo como adjunto de la transaccion de ADM.
+
+    Multipart a mano porque la stdlib no lo arma sola y no hay `requests` en el
+    venv. Es gemela de la de registrar-en-adm.py y esta DUPLICADA a proposito:
+    importarla de ese script ejecutaria todo su nivel superior —lee entorno,
+    arma sesion— por el solo hecho de subir un PDF, y son dos scripts en
+    produccion que no conviene acoplar por eso. Si aparece una tercera, ahi si
+    vale un modulo compartido.
+
+    Ojo con el rol: ADMCLOUD_REG_ROLE vale "Contabilidad Digital", CON ESPACIO,
+    y sin encodear da HTTP 000. Por eso la query la arma urlencode."""
+    nombre = os.path.basename(ruta)
+    with open(ruta, "rb") as f:
+        contenido = f.read()
+    borde = "----qualiaconta" + re.sub(r"\W", "", guid)
+    cuerpo = b"".join([
+        ("--%s\r\n" % borde).encode(),
+        ('Content-Disposition: form-data; name="file"; filename="%s"\r\n'
+         % nombre.replace('"', "_")).encode("utf-8"),
+        ("Content-Type: application/pdf\r\n\r\n").encode(),
+        contenido,
+        ("\r\n--%s--\r\n" % borde).encode(),
+    ])
+    q = {
+        "transactionID": guid,
+        "company": env("ADMCLOUD_COMPANY"),
+        "role": env("ADMCLOUD_REG_ROLE"),
+        "appid": env("ADMCLOUD_APPID"),
+    }
+    url = "%s/api/Storage?%s" % (BASE, urllib.parse.urlencode(q))
+    cred = base64.b64encode(
+        ("%s:%s" % (env("ADMCLOUD_REG_USER"), env("ADMCLOUD_REG_PASSWORD"))).encode()
+    ).decode()
+    req = urllib.request.Request(url, data=cuerpo, method="POST")
+    req.add_header("Authorization", "Basic " + cred)
+    req.add_header("Accept", "application/json")
+    req.add_header("Content-Type", "multipart/form-data; boundary=" + borde)
+    with urllib.request.urlopen(req, timeout=180) as r:
+        return json.loads(r.read().decode("utf-8", "replace"))
 
 
 def docids_reclamados():
@@ -211,7 +263,9 @@ def main():
             banco_idx = i
             break
     if banco_idx is None:
-        morir("no encontre la cuenta de banco (101.xx/102.xx) en las lineas")
+        morir("no encontre la cuenta de caja (101.xx/102.xx o una tarjeta) en "
+              "las lineas — si es una cuenta nueva, agregala a `cuentas` en "
+              "mapa-cuentas.yaml y a CUENTAS_CAJA_TARJETA de este script")
 
     banco_cod = str(lineas[banco_idx].get("cuenta") or "").strip()
     banco_uuid = cuentas.get(banco_cod)
@@ -391,6 +445,40 @@ def main():
         refok="true" if ref_vuelta == referencia else "false",
         id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
     print("  guardado en la mesa")
+
+    # El PAPEL del cargo. El banco factura sus servicios con un comprobante
+    # fiscal por dia y concepto, y su PDF —con el QR y el codigo de seguridad—
+    # es lo que soporta el gasto: es lo que la contable humana adjuntaba. Hasta
+    # el 2026-08-05 esto no existia y los cargos se registraban pelados.
+    #
+    # Las paginas las deja partir-comprobantes.py (repo del colector) en
+    # /comprobantes, montado de solo lectura: asi este contenedor adjunta sin
+    # necesitar la service_role de Supabase.
+    #
+    # Va DESPUES de guardar el docid y NO puede tumbar el registro: el documento
+    # en ADM es lo que hay que dejar asentado, y el adjunto se reintenta. Si
+    # falta el PDF se dice fuerte, porque un cargo sin soporte es un hallazgo de
+    # auditoria esperando.
+    ncf = str(p.get("ncf") or "").strip()
+    banco_ncf = str(p.get("banco") or "").strip()
+    if not ncf:
+        print("  sin NCF: este cargo no tiene comprobante que adjuntar")
+    else:
+        ruta_pdf = "/comprobantes/%s/%s.pdf" % (banco_ncf, ncf)
+        if not os.path.exists(ruta_pdf):
+            print("  OJO: no encuentro el PDF del comprobante %s (%s). El cargo "
+                  "queda REGISTRADO pero SIN soporte." % (ncf, ruta_pdf))
+        else:
+            try:
+                subir_adjunto(guid, ruta_pdf)
+                print("  adjunto: comprobante %s subido" % ncf)
+                sql("update qualia_trabajos set propuesta = jsonb_set(propuesta, "
+                    "'{registro_adm,adjunto}', to_jsonb(:'n'::text)) "
+                    "where id = :'id' and empresa_id = :'emp';",
+                    n="%s.pdf" % ncf, id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
+            except Exception as e:  # noqa: BLE001 — el registro ya esta hecho
+                print("  OJO: no pude adjuntar el comprobante %s (%s). El cargo "
+                      "queda REGISTRADO pero SIN soporte." % (ncf, e))
 
     cerrado = sql("update qualia_trabajos set estado = 'registrada' "
                   "where id = :'id' and empresa_id = :'emp' "
