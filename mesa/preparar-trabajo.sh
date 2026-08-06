@@ -879,6 +879,145 @@ case "$TIPO" in
   *)      frag_ninguno "tipo desconocido; el agente sigue el protocolo completo" ;;
 esac
 
+# ─────────── 4b. El QR del e-CF manda sobre lo que diga el texto ───────────
+
+# La representación impresa de un e-CF trae un QR que ES la consulta del timbre
+# ya armada, y adentro viaja un dato que el papel NO imprime: la HORA de la
+# firma. Claro imprime «Fecha Firma Digital: 31-07-2026» y el QR dice
+# «31-07-2026 10:16:23». DGII exige el segundo exacto, así que armar la URL
+# leyendo el texto está condenado a fallar — no es que DGII tarde en publicar,
+# que es la explicación que parece razonable y es falsa. Verificado el
+# 2026-08-06 sobre la E310016169496: fecha de emisión mala + firma con hora,
+# fecha buena + firma sin hora, y las dos mal → «No fue encontrada» en las tres;
+# con la URL del QR → «Aceptado».
+#
+# Y de paso corrige lo que el texto lee mal. En esa misma factura el preparador
+# había sacado `fecha` 2026-07-31 (era la firma) y `monto` 6310.42 (el «Total
+# por Pagar», que arrastra un atraso de otro período). El QR dice 04-08-2026 y
+# 6182.56, que es exactamente lo que DGII tiene registrado. Por eso el QR PISA
+# al texto y no al revés: uno es lo que el emisor firmó, el otro es lo que un
+# regex creyó entender de un papel.
+#
+# El contenido del QR es input hostil como todo lo que sale del documento: acá
+# NO se sigue la URL ni se ejecuta nada, sólo se le sacan parámetros, y sólo si
+# el host es el de DGII. Cada valor lo re-valida el bloque 5 con los regex de
+# siempre, igual que si hubiera salido del texto.
+if [ "$TIPO" = "pdf" ] || [ "$TIPO" = "imagen" ]; then
+  if timeout 120 uv run --with zxing-cpp --with pillow --with pillow-heif python - \
+       "$SALIDA" "$TIPO" "$PREP/qr.json" "$PREP/extraccion.json" \
+       >/dev/null 2>"$PREP/qr.err" <<'PY'
+import json, os, re, subprocess, sys, tempfile, urllib.parse
+
+archivo, tipo, outp, extp = sys.argv[1:5]
+salida = {"encontrado": False}
+
+def paginas():
+    """Las imágenes que hay que mirar. Un PDF se rasteriza; una foto ya lo es."""
+    if tipo != "pdf":
+        return [archivo]
+    tmp = tempfile.mkdtemp(prefix="qr-")
+    # 200 dpi alcanza para un QR de e-CF y evita rasterizar una A4 entera en
+    # alta. Sólo las dos primeras páginas: el timbre va en la representación
+    # impresa, no en los anexos de una factura de 40 hojas.
+    subprocess.run(["pdftoppm", "-r", "200", "-png", "-f", "1", "-l", "2",
+                    archivo, os.path.join(tmp, "p")],
+                   check=False, capture_output=True, timeout=60)
+    return sorted(os.path.join(tmp, f) for f in os.listdir(tmp) if f.endswith(".png"))
+
+def urls_de_qr():
+    import zxingcpp
+    from PIL import Image
+    try:
+        import pillow_heif
+        pillow_heif.register_heif_opener()
+    except Exception:
+        pass          # sólo hace falta si la foto es HEIC sin convertir
+    encontradas = []
+    for ruta in paginas():
+        try:
+            with Image.open(ruta) as img:
+                for r in zxingcpp.read_barcodes(img.convert("RGB")):
+                    if r.text:
+                        encontradas.append(r.text)
+        except Exception:
+            continue  # una página que no abre no invalida a las demás
+    return encontradas
+
+# Sólo se acepta un QR que apunte a la consulta de timbre de DGII. Cualquier
+# otra cosa dentro del QR de un documento de un tercero es una URL ajena y no
+# se toca: no se sigue, no se guarda, no se muestra.
+HOST_DGII = "ecf.dgii.gov.do"
+CAMPOS = {
+    "RncEmisor": ("rnc", r"^\d{9}$|^\d{11}$"),
+    "RncComprador": ("rnc_comprador", r"^\d{9}$|^\d{11}$"),
+    "ENCF": ("ncf", r"^E\d{12}$"),
+    "FechaEmision": ("fecha", r"^\d{2}-\d{2}-\d{4}$"),
+    "MontoTotal": ("monto", r"^\d+(\.\d{1,2})?$"),
+    "FechaFirma": ("fecha_firma", r"^\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}$"),
+    "CodigoSeguridad": ("codigo_seguridad", r"^[A-Za-z0-9+/=]{6}$"),
+}
+
+try:
+    for texto in urls_de_qr():
+        u = urllib.parse.urlsplit(texto.strip())
+        if u.scheme not in ("http", "https") or u.netloc.lower() != HOST_DGII:
+            continue
+        if not re.search(r"/ConsultaTimbre(FC)?/?$", u.path, re.I):
+            continue
+        q = urllib.parse.parse_qs(u.query, keep_blank_values=False)
+        leidos = {}
+        for param, (clave, patron) in CAMPOS.items():
+            v = (q.get(param) or [""])[0].strip()
+            if v and re.match(patron, v):
+                leidos[clave] = v
+        # Sin e-NCF no hay timbre que consultar: el QR no sirvió.
+        if "ncf" not in leidos:
+            continue
+        salida = {"encontrado": True, "url": texto.strip(), "campos": leidos}
+        break
+except ImportError as e:
+    salida = {"encontrado": False, "motivo": "falta la rueda del lector de QR: %s" % e}
+except Exception as e:
+    salida = {"encontrado": False, "motivo": "no se pudo leer el QR: %s" % type(e).__name__}
+
+json.dump(salida, open(outp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+
+# Fusión con lo que sacó el texto. El QR pisa, y queda anotado QUÉ pisó: sin ese
+# rastro, un campo corregido y uno leído bien se ven igual, y el contable no
+# puede saber a cuál de los dos creerle si después no cuadran.
+if salida.get("encontrado"):
+    try:
+        ex = json.load(open(extp, encoding="utf-8"))
+    except Exception:
+        ex = {}
+    corrigio = {}
+    for clave, v in salida["campos"].items():
+        if clave == "fecha":                       # el QR trae DD-MM-AAAA
+            d, m, a = v.split("-")
+            v = "%s-%s-%s" % (a, m, d)
+        elif clave == "monto":
+            v = float(v)
+        previo = ex.get(clave)
+        if previo is not None and str(previo) != str(v):
+            corrigio[clave] = {"texto": previo, "qr": v}
+        ex[clave] = v
+    ex["timbre_qr"] = True
+    if corrigio:
+        ex["qr_corrigio"] = corrigio
+    json.dump(ex, open(extp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+PY
+  then
+    if [ -s "$PREP/qr.json" ] && grep -q '"encontrado": *true' "$PREP/qr.json"; then
+      log "timbre e-CF tomado del QR (pisa lo leido del texto)"
+    fi
+  else
+    # Que no haya QR legible NO es un problema del documento: las facturas
+    # impresas (B01) no llevan, y una foto torcida puede no darlo. Se anota y se
+    # sigue por el camino de siempre, que es el degradado correcto.
+    anotar_error "lectura del QR fallo o excedio el tiempo"
+  fi
+fi
+
 # ───────────── 5. Campos extraídos, re-validados antes de usarse ─────────────
 
 # TODO valor que salió del documento es input hostil (SPEC seguridad): solo

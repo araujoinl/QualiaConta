@@ -21,12 +21,14 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # Pre-calentar el cache de uv con las ruedas que usa el preparador (pypdf de
-# respaldo para PDFs, pillow-heif para fotos de iPhone): sin esto, la PRIMERA
-# factura tras cada recreación del contenedor pagaría la descarga en frío y
-# podría comerse el timeout de la conversión. Si falla (sin red en el build),
-# la imagen sirve igual — solo vuelve el costo de arranque en frío.
+# respaldo para PDFs, pillow-heif para fotos de iPhone, zxing-cpp para el QR del
+# e-CF): sin esto, la PRIMERA factura tras cada recreación del contenedor
+# pagaría la descarga en frío y podría comerse el timeout de la conversión. Si
+# falla (sin red en el build), la imagen sirve igual — solo vuelve el costo de
+# arranque en frío.
 RUN uv run --with pypdf python -c "import pypdf" \
  && uv run --with pillow-heif python -c "import pillow_heif" \
+ && uv run --with zxing-cpp --with pillow python -c "import zxingcpp, PIL" \
  || true
 USER root
 

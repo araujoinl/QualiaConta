@@ -589,11 +589,23 @@ update qualia_trabajos set estado='analizando'
      coinciden, probablemente leíste mal el RNC o el NCF (pasa con las fotos).
      Volvé al documento antes de proponer.
 
-   **(b) e-NCF (E31/E32/E34...): verificá el timbre.** La representacion
-   impresa trae Fecha de Firma y Codigo de Seguridad (6 chars) — extraelos del
-   texto del PDF. **La Fecha de Firma se usa SOLO acá**: no es la fecha de la
-   factura, que sale del encabezado (paso 3). Construi la URL publica de
-   consulta (la misma del QR):
+   **(b) e-NCF (E31/E32/E34...): verificá el timbre. El QR es la fuente, no el
+   texto.** El QR de la representación impresa ES esta consulta ya armada, y
+   trae un dato que el papel NO imprime: la HORA de la firma. Claro imprime
+   «Fecha Firma Digital: 31-07-2026» y el QR dice «31-07-2026 10:16:23»; DGII
+   exige el segundo exacto, así que una URL reconstruida del texto NO PUEDE
+   verificar nunca. Si te da «No fue encontrada», la explicación no es que DGII
+   tarde en publicar —eso suena razonable y es falso—: es que te falta la hora.
+
+   El preparador ya lee el QR y deja sus campos en `extraccion.json` con
+   `"timbre_qr": true`. Cuando estén, **usalos tal cual**: son los que el emisor
+   firmó. Si además viene `qr_corrigio`, ahí está lo que el texto había leído
+   mal — el QR gana, y no al revés. Si no hay `timbre_qr` (factura impresa B01,
+   foto sin QR legible), recién ahí armás la URL con lo que salga del texto,
+   sabiendo que sin hora de firma va a fallar.
+
+   **La Fecha de Firma se usa SOLO acá**: no es la fecha de la factura, que sale
+   del encabezado (paso 3). La URL pública de consulta (la misma del QR):
 
    `https://ecf.dgii.gov.do/ecf/ConsultaTimbre?RncEmisor=<rnc>&RncComprador=<rnc_blackbox>&ENCF=<encf>&FechaEmision=DD-MM-AAAA&MontoTotal=<total>&FechaFirma=DD-MM-AAAA%20HH:MM:SS&CodigoSeguridad=<code>`
 
