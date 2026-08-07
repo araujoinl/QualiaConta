@@ -107,7 +107,7 @@ select json_build_object(
 ")
 
 SQL=$(RAW="$RAW" HOY="$HOY" ESTADO="$ESTADO" python3 - <<'PY'
-import calendar, collections, datetime, json, os, statistics
+import calendar, collections, datetime, json, os, statistics, sys
 
 RAW = os.environ["RAW"]
 HOY = datetime.date.fromisoformat(os.environ["HOY"])
@@ -167,6 +167,7 @@ except FileNotFoundError:
 
 facturas = collections.defaultdict(list)
 nombres = {}
+sin_fecha = 0
 for line in open(f"{RAW}/vendor-bills-detalle.jsonl"):
     fila = json.loads(line)
     # Borrada en ADM: no existe más, y contarla es contar una factura que nadie
@@ -175,15 +176,30 @@ for line in open(f"{RAW}/vendor-bills-detalle.jsonl"):
     # contesta. La FP00001120 se borró el 2026-08-04 y seguía contando acá.
     if fila.get("_eliminado"):
         continue
-    d = fila["data"]
+    d = fila.get("data") or {}
     if d.get("Void"):
+        continue
+    # Una línea puede quedar sin fecha: el refresco horario reemplaza cada
+    # documento con lo que ADM conteste, y cuando la respuesta no es un
+    # documento —un sobre de error, o un detalle vacío que se rearma desde el
+    # listado, que trae menos campos— la línea se escribe igual, sin los campos
+    # que este loop daba por seguros. Con `d["DocDate"]` eso no salteaba UN
+    # documento: mataba el script entero, y un detector muerto no vacía la caja
+    # ni muestra un error — la deja mostrando la corrida anterior, o sea
+    # diciendo «no llegó» sobre una factura que ya llegó, que es justo la
+    # mentira que esta caja existe para evitar. Pasó dos veces la noche del
+    # 2026-08-06 (00:26 y 00:30) y se reparó solo a la corrida siguiente,
+    # cuando ADM contestó bien.
+    fecha = d.get("DocDate")
+    if not isinstance(fecha, str) or len(fecha) < 10:
+        sin_fecha += 1
         continue
     p = d.get("RelationshipID")
     nombres.setdefault(p, d.get("Beneficiary") or "?")
     total = c2(d.get("TotalAmount"))
     aplicado = c2(d.get("AppliedPayments"))
     facturas[p].append({
-        "fecha": d["DocDate"][:10],
+        "fecha": fecha[:10],
         "monto": total,
         # `TotalAmount` viene en la moneda del documento, no en pesos, y sin este
         # campo la fila se pintaba con el default de la pantalla: la FP00001122
@@ -203,6 +219,16 @@ for line in open(f"{RAW}/vendor-bills-detalle.jsonl"):
         "pagada": total > 0 and aplicado >= total - 0.005,
         "aplicado": aplicado,
     })
+
+# A stderr y NO a stdout: stdout es el SQL que este bloque le entrega al shell,
+# y una línea de aviso ahí adentro lo rompe. El shell la manda al log.
+#
+# Se dice el número aunque salteando uno no pase nada: uno es la respuesta rara
+# de ADM que se repara sola a la hora siguiente, cuarenta es el volcado roto y
+# una caja calculada sobre la mitad de las facturas — y ésa se ve igual de sana.
+if sin_fecha:
+    print(f"{sin_fecha} documento(s) sin fecha en el volcado, salteado(s)",
+          file=sys.stderr, flush=True)
 
 # Un proveedor recién puesto a vigilar puede no tener NINGUNA factura en el
 # histórico —un contrato que arranca este mes—, y entonces no existe en el
