@@ -66,7 +66,9 @@ PRE_DIR="${PREENTRENAMIENTO_DIR:-/preentrenamiento}"
 # único interruptor para forzar la re-lectura de TODA la mesa cuando cambia la
 # lógica de extracción. Subirla al tocar extracción, DGII, dedup o el formato
 # del dossier.
-PREP_VERSION=2
+# v3: el XML e-CF extrae renglones (DetallesItems) con aritmética verificada,
+#     que es el insumo del proponedor determinista.
+PREP_VERSION=3
 
 log() { echo "[prep ${ID:0:8}] $(date -u +%H:%M:%S) $*"; }
 
@@ -563,6 +565,76 @@ if out.get("ncf"):
 for clave in ("rnc", "rnc_comprador"):
     if out.get(clave):
         out[clave] = re.sub(r"\D", "", str(out[clave]))
+
+# Renglones del e-CF (DetallesItems/Item), en LA MISMA forma que deja la
+# visión ({descripcion, cantidad, precio, itbis}): el consumidor —el
+# proponedor determinista, el agente— no debe distinguir de qué canal vino.
+# Irónico pero real: hasta v2 el canal MÁS exacto era el único sin renglones.
+#
+# El ITBIS por renglón no viene en el item: viene el IndicadorFacturacion del
+# emisor (1=18%, 2=16%, 3=tasa 0, 4=exento) y el total en la cabecera. Se
+# calcula por renglón según el indicador DECLARADO —no se adivina— y el
+# residuo de redondeo contra el TotalITBIS se ajusta en el renglón mayor
+# hasta 1 peso; un descuadre más grande queda tal cual y lo frena la
+# aritmética de abajo (cuadra=false ⇒ el proponedor no propone).
+TASA = {"1": 0.18, "2": 0.16, "3": 0.0, "4": 0.0}
+items = []
+for el in arbol.iter():
+    if local(el.tag) != "Item":
+        continue
+    hijo = {local(h.tag): (h.text or "").strip() for h in el}
+    desc = (hijo.get("NombreItem") or hijo.get("DescripcionItem") or "").strip()
+    cant = num(hijo.get("CantidadItem"))
+    prec = num(hijo.get("PrecioUnitarioItem"))
+    monto_item = num(hijo.get("MontoItem"))
+    if prec is None and monto_item is not None and cant:
+        prec = round(monto_item / cant, 2)
+    if not desc or not cant or prec is None:
+        continue          # renglón ilegible: mejor tabla incompleta que inventada
+    if monto_item is None:
+        monto_item = round(prec * cant, 2)
+    itb = round(monto_item * TASA.get(hijo.get("IndicadorFacturacion", ""), 0.0), 2)
+    items.append({"descripcion": desc[:80], "cantidad": cant,
+                  "precio": prec, "itbis": itb})
+
+if items:
+    total_itbis = out.get("itbis")
+    itbis_items = round(sum(i["itbis"] for i in items), 2)
+    if isinstance(total_itbis, float) and items:
+        dif = round(total_itbis - itbis_items, 2)
+        if dif and abs(dif) <= 1.0:
+            mayor = max(items, key=lambda i: i["itbis"])
+            mayor["itbis"] = round(mayor["itbis"] + dif, 2)
+    out["items"] = items[:40]
+    # La propina legal del e-CF de restaurante, si el emisor la declaró.
+    prop = None
+    for tag in ("MontoPropinaLegal", "PropinaLegal", "MontoPropina"):
+        prop = num(campos.get(tag))
+        if prop:
+            break
+    if prop:
+        out["propina"] = prop
+    # La MISMA aritmética (y la misma inferencia de propina por descuadre
+    # exacto del 10%) que el camino de visión: un solo criterio de cuadre
+    # para todos los canales.
+    if isinstance(out.get("monto"), float):
+        base = round(sum(i["precio"] * i["cantidad"] for i in items), 2)
+        itbis_items = round(sum(i["itbis"] for i in items), 2)
+        calc = round(base + itbis_items + (prop or 0), 2)
+        diff = round(out["monto"] - calc, 2)
+        if prop is None and diff > 0 and abs(diff - round(0.10 * base, 2)) <= 1.0:
+            prop = diff
+            out["propina"] = prop
+            out["propina_inferida"] = True
+            calc = round(base + itbis_items + prop, 2)
+        out["aritmetica"] = {"base_items": base, "itbis_items": itbis_items,
+                            "propina": prop or 0, "calculado": calc,
+                            "monto_documento": out["monto"],
+                            "cuadra": abs(calc - out["monto"]) <= 0.05}
+        if out.get("propina_inferida"):
+            out["aritmetica"]["nota"] = ("propina legal 10% inferida del "
+                                         "descuadre exacto; verificable en el documento")
+
 out = {k: v for k, v in out.items() if v not in (None, "")}
 json.dump(out, open(outp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 PY
