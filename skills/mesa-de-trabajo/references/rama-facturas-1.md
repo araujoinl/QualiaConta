@@ -150,15 +150,44 @@ la pregunta 4, no una excepción al orden — ver la nota de crédito ahí.
 Preguntá en este orden; la primera que dé SÍ, gana:
 
 1. **¿El movimiento nació en tu estado de cuenta, sin que nadie te entregara un
-   documento previo?** (comisión, cargo por cheque, interés, sobregiro,
-   cashback, y los impuestos que el banco te descuenta como agente de
-   retención: Ley 30-26 2x1000, el 0,15% de cheques, el 1% Norma 07-19)
-   → **`BankCharges`**, con `direccion` explícita (`cargo` = sale plata,
-   `credito` = entra).
+   documento previo, Y la contraparte es el BANCO?** (comisión, cargo por
+   cheque, interés, sobregiro, cashback, y los impuestos que el banco te
+   descuenta como agente de retención: Ley 30-26 2x1000, el 0,15% de cheques,
+   el 1% Norma 07-19) → **`BankCharges`**, con `direccion` explícita
+   (`cargo` = sale plata, `credito` = entra).
    **Que el beneficiario final sea la DGII NO lo saca de acá**: 51 de los 92
    cargos que esta mesa ya registró bien son exactamente eso. El corte no es
    quién cobra al final, es que el hecho nació en la cuenta y no hubo papel que
    recibieras y decidieras pagar.
+
+   **Las dos condiciones son necesarias, y la segunda es la que se olvida.** Un
+   `BankCharges` es lo que el BANCO le hace a tu cuenta: él cobra, él devuelve,
+   él acredita. Si del otro lado hay un cliente, un inquilino o cualquier
+   tercero que te mandó plata, la pregunta 1 **NO la gana** — que haya entrado
+   por ACH sin que nadie te entregara un papel no lo convierte en un hecho del
+   banco: el banco ahí es el caño, no la contraparte. Registrarlo igual lo
+   archiva bajo «Bancos → Cargos Bancarios», que es donde un contador va a
+   buscar comisiones, y ahí esa plata no es lo que el módulo dice que es.
+
+   **Plata que ENTRA de un tercero: hoy no tenés documento para eso — pará y
+   preguntá.** El rol del agente niega toda emisión AR (`CashInvoices`,
+   `CreditInvoices`, notas de crédito de cliente) y también `Deposits`; ver
+   `docs/plan-encendido-escritura.md` §1.1. No hay vuelta que darle: no la
+   disfraces de `BankCharges` en crédito ni de `Journals`. Abrís un evento
+   `pregunta` con el movimiento, el tercero y el tratamiento que corresponde, y
+   que el humano lo registre él. Proponer `CashInvoice` es peor que no proponer
+   nada: el router de `poller.sh` no conoce ese tipo, así que la fila se aprueba
+   y no se registra nunca — queda viva simulando que alguien la atendió.
+
+   **Y si el candado de `Journals` te frena, ése NO es tu permiso para
+   re-etiquetar.** El `hint` del trigger sugiere `BankCharges`, y esa sugerencia
+   vale para plata que SALE hacia el banco, no para plata que entra de un
+   tercero. Un candado que te frena está diciendo «el tipo está mal elegido» o
+   «esto no lo registrás vos», nunca «buscá otro tipo que pase». Pasó el
+   2026-08-07 con el depósito en garantía de Formax: el contable escribió en su
+   propio `detalle` que C-002 mandaba `Journals`, que el sistema lo bloqueaba, y
+   que por eso iba como `BankCharges` crédito. Se aprobó y salió el CB00000258 —
+   un depósito de un inquilino asentado como cargo bancario.
 2. **¿La plata salió de una cuenta tuya y entró a otra cuenta tuya?** — la
    tarjeta corporativa también es cuenta tuya: 203.10 y 203.11 son cuentas de
    caja en ADM aunque su código viva en el pasivo → **`BankBankTransfers`**.
@@ -204,6 +233,12 @@ Preguntá en este orden; la primera que dé SÍ, gana:
    **el tipo está mal elegido**, casi siempre porque el hecho nació en el estado
    de cuenta y la pregunta 1 ya lo había ganado.
 
+   **El `hint` de ese error tiene un punto ciego: sólo vale si la contraparte es
+   el banco.** Te manda a `BankCharges` mirando únicamente de dónde nació el
+   movimiento, y para plata que ENTRA de un cliente eso da el documento
+   equivocado (ver la pregunta 1). Si el candado te frena y del otro lado hay un
+   tercero, la salida no es otro tipo: es un evento `pregunta`.
+
    El candado se puso porque la regla escrita de arriba no se cumplía sola: de
    los **8 `Journals` que pasaron por esta mesa, los 8 tocan una cuenta de caja**
    y ninguno era de nómina. Siete los rechazó el usuario y el octavo es el
@@ -234,9 +269,15 @@ propio `detalle` y preguntate qué cuenta se acredita.
 | `VendorBills` | Cuentas por Pagar — la pone ADM sola, NO la escribas | ítems |
 | `VendorCreditNotes` | los gastos y el ITBIS que corrige; Cuentas por Pagar va al DÉBITO, y la pone ADM sola | ítems, precios POSITIVOS |
 | `BillPayments` | la cuenta de caja que pagó | partida doble |
-| `BankCharges` | la cuenta de caja o la tarjeta | partida doble + `direccion` |
+| `BankCharges` | en `cargo`: la cuenta de caja o la tarjeta. En `credito`: el ingreso del banco o la cuenta del cargo que se revierte — **jamás un pasivo con un tercero** | partida doble + `direccion` |
 | `BankBankTransfers` | las dos cuentas de caja | partida doble |
 | `Journals` | lo que declaren tus líneas | partida doble |
+
+**En la fila de `BankCharges` está el segundo auto-chequeo, y es el que atrapa
+el error de Formax:** si tu `BankCharges` en crédito acredita una cuenta de
+pasivo con un tercero (adelantos de clientes, depósitos en garantía) o una
+cuenta por cobrar, **no es un crédito bancario** — es plata de alguien que no
+es el banco, y ya perdiste en la pregunta 1. Eso salió como CB00000258.
 
 Si tu razonamiento nombra una cuenta que no le toca al tipo que elegiste, **la
 propuesta no sale**: estás describiendo un documento y etiquetando otro. Pasó el

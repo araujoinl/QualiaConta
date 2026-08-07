@@ -80,11 +80,18 @@ mundo van al INDEX como pendientes, nunca acá.
   más, un anticipo de renta o de servicio — es un PASIVO desde que entra al
   banco (obligación de devolver o de prestar lo pagado), y el libro debe
   reflejar TODO lo que el banco recibió: si el recibo se asentó por menos, la
-  conciliación nunca cuadra. `Journals` con débito al banco y crédito a la
-  cuenta de pasivo de adelantos/anticipos de clientes del plan vivo. Se
-  cancela al devengarse (crédito al ingreso que corresponda, con su ITBIS si
-  aplica) o al devolverse (crédito al banco). NO se corrige el recibo
-  original (corregir en ADM implica anular, y anular BORRA — P-005).
+  conciliación nunca cuadra. Débito al banco, crédito a la cuenta de pasivo de
+  adelantos/anticipos de clientes del plan vivo. Se cancela al devengarse
+  (crédito al ingreso que corresponda, con su ITBIS si aplica) o al devolverse
+  (crédito al banco). NO se corrige el recibo original (corregir en ADM
+  implica anular, y anular BORRA — P-005).
+- **La contraparte es el cliente, no el banco.** El banco es el caño por donde
+  entró la plata; eso no lo vuelve un hecho bancario. Un cobro de un tercero
+  NUNCA se asienta como cargo/crédito bancario, aunque haya llegado por
+  transferencia y sin papel previo — ese documento es para lo que el banco te
+  cobra o te devuelve a vos. Si el rol vigente no ofrece un documento capaz de
+  asentar una entrada de tercero, **se pregunta citando esta entrada**; no se
+  elige otro tipo porque «pasa».
 
 ## H-07 — Depósito recibido en garantía (alquiler, contratos)
 
@@ -98,6 +105,9 @@ mundo van al INDEX como pendientes, nunca acá.
 - **Garantía ≠ anticipo:** la garantía se devuelve al final del contrato; el
   anticipo se consume como ingreso al devengarse (H-06). Si el texto del
   cliente no deja claro cuál es, se pregunta citando ambos.
+- **Tampoco es un hecho bancario**, por la misma razón que H-06: quien depositó
+  es el inquilino. Vale acá entera la regla de contraparte de H-06, incluida la
+  salida cuando no hay documento habilitado — se pregunta.
 
 ## H-08 — Ingreso por tarjeta (adquirente «Servicios Digita»)
 
