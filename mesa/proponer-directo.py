@@ -556,6 +556,18 @@ def escribir_clasificacion(mesa_dir, trabajo_id, salida):
         json.dump(salida, open(tmp, "w", encoding="utf-8"),
                   ensure_ascii=False, indent=2)
         os.replace(tmp, os.path.join(carpeta, "clasificacion.json"))
+        # El poller corre como root; el contable como HERMES_UID. Si la carpeta
+        # nace acá (caso sin archivo: el prep salió antes de crearla), quedaba
+        # root:root y el contable no podía escribir su turno.json — el trabajo
+        # moría en 'analizando' (Caso Formax, 2026-08-07). Igual que el
+        # `entregar()` de preparar-trabajo.sh: todo lo de /tmp/mesa/<id> es del
+        # contable. Best-effort: sin privilegios (backtest local) no hace nada.
+        uid = int(os.environ.get("HERMES_UID", "1000"))
+        gid = int(os.environ.get("HERMES_GID", "1000"))
+        for raiz, dirs, archivos in os.walk(carpeta):
+            for nombre in dirs + archivos:
+                os.chown(os.path.join(raiz, nombre), uid, gid)
+        os.chown(carpeta, uid, gid)
     except OSError:
         pass
 
