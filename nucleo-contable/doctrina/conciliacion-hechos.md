@@ -1,6 +1,6 @@
 ---
-estado: borrador
-aprobo:
+estado: ratificado
+aprobo: C.Araujo, por chat, 2026-08-07 (los tratamientos «mecánica ratificada» describen el uso real; los ABIERTO ordenan preguntar, no adivinar)
 evidencia: histórico ADM de Blackbox (211 registrados vía mesa + asientos ED) y auditoría de fallos, corte 2026-08-07
 ---
 
@@ -24,6 +24,9 @@ lo ha dictado todavía.
 - Débito a 640.01 Cargos Bancarios (comisiones/transferencias) o 640.02 Cargos
   sobre cheques 0.15 (impuesto 2×1000), crédito a la cuenta de banco. Con NCF
   del banco si el comprobante lo trae; `Reference` = `banco_tx_id`.
+- Nota técnica: «0.15» en el nombre de 640.02 es herencia del 1.5‰ viejo; el
+  2×1000 vigente se sigue asentando ahí por consistencia con el histórico —
+  es impuesto sobre la transacción, gasto deducible, jamás crédito fiscal.
 
 ## H-02 — Devolución o reverso de un cargo
 
@@ -59,22 +62,36 @@ lo ha dictado todavía.
 
 ## H-06 — Excedente de pago de un cliente
 
-- **Rango:** ABIERTO — el Caso #1 (10 rechazos) es la prueba de que falta el
-  dictado. Lo único cierto es P-001: el tratamiento depende de CÓMO quedó
-  asentado el cobro (¿el recibo entró por el total o por el monto de las
-  facturas?). **Pregunta a ratificar por Carlos, opciones sobre la mesa:**
-  - (a) corregir el recibo para reconocer el cobro completo, con el excedente
-    a un pasivo (anticipos de clientes), y devolver cancelando ese pasivo; o
-  - (b) tratar el excedente como pasivo transitorio reconocido en un asiento
-    propio al detectarlo, y la devolución lo cancela contra el banco; o
-  - (c) devolver sin pasar por pasivo cuando la devolución es inmediata.
+- **Rango:** dictado técnico (revisión de contador, 2026-08-07) — operativo
+  cuando la cuenta tenga código
+- **Tratamiento:** el dinero recibido de más es un PASIVO desde que entra al
+  banco (obligación de devolver o aplicar), y el libro debe reflejar TODO lo
+  que el banco recibió — si el recibo se asentó por menos, la conciliación
+  bancaria nunca va a cuadrar. Al detectarlo: `Journals` con débito al banco
+  por el excedente y crédito a **«Adelanto de Clientes» (pasivo, ya existe en
+  ADM)**. La devolución lo cancela: débito al pasivo, crédito al banco. NO se
+  corrige el recibo original (corregir en ADM implica anular, y anular BORRA
+  — P-005).
+- **Lo que faltaba y explica el Caso #1:** la cuenta «Adelanto de Clientes»
+  existe en ADM **sin código contable asignado**, así que los scripts no
+  pueden referenciarla y las propuestas oscilaban. **Acción de Carlos:
+  asignarle código en ADM** (sugerido: serie 220.xx junto a los pasivos
+  corrientes). Hasta entonces, este hecho se pregunta citando H-06.
 
 ## H-07 — Depósito recibido en garantía (alquiler, contratos)
 
-- **Rango:** ABIERTO — el caso Formax (RD$180,000) quedó sin tratamiento
-  dictado. Es un pasivo mientras la garantía viva, no un ingreso; **falta que
-  Carlos dicte la cuenta** (no existe una «Depósitos en garantía recibidos»
-  entre las 46 cuentas en uso — probablemente haya que estrenarla del plan).
+- **Rango:** dictado técnico (revisión de contador, 2026-08-07) — operativo
+  cuando la cuenta exista
+- **Tratamiento:** pasivo mientras la garantía viva — NUNCA ingreso: es
+  dinero ajeno condicionado (se devuelve al cumplirse el contrato, o se
+  aplica a rentas/daños y RECIÉN entonces se reclasifica a ingreso). Débito
+  al banco, crédito a «Depósitos recibidos en garantía» (pasivo). Ojo con el
+  espejo: **180.01 Fianzas & Depósitos es ACTIVO** — son los depósitos que la
+  empresa ENTREGA; usarla acá invertiría el balance.
+- **Lo que falta:** la cuenta de pasivo NO existe en el plan (verificado
+  sobre las 215). **Acción de Carlos: crearla en ADM** (sugerido: serie
+  220.xx, «Depósitos Recibidos en Garantía»). Hasta entonces, el caso Formax
+  y similares se preguntan citando H-07.
 
 ## H-08 — Ingreso por tarjeta (adquirente «Servicios Digita»)
 
@@ -88,6 +105,20 @@ lo ha dictado todavía.
 - **Documento:** `BankCharges` en crédito · **Rango:** mecánica ratificada
 - Crédito a 700.01 Intereses Bancarios (ingreso), débito a la tarjeta (cuenta
   de caja 203.10/203.11). Precedente: libro 2026-08-05 (CB00000231).
+- Nota técnica: en rigor un cashback no es interés (es «otros ingresos» /
+  descuento sobre compras); se mantiene 700.01 por consistencia con el
+  histórico y materialidad mínima. Si algún día se abre «Otros Ingresos», los
+  nuevos van allá y esta nota se deroga con entrada de libro.
+
+## H-11 — Diferencia de tiempo (partida en tránsito)
+
+- **Rango:** principio de conciliación (revisión de contador, 2026-08-07)
+- Que un documento esté en ADM y todavía no en el banco (o al revés, con
+  fechas cercanas) NO es un faltante: es una partida en tránsito. Se marca,
+  se espera al siguiente corte y **no se crea nada** — crear un asiento para
+  «cuadrar» una diferencia de timing fabrica el descuadre del mes siguiente.
+  Solo si la partida envejece más de un ciclo de corte se investiga como
+  faltante real.
 
 ## H-10 — Nómina (tres asientos mensuales)
 

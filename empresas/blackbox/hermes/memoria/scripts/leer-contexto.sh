@@ -56,6 +56,30 @@ select estado, tipo, origen, resumen, aprobado_por_nombre, error_detalle,
  where id = :'id' and empresa_id = :'emp';
 SQL
 
+# En trabajos de CONCILIACIÓN (casos y sugerencias del cron) el marco es la
+# doctrina contable ratificada: el índice viaja entero en el contexto para que
+# la jerarquía P-003 y los hechos H-XX estén delante ANTES de razonar — el
+# sesgo de citar DGII donde tocaba contabilidad nació de tener solo impuestos
+# a mano. En facturas normales alcanza el puntero (una línea, cero cuota).
+tipo_fila=$(sql -t -A -v id="$ID" -v emp="$QUALIA_EMPRESA_ID" <<'SQL'
+select tipo || '|' || coalesce(origen, '') from qualia_trabajos
+ where id = :'id' and empresa_id = :'emp';
+SQL
+)
+case "$tipo_fila" in
+  caso\|*|*\|cron_conciliacion)
+    if [ -f /nucleo-contable/doctrina/INDEX.md ]; then
+      echo
+      echo "=== DOCTRINA CONTABLE (ratificada — P-003: la DGII no decide cuentas) ==="
+      cat /nucleo-contable/doctrina/INDEX.md
+    fi
+    ;;
+  *)
+    echo
+    echo "(doctrina contable: /nucleo-contable/doctrina/INDEX.md — leela antes de cualquier asiento de conciliación)"
+    ;;
+esac
+
 echo
 echo "=== HILO (últimos 30 eventos, viejo→nuevo) ==="
 sql -v id="$ID" <<'SQL'

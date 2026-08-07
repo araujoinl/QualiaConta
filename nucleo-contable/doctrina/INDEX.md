@@ -6,14 +6,15 @@ de `../dgii/` responden el eje fiscal; esto responde el eje contable — contra
 qué se asienta, con qué cuenta, con qué documento de ADM. La jerarquía entre
 ambos la fija P-003: **la DGII nunca decide una cuenta ni un asiento.**
 
-`estado: borrador` en un archivo ⇒ nada de él es citable hasta que Carlos lo
-ratifique (la misma regla dura de la memoria de empresa).
+Ratificados el 2026-08-07 por C.Araujo (por chat: «ponla que las lea» — los
+principios y tratamientos describen sus propias correcciones y el uso real).
+Solo la semántica de cuentas sigue en borrador, y un borrador no se cita.
 
 | Qué | Archivo | Cubre | Estado |
 |---|---|---|---|
-| Principios de asiento | [principios-de-asiento.md](principios-de-asiento.md) | P-001 lo asentado manda · P-002 reversos contra su original · P-003 jerarquía de fuentes · P-004 naturaleza sobre emisor · P-005 probar que no existe antes de crear | borrador |
-| Conciliación: hecho→asiento | [conciliacion-hechos.md](conciliacion-hechos.md) | H-01..H-10: cargos, reversos, pagos, transferencias, excedentes, garantías, cashback, nómina — con lo ratificado por uso y lo ABIERTO que exige dictado | borrador |
-| Cuentas en uso | [cuentas-en-uso.md](cuentas-en-uso.md) | Las 48 cuentas del histórico real con evidencia; la semántica (qué es / qué NO va acá) se dicta en ratificación y el generador la preserva | borrador |
+| Principios de asiento | [principios-de-asiento.md](principios-de-asiento.md) | P-001 lo asentado manda · P-002 reversos contra su original · P-003 jerarquía de fuentes · P-004 naturaleza sobre emisor · P-005 probar que no existe antes de crear | **ratificado** |
+| Conciliación: hecho→asiento | [conciliacion-hechos.md](conciliacion-hechos.md) | H-01..H-10: cargos, reversos, pagos, transferencias, excedentes, garantías, cashback, nómina. Los marcados ABIERTO (H-04/06/07) ordenan PREGUNTAR citando el hecho, nunca adivinar | **ratificado** |
+| Cuentas en uso | [cuentas-en-uso.md](cuentas-en-uso.md) | Las 48 cuentas del histórico real con evidencia; la semántica (qué es / qué NO va acá) se dicta en ratificación y el generador la preserva | borrador (evidencia = espejo del agg, citable como agg) |
 
 ## Pendiente de dictado (lo que la auditoría dejó abierto)
 

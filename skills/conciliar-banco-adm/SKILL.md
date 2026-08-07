@@ -228,3 +228,21 @@ nota algo raro en ADM Cloud (ej: "muchos clientes 2025 están sin conciliar",
 - Si la mayoría del banco queda "sin conciliado", revisar si faltan fuentes de
   ADM (probablemente VendorBills o CashReceipts).
 - Entregar el Excel como archivo adjunto (`MEDIA:/ruta/al/archivo.xlsx`).
+
+## Qué hacer con lo NO conciliado — la doctrina manda
+
+Esta skill ENCUENTRA las diferencias; ASENTARLAS es otra decisión, y la
+gobierna la doctrina contable ratificada:
+`/nucleo-contable/doctrina/INDEX.md` (2026-08-07).
+
+- **P-001**: el asiento nace de lo ASENTADO en ADM — antes de proponer una
+  partida que usa o cancela un saldo, verificá por SQL que ese saldo existe y
+  citá lo que encontraste. Diez propuestas del Caso #1 murieron por debitar un
+  pasivo que nunca se registró.
+- **P-002**: un reverso o devolución usa la MISMA cuenta de su movimiento
+  original; sin original atado, se pregunta.
+- **P-003**: jerarquía — ADM real → doctrina → precedente → la DGII SOLO para
+  el eje fiscal. La DGII jamás elige la cuenta ni el documento.
+- El tratamiento por situación (cargos, excedentes de clientes, garantías,
+  cuotas de préstamo…) está en `doctrina/conciliacion-hechos.md` (H-01..H-10).
+  Un hecho marcado **ABIERTO** se pregunta citándolo, nunca se adivina.

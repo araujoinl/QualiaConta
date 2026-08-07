@@ -1,6 +1,6 @@
 ---
-estado: borrador
-aprobo:
+estado: ratificado
+aprobo: C.Araujo, por chat, 2026-08-07 («ponla que las lea» — los principios describen sus propias correcciones)
 evidencia: auditoría de 72 trabajos con feedback del usuario, mesa de Blackbox, corte 2026-08-07
 ---
 
@@ -12,14 +12,14 @@ responden el eje CONTABLE: contra qué se asienta, con qué cuenta y con qué
 documento de ADM. **La DGII nunca decide una cuenta ni un asiento.**
 
 Mismo contrato que toda regla del núcleo (regla 4 del repo): cada principio
-lleva rango y vigencia. `estado: borrador` ⇒ ninguno es citable hasta que
-Carlos lo ratifique.
+lleva rango y vigencia. Ratificados el 2026-08-07: **citables desde entonces**
+— no son criterios nuevos, son las correcciones del dueño escritas con nombre.
 
 ---
 
 ## P-001 — El asiento nace de lo ASENTADO, no del deber-ser
 
-- **Rango:** principio rector · **Vigencia:** desde ratificación
+- **Rango:** principio rector · **Vigencia:** desde 2026-08-07
 
 Antes de proponer una partida que usa, cancela o corrige un saldo, se verifica
 por SQL que ese saldo EXISTE en ADM tal como la partida lo asume. Si el libro
@@ -42,7 +42,7 @@ Z es W»). Una propuesta de asiento sin esa verificación citada está incomplet
 
 ## P-002 — Un reverso se asienta contra su movimiento original
 
-- **Rango:** principio · **Vigencia:** desde ratificación
+- **Rango:** principio · **Vigencia:** desde 2026-08-07
 
 Una devolución, reverso o corrección bancaria («DEVOLUCION CARGO…») usa la
 MISMA cuenta del movimiento original, con el signo contrario. La cuenta no se
@@ -57,7 +57,7 @@ rechazó porque los cargos no se pudieron atar a movimientos del banco.
 
 ## P-003 — Jerarquía de fuentes para decidir un asiento
 
-- **Rango:** principio rector · **Vigencia:** desde ratificación
+- **Rango:** principio rector · **Vigencia:** desde 2026-08-07
 
 En orden, y cada nivel manda sobre el siguiente:
 
@@ -78,7 +78,7 @@ vacío.
 
 ## P-004 — La cuenta se elige por la naturaleza del hecho, no por el emisor
 
-- **Rango:** principio · **Vigencia:** desde ratificación
+- **Rango:** principio · **Vigencia:** desde 2026-08-07
 
 Un renglón capitalizable va a activo aunque el proveedor sea «de gasto»; una
 membresía de fitness es representación aunque la facture un gimnasio; una
@@ -92,11 +92,16 @@ gasto y Carlos tuvo que preguntar dos veces «¿no va en cuenta de activos?» y
 «¿el tipo no sería adquisición de activo fijo?»; la membresía Pulse Harmony
 («esto es un centro fitness va como representación»).
 
+**Pendiente de dictado:** el umbral de capitalización — desde qué monto un
+bien durable se activa en vez de gastarse. El inversor de RD$12,350 se
+activó; una grapadora de RD$800 no debería. Hasta el dictado, todo bien
+durable ambiguo se pregunta.
+
 ---
 
 ## P-005 — Antes de crear, probar que no existe
 
-- **Rango:** principio · **Vigencia:** desde ratificación
+- **Rango:** principio · **Vigencia:** desde 2026-08-07
 
 Revertir en ADM **borra el documento sin dejar lápida** (medido, ROADMAP):
 cada duplicado que se cuela cuesta una anulación invisible en el libro

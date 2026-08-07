@@ -23,7 +23,7 @@ Regenerar (la evidencia; la semántica dictada sobrevive):
 | Cuenta | Nombre | Tipo (plan) | Usos | Provs | Proveedores típicos | Qué es / qué NO va acá |
 |---|---|---|---|---|---|---|
 | `102.01` | Banco Suplidores USD 404 | Activo | 7 | 1 | Banco Multiple Santa Cru | — (dictar en ratificación) |
-| `130.02` | Compras en Tránsito | Activo | 69 | 12 | Logistichause Internatio, DGA ADUANAS, M C Logistics Srl | — (dictar en ratificación) |
+| `130.02` | Compras en Tránsito | Activo | 69 | 12 | Logistichause Internatio, DGA ADUANAS, M C Logistics Srl | Compras en tránsito: importaciones en curso (facturas grandes sin ITBIS de courier/naviera que acompañan una importación) |
 | `150.01` | Seguros | Activo | 3 | 2 | Banco Multiple Santa Cru, Seguros Sura S A | — (dictar en ratificación) |
 | `150.04` | ITBIS Adelantado | Activo | 10 | 1 | DGA ADUANAS | — (dictar en ratificación) |
 | `160.03` | Edificaciones / Naves industriales | Activo | 1 | 1 | Banco Multiple Santa Cru | — (dictar en ratificación) |
@@ -48,8 +48,8 @@ Regenerar (la evidencia; la semántica dictada sobrevive):
 | `620.06` | Suministros de oficina y otros | Gasto | 88 | 24 | Supermercado El Dragon D, Megasuply Srl, Almacenes Unidos Sas | — (dictar en ratificación) |
 | `620.07` | Servicios de Limpieza | Gasto | 1 | 1 | THE BIG APPLE CLEANERS S | — (dictar en ratificación) |
 | `620.09` | Gasto de Impuesto Selectivo al consumo | Gasto | 23 | 3 | Compania Dominicana De T, Humano Seguros S A, Seguros Sura S A | — (dictar en ratificación) |
-| `620.10` | Envios y Correspondencias | Gasto | 132 | 2 | Tupaq Cargo & Courier Sr, Moon & Sea Logistics Srl | — (dictar en ratificación) |
-| `620.11` | Combustible | Gasto | 370 | 44 | Isla Dominicana De Petro, Mecari Srl, Estacion De Servicios H  | — (dictar en ratificación) |
+| `620.10` | Envios y Correspondencias | Gasto | 132 | 2 | Tupaq Cargo & Courier Sr, Moon & Sea Logistics Srl | Flete/courier COMPLETO: el fuel surcharge, manejo y tasas del envío van ACÁ con el servicio, no a 620.11 (backtest 2026-08-07, criterio ratificado) |
+| `620.11` | Combustible | Gasto | 370 | 44 | Isla Dominicana De Petro, Mecari Srl, Estacion De Servicios H  | Combustible de FLOTILLA en bomba, sin ITBIS discriminado (va en el precio). NO recargos de combustible de couriers ni fletes |
 | `620.12` | Gastos de Software | Gasto | 4 | 1 | Fortech Srl | — (dictar en ratificación) |
 | `621.01` | Servicios Contables | Gasto | 23 | 2 | Account One Dcm2rp, Srl, Fortech Srl | — (dictar en ratificación) |
 | `621.02` | Servcios Legales | Gasto | 1 | 1 | Ingenieria Del Valor Srl | — (dictar en ratificación) |
@@ -58,8 +58,8 @@ Regenerar (la evidencia; la semántica dictada sobrevive):
 | `630.03` | Publicidad Medios Tradicionales | Gasto | 1 | 1 | Likecorp Srl. | — (dictar en ratificación) |
 | `630.05` | Gastos de Representación | Gasto | 8 | 8 | Bona S A, Bakerstreet Holdings Srl, Body Shop Athletic Club  | — (dictar en ratificación) |
 | `630.06` | Manejo de Redes Sociales | Gasto | 6 | 1 | Apr Creators Srl | — (dictar en ratificación) |
-| `640.01` | Cargos Bancarios | Gasto | 35 | 1 | Banco Multiple Santa Cru | — (dictar en ratificación) |
-| `640.02` | Cargos sobre cheques 0.15 | Gasto | 136 | 1 | Banco Multiple Santa Cru | — (dictar en ratificación) |
+| `640.01` | Cargos Bancarios | Gasto | 35 | 1 | Banco Multiple Santa Cru | Comisiones y cargos del banco (transferencias, LBTR). Deducible, sin crédito fiscal salvo NCF del banco |
+| `640.02` | Cargos sobre cheques 0.15 | Gasto | 136 | 1 | Banco Multiple Santa Cru | Impuesto sobre transacciones (2×1000 Ley 30-26; el «0.15» del nombre es herencia del 1.5‰). Jamás crédito fiscal |
 | `650.05` | Amortización de Bienes intangibles (Pr | Gasto | 1 | 1 | Humano Seguros S A | — (dictar en ratificación) |
 | `650.06` | Reparaciones y Mantenimientos Activos  | Gasto | 1 | 1 | Grupo Arqlux Srl | — (dictar en ratificación) |
 | `650.08` | Reparaciones y Mantenimientos Equipos  | Gasto | 9 | 5 | Premier Wash Technology , Estacion De Servicios H , Talleres Benjamin Egli S | — (dictar en ratificación) |
