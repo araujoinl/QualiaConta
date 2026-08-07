@@ -189,6 +189,33 @@ en el texto no tiene botón, así que no se aplica nunca. Si un paso depende de 
 decisión que no podés tomar, ése es el que va como pregunta al hilo — pero
 entonces no abras ninguno todavía.
 
+**REGLA DURA: el dictamen termina en botones, no en tareas para el humano.**
+«Estas operaciones las asienta alguien con acceso directo a ADM» no es un
+cierre válido: el que aprueba decide con el botón de cada paso, no registra a
+mano. Si el asiento toca la cuenta de banco y `Journals` está bloqueado, el
+vehículo es `BankCharges` en la dirección del movimiento — H-12 de la
+doctrina: el rol SIEMPRE tiene documento para lo que nace en el banco. Solo si
+un tratamiento de verdad no tiene vía (ni con H-12) la salida es la de
+siempre: pregunta citando el hecho, y el hueco queda como pendiente del INDEX
+— nunca un dictamen que le reparte trabajo manual al que aprueba. (Pasó el
+2026-08-07, Caso #2 Mtk Designs: los dos asientos quedaron en prosa y se
+mandó al dueño a asentarlos, con el precedente CB00000258 del mismo día en la
+mano.)
+
+**El paso se lee como una fila de la mesa, no como una nota.** El humano
+decide mirando el cuadro del paso: tiene que decir qué acción es, por dónde
+se mueve la plata y con qué documento, sin abrir el detalle. Formato del
+`resumen` del trabajo hijo: **acción · origen → destino — RD$monto (Caso
+#N)**, con la flecha marcando la dirección real del dinero. «Devolución por
+pago en error · Banco Ingresos 801 → Mtk Designs — RD$7,552 (Caso #2)», no
+«se propone devolver el pago». La `propuesta` va completa como siempre
+—`documento_adm`, `direccion`, `cuenta_contable`, `lineas` con código y
+nombre de cada cuenta, `monto`, `moneda`, `banco_tx_id`— y el PORQUÉ vive en
+`detalle`: el tratamiento aplicado con su hecho o criterio citado (H-06,
+C-002…), qué verificaste en ADM y de qué filas del caso sale. Un paso sin su
+porqué obliga al humano a confiar a ciegas o a rechazarlo; los dos son
+fracasos tuyos.
+
 **REGLA DURA: un trabajo es un documento, y el caso nunca lleva
 `registro_adm` propio.** Si la solución necesita dos documentos —una factura
 y su pago, por ejemplo— abrí DOS trabajos hijos, cada uno con su

@@ -1,6 +1,6 @@
 ---
 estado: ratificado
-aprobo: C.Araujo, por chat, 2026-08-07 (los tratamientos «mecánica ratificada» describen el uso real; los ABIERTO ordenan preguntar, no adivinar). Re-ratificado mismo día: H-04/06/07 reescritos a forma fija de por vida — el estado del plan no vive en una entrada
+aprobo: C.Araujo, por chat, 2026-08-07 (los tratamientos «mecánica ratificada» describen el uso real; los ABIERTO ordenan preguntar, no adivinar). Re-ratificado mismo día: H-04/06/07 reescritos a forma fija de por vida — el estado del plan no vive en una entrada. Mismo día, H-12 dictado y H-06/H-07 reapuntados al vehículo: el dictamen del Caso #2 mandó al dueño a asentar a mano teniendo precedente (CB00000258)
 evidencia: histórico ADM de Blackbox (211 registrados vía mesa + asientos ED) y auditoría de fallos, corte 2026-08-07
 ---
 
@@ -86,12 +86,12 @@ mundo van al INDEX como pendientes, nunca acá.
   (crédito al banco). NO se corrige el recibo original (corregir en ADM
   implica anular, y anular BORRA — P-005).
 - **La contraparte es el cliente, no el banco.** El banco es el caño por donde
-  entró la plata; eso no lo vuelve un hecho bancario. Un cobro de un tercero
-  NUNCA se asienta como cargo/crédito bancario, aunque haya llegado por
-  transferencia y sin papel previo — ese documento es para lo que el banco te
-  cobra o te devuelve a vos. Si el rol vigente no ofrece un documento capaz de
-  asentar una entrada de tercero, **se pregunta citando esta entrada**; no se
-  elige otro tipo porque «pasa».
+  entró la plata; eso no lo vuelve un hecho bancario: un cobro de un tercero
+  jamás toca las cuentas de cargos o ingresos bancarios (640.x, 700.01), aunque
+  haya llegado por transferencia y sin papel previo — esas cuentas son para lo
+  que el banco te cobra o te devuelve a vos. El DOCUMENTO con que se asienta
+  desde el banco es otra decisión, y la dicta H-12: `BankCharges` como
+  vehículo, con las cuentas de ESTE tratamiento.
 
 ## H-07 — Depósito recibido en garantía (alquiler, contratos)
 
@@ -106,8 +106,9 @@ mundo van al INDEX como pendientes, nunca acá.
   anticipo se consume como ingreso al devengarse (H-06). Si el texto del
   cliente no deja claro cuál es, se pregunta citando ambos.
 - **Tampoco es un hecho bancario**, por la misma razón que H-06: quien depositó
-  es el inquilino. Vale acá entera la regla de contraparte de H-06, incluida la
-  salida cuando no hay documento habilitado — se pregunta.
+  es el inquilino. Vale acá entera la regla de contraparte de H-06, y el
+  vehículo documental de H-12 para asentarlo desde el banco (precedente:
+  CB00000258, Caso #1 Formax).
 
 ## H-08 — Ingreso por tarjeta (adquirente «Servicios Digita»)
 
@@ -142,3 +143,27 @@ mundo van al INDEX como pendientes, nunca acá.
 - `NOMINA <MES> <AÑO>`, `REG. TSS EMPLEADOR <AAAAMM>`, `REG.INFOTEP EMPLEADOR
   <AAAAMM>`. **Nunca autónomo** (guarda permanente); dedup por período Y por
   monto (P-005: la TSS duplicada del histórico).
+
+## H-12 — Vehículo documental cuando el asiento toca la cuenta de banco
+
+- **Rango:** política de empresa (dictada por C.Araujo, 2026-08-07, a raíz del
+  Caso #2 Mtk Designs; precedente CB00000258, Caso #1 Formax) · **Vigencia:**
+  desde 2026-08-07
+- El tratamiento (H-06, H-07 o el que aplique) elige las CUENTAS; esta entrada
+  elige el DOCUMENTO. Cuando el asiento correcto debita o acredita una cuenta
+  de caja/banco y el documento natural sería `Journals`, el vehículo es
+  `BankCharges` en la dirección del movimiento — crédito si la plata entró,
+  cargo si salió — porque la conciliación de ADM sólo cruza documentos de
+  banco: un `Journals` sobre caja queda sin conciliar para siempre, y por eso
+  el sistema lo bloquea.
+- El vehículo NO cambia el asiento: las cuentas siguen siendo las del
+  tratamiento (banco contra el pasivo que corresponda, etc.). Las cuentas de
+  cargos/ingresos bancarios (640.x, 700.01) quedan reservadas para los hechos
+  que SÍ son del banco (H-01, H-02, H-09).
+- Consecuencia operativa: el rol del contable SÍ tiene documento para asentar
+  entradas y salidas de terceros nacidas en el banco. «Mi rol no tiene
+  documento para esto» dejó de ser una conclusión válida para estos hechos: el
+  dictamen se propone como pasos aprobables, jamás se le manda al humano a
+  asentarlo a mano.
+- `Reference` = `banco_tx_id`, como en todo documento nacido de un movimiento
+  del banco.
