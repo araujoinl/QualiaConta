@@ -58,11 +58,18 @@
 # eventos a 5×800) + la rama servida. Si una rama crece, ANTES de publicar
 # hay que volver a sumar.
 #
-# READ-ONLY PURO: cero insert, cero update, cero archivos. En particular NO hace
-# el claim `pendiente -> analizando`: ese candado sigue siendo del agente y vive
-# dentro de la rama. Dos motivos, los dos duros: mover el claim acá cambiaría el
-# contrato de concurrencia de toda la mesa, y la cabecera tiene que imprimir el
-# `updated_at` PRE-claim, que es justo lo que el claim destruye.
+# READ-ONLY salvo UNA excepción quirúrgica: el claim del CASO en `pendiente`
+# (§0.9). Ese candado fue del agente hasta el 2026-08-07, cuando quedó probado
+# dos veces en el mismo día que «si perdiste el claim, PARÁ» es una instrucción
+# que el modelo puede desobedecer — y desobedeció (Formax v3: dos sesiones
+# analizando en paralelo; Mtk Designs: 4 hijos duplicados con la orden ya
+# escrita en la rama). Ahora el perdedor no recibe el protocolo: recibe tres
+# líneas de «la fila es de otro». No puede desobedecer un manual que nunca le
+# llegó. El resto sigue read-only: facturas conservan su claim en
+# `leer-contexto.sh --claim` (ahí el incentivo alinea: sin claim no hay
+# dossier), y la cabecera sigue imprimiendo el `updated_at` PRE-claim porque
+# la lectura de la fila ocurre ANTES del claim — el orden de este archivo es
+# parte del contrato.
 #
 # El MOTIVO no rutea NUNCA. Es una pista del webhook y una traza de auditoría.
 # ⚠ LÁPIDA: si alguien lo vuelve autoritativo, vuelve por la puerta de adelante
@@ -516,12 +523,52 @@ if [ -f "$DOSSIER" ] && [ -r "$DOSSIER" ]; then
   fi
 fi
 
+# ═══════════ 0.9 El claim del caso lo hace el ROUTER, no el modelo ═══════════
+# El poller despierta dos turnos por el mismo envío (evento + estado, ~10s).
+# El candado siempre fue el claim, pero mientras fue un psql DEL MODELO, parar
+# al perdedor era una instrucción — y se desobedeció dos veces el 2026-08-07
+# (Formax v3: 21+43 llamadas en paralelo; Mtk Designs: 4 hijos duplicados en
+# 12 segundos, CON la orden de parar ya escrita en la rama). Acá el claim es
+# atómico y el perdedor NO RECIBE el protocolo: no puede desobedecer un manual
+# que nunca le llegó. El mismo CTE deja el progreso temprano que alimenta la
+# web — por eso el ganador ya no tiene que escribir el suyo.
+CLAIM_ROUTER=""
+if [ "$RAMA" = "casos" ] && [ "$ESTADO" = "pendiente" ]; then
+  CLAIM_ROUTER="$($CORRE env PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -X -q -t -A -v ON_ERROR_STOP=1 -c "
+    with claim as (
+      update qualia_trabajos set estado='analizando'
+       where id='$ID' and empresa_id='$QUALIA_EMPRESA_ID'
+         and estado='pendiente' returning id
+    )
+    insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
+    select id, 'contable', 'progreso',
+           'Leí el caso — estoy revisando los movimientos y el tratamiento.'
+      from claim
+    returning trabajo_id;" 2>/dev/null || true)"
+  if [ -z "$CLAIM_ROUTER" ]; then
+    printf '<<<MESA:CABECERA>>>\n'
+    printf 'trabajo    : %s\n' "$ID"
+    printf 'veredicto  : CLAIM PERDIDO — otro turno reclamó esta fila hace segundos\n'
+    printf '<<<FIN CABECERA>>>\n\n'
+    printf 'La fila es del otro turno. NO hagas NADA: ni eventos, ni análisis, ni\n'
+    printf 'trabajos, ni preguntas. Terminá tu turno con una sola línea diciendo que\n'
+    printf 'el caso ya lo tiene otra sesión. Este es el final de tus instrucciones.\n'
+    exit 0
+  fi
+  ESTADO="analizando"
+fi
+
 # ═══════════════════════ 1. CABECERA (el veredicto) ═══════════════════════
 printf '<<<MESA:CABECERA>>>\n'
 printf 'trabajo    : %s\n' "$ID"
 printf 'empresa    : %s...\n' "${QUALIA_EMPRESA_ID:0:8}"
 printf 'tipo       : %s\n' "$TIPO"
 printf 'estado     : %s\n' "$ESTADO"
+if [ -n "$CLAIM_ROUTER" ]; then
+  printf 'claim      : GANADO por el router — fila en analizando, y el progreso\n'
+  printf '             temprano YA quedó escrito: no escribas otro saludo, tu\n'
+  printf '             próximo evento es el análisis o la pregunta de verdad.\n'
+fi
 printf 'updated_at : %s   <-- PRE-CLAIM. Guardalo: es la referencia\n' "$UPD"
 printf '             para juzgar si el dossier del preparador sigue vigente.\n'
 printf 'claim      : NO hecho. El candado sigue siendo tuyo, va en la rama.\n'

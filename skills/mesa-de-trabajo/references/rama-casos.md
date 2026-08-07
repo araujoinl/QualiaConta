@@ -29,35 +29,16 @@ salió diciendo «el trabajo no tiene archivo; nada que preparar», es justo lo
 esperado, no una falla del preparador. Se cierra pasando a `aprobada`, y esa
 transición es EXCLUSIVA del humano — ver «Nunca cerrás el caso vos» más abajo.
 
-Como con cualquier trabajo, el primer movimiento es el claim atómico — el
-mismo candado de siempre, y por la misma razón: si el poller te despertó dos
-veces por el mismo envío, que sólo una gane la fila.
-
-```sql
-with claim as (
-  update qualia_trabajos set estado='analizando'
-   where id='<caso_id>' and empresa_id='$QUALIA_EMPRESA_ID'
-     and estado='pendiente' returning id
-)
-insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
-select id, 'contable', 'progreso',
-       'Leí el caso — estoy verificando los movimientos y el tratamiento.'
-  from claim
-returning trabajo_id;
-```
-
-Un solo comando hace las dos cosas: el claim Y el evento `progreso` que tu
-gente ve en la web mientras trabajás (sin esa línea miran una pantalla muda
-los minutos que dura el análisis — poné en el contenido qué vas a hacer, en
-una línea). El CTE garantiza que el progreso solo se escribe si el claim
-GANÓ: el poller despierta dos turnos por el mismo envío con segundos de
-diferencia, y sin esta condición los dos escribían su progreso y los dos
-seguían analizando en paralelo (pasó el 2026-08-07: 21 + 43 llamadas por el
-mismo caso, el análisis entero pagado dos veces).
-
-**Si el comando no devuelve ninguna fila, el claim lo ganó otro turno: PARÁ
-en seco.** No escribas nada más, no analices, terminá el turno — la fila es
-del otro. Es la misma regla dura del claim de facturas, y acá vale igual.
+El claim atómico ya NO lo hacés vos: **lo hizo el router al servirte esta
+rama**. Si estás leyendo esto sobre un caso que estaba `pendiente`, la fila
+ya es tuya (`analizando`) y el evento `progreso` temprano —el que tu gente ve
+en la web mientras trabajás— ya quedó escrito por el mismo claim: NO escribas
+otro saludo; tu próximo evento es análisis o pregunta de verdad. Al turno que
+pierde la carrera el router ni siquiera le entrega el protocolo, así que si
+esto está en tu contexto, ganaste — no hay carrera que revalidar. (Historia:
+el claim fue del modelo hasta el 2026-08-07; «si perdiste, PARÁ» se
+desobedeció dos veces el mismo día — Formax v3 y los 4 hijos duplicados de
+Mtk Designs — y por eso se movió a donde no se puede desobedecer.)
 
 ### Por qué «Si está `pendiente`: analizalo» no aplica acá
 
