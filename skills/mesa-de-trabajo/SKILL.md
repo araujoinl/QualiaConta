@@ -307,6 +307,22 @@ Preguntá en este orden; la primera que dé SÍ, gana:
    RD$70,84 de la Visa 1877 entró como asiento (ED00000183) y quedó como
    diferencia eterna.
 
+   **Y desde el 2026-08-07 esto ya no depende de que lo recuerdes: la base lo
+   rechaza.** El trigger `qualia_trabajos_journal_no_toca_caja` (repo Labs_Inv)
+   revienta con `check_violation` cualquier propuesta `Journals` cuyas líneas
+   toquen 101.xx, 102.xx o las tarjetas 203.10 / 203.11, y el mensaje del error
+   te dice a qué documento va. Si lo ves, no reintentes ni busques la vuelta:
+   **el tipo está mal elegido**, casi siempre porque el hecho nació en el estado
+   de cuenta y la pregunta 1 ya lo había ganado.
+
+   El candado se puso porque la regla escrita de arriba no se cumplía sola: de
+   los **8 `Journals` que pasaron por esta mesa, los 8 tocan una cuenta de caja**
+   y ninguno era de nómina. Siete los rechazó el usuario y el octavo es el
+   ED00000183. Cero aciertos en ocho intentos. Y **citar precedente no salva**:
+   seis de esos siete citaban ED00000096 / ED00000097 / ED00000127 — existen en
+   ADM y de todos modos no sirven, porque la conciliación no lee
+   `/api/Journals`. Lo que decide es el tipo de documento contra la cuenta.
+
 **«Es del Estado» no es criterio, y la evidencia lo prueba en las dos
 direcciones**: la liquidación de aduanas va como factura de proveedor (10 de 10)
 y la TSS y el INFOTEP van como asiento (39 `Journals`, ED00000007 …
