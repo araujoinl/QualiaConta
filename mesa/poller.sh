@@ -381,7 +381,19 @@ registrar_directo() {
     dur=$(( $(date +%s) - t0 ))
     if [ "$rc" -eq 0 ]; then
       log "registrado sin LLM en ${dur}s: $id — $(printf '%s' "$salida" | grep -m1 -E '^REGISTRAD' || echo 'sin línea de resumen')"
-      poke "$id" "escribir_libro"
+      # El libro también por plantilla (todos los datos ya están en la fila).
+      # La sesión LLM de escribir_libro queda SOLO como red: si la plantilla
+      # falla acá, el poke la despierta como siempre — y el bloque 4 vuelve a
+      # intentar la plantilla antes de molestar al modelo.
+      llog="/tmp/mesa/.libro-${id}.log"
+      if timeout -k 10 60 python3 /mesa/escribir-libro.py --trabajo "$id" > "$llog" 2>&1; then
+        log "libro por plantilla: $id — $(tail -1 "$llog" 2>/dev/null | head -c 120)"
+        rm -f "$llog"
+      else
+        log "plantilla del libro falló: $id — $(tail -1 "$llog" 2>/dev/null | head -c 160) — despierto al contable"
+        rm -f "$llog"
+        poke "$id" "escribir_libro"
+      fi
     else
       # El motivo vive en la ÚLTIMA línea de stderr: los scripts mueren con un
       # mensaje escrito para leerse (proveedor sin RNC, cuenta inexistente, ya
@@ -616,6 +628,27 @@ while [ "$corriendo" -eq 1 ]; do
         else
           log "prep falló rc=$rc: $id (${dur}s) — aviso igual"
         fi
+        # Proponedor determinista: proveedor conocido + dossier completo =
+        # propuesta sin sesión LLM (una llamada de clasificación adentro del
+        # script, ~15-30s). rc=0 cubre "propuso" y "otro tomó la fila": en los
+        # dos casos despertar al contable sobraría. Cualquier otro rc (3 =
+        # compuerta que no pasó, 1 = error) degrada al camino de siempre — el
+        # poke — con el motivo en clasificacion.json para la sesión. Solo se
+        # intenta con prep en verde: sin dossier fresco no hay qué clasificar.
+        if [ "$rc" -eq 0 ]; then
+          t1=$(date +%s)
+          plog="/tmp/mesa/.proponedor-${id}.log"
+          timeout -k 10 150 python3 /mesa/proponer-directo.py --trabajo "$id" \
+            > "$plog" 2>&1
+          prc=$?
+          if [ "$prc" -eq 0 ]; then
+            log "sin LLM en $(( $(date +%s) - t1 ))s: $id — $(tail -1 "$plog" 2>/dev/null | head -c 160)"
+            rm -f "$plog"
+            exit 0
+          fi
+          log "proponedor no propuso (rc=$prc): $id — $(tail -1 "$plog" 2>/dev/null | head -c 160)"
+          rm -f "$plog"
+        fi
         poke "$id" "trabajo_nuevo"
       ) &
     fi
@@ -840,8 +873,15 @@ while [ "$corriendo" -eq 1 ]; do
       log "criterio ratificado sin libro: $id — pido la entrada"
       poke "$id" "accion_usuario" "$ahora"
     else
-      log "registrada sin libro: $id — pido la entrada"
-      poke "$id" "escribir_libro" "$ahora"
+      # Primero la plantilla (gratis); el contable solo si ella no puede — un
+      # borrador ilegible, un dato que falta. Es la misma degradación del
+      # registro directo, aplicada a la red.
+      if timeout -k 10 60 python3 /mesa/escribir-libro.py --trabajo "$id" >/dev/null 2>&1; then
+        log "registrada sin libro: $id — resuelto por plantilla"
+      else
+        log "registrada sin libro: $id — la plantilla no pudo, pido la entrada"
+        poke "$id" "escribir_libro" "$ahora"
+      fi
     fi
   done < <(sql "select t.id, t.tipo from qualia_trabajos t where t.empresa_id='${QUALIA_EMPRESA_ID}' and t.updated_at < now() - interval '5 minutes' and t.updated_at > now() - interval '12 hours' and not exists (select 1 from qualia_libro l where l.trabajo_id = t.id) and ( (t.tipo <> 'criterio' and t.estado='registrada') or (t.tipo = 'criterio' and t.estado='aprobada') ) order by t.updated_at limit 3")
 
