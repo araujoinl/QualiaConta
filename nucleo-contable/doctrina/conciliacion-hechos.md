@@ -1,6 +1,6 @@
 ---
 estado: ratificado
-aprobo: C.Araujo, por chat, 2026-08-07 (los tratamientos «mecánica ratificada» describen el uso real; los ABIERTO ordenan preguntar, no adivinar)
+aprobo: C.Araujo, por chat, 2026-08-07 (los tratamientos «mecánica ratificada» describen el uso real; los ABIERTO ordenan preguntar, no adivinar). Re-ratificado mismo día: H-04/06/07 reescritos a forma fija de por vida — el estado del plan no vive en una entrada
 evidencia: histórico ADM de Blackbox (211 registrados vía mesa + asientos ED) y auditoría de fallos, corte 2026-08-07
 ---
 
@@ -15,6 +15,19 @@ se propone en autónomo: se pregunta, citando esta entrada.
 Cada tratamiento lleva rango — «mecánica ratificada» = respaldado por el uso
 real del histórico; «política de empresa» = lo dictó Carlos; «ABIERTO» = nadie
 lo ha dictado todavía.
+
+**Una entrada es fija de por vida.** Dicta el principio contable y contra qué
+tipo de cuenta se asienta; la cuenta CONCRETA se resuelve consultando el plan
+vivo de ADM en el momento de proponer (por semántica y listando el vecindario
+de la serie, no por un solo keyword). Si el plan no ofrece una cuenta
+utilizable para el principio, se pregunta citando el hecho — esa condición
+también es eterna. Lo que una entrada JAMÁS lleva: el estado del plan («la
+cuenta existe/no existe/le falta código»), conteos, acciones pendientes de una
+persona, o un caso concreto como condición operativa. Ese estado caduca en
+cuanto alguien toca ADM y convierte la doctrina en una mentira con fecha de
+hoy — pasó el 2026-08-07: H-07 decía «la cuenta no existe», Carlos la creó, y
+el contable le creyó a la doctrina en vez de mirar el plan. Los huecos del
+mundo van al INDEX como pendientes, nunca acá.
 
 ---
 
@@ -45,12 +58,12 @@ lo ha dictado todavía.
 
 ## H-04 — Salida del banco sin factura (préstamo, línea de crédito, abono)
 
-- **Rango:** parcialmente ABIERTO
+- **Rango:** dictado técnico (revisión de contador, 2026-08-07)
 - Primero P-001: ¿ya lo registró el humano? (espejos `bill-payments` /
-  `account-payments` refrescados a diario). Si no está registrado y es cuota de
-  préstamo: partir capital/interés EXIGE la tabla de amortización, que **no
-  está cargada en el sistema** (ROADMAP 2b.4) → siempre pregunta. **ABIERTO:
-  cargar las tablas de los préstamos vivos.**
+  `account-payments` refrescados a diario). Si no está registrado y es cuota
+  de préstamo: partir capital/interés EXIGE la tabla de amortización del
+  préstamo; sin tabla disponible al momento de proponer, se pregunta citando
+  H-04 — nunca se estima la partición.
 
 ## H-05 — Transferencia entre cuentas propias
 
@@ -60,38 +73,31 @@ lo ha dictado todavía.
   poller a propósito (dos traslados iguales el mismo día son normales y el
   script viejo adoptaba gemelos).
 
-## H-06 — Excedente de pago de un cliente
+## H-06 — Dinero de cliente recibido por adelantado (excedente, anticipo)
 
-- **Rango:** dictado técnico (revisión de contador, 2026-08-07) — operativo
-  cuando la cuenta tenga código
-- **Tratamiento:** el dinero recibido de más es un PASIVO desde que entra al
-  banco (obligación de devolver o aplicar), y el libro debe reflejar TODO lo
-  que el banco recibió — si el recibo se asentó por menos, la conciliación
-  bancaria nunca va a cuadrar. Al detectarlo: `Journals` con débito al banco
-  por el excedente y crédito a **«Adelanto de Clientes» (pasivo, ya existe en
-  ADM)**. La devolución lo cancela: débito al pasivo, crédito al banco. NO se
-  corrige el recibo original (corregir en ADM implica anular, y anular BORRA
-  — P-005).
-- **Lo que faltaba y explica el Caso #1:** la cuenta «Adelanto de Clientes»
-  existe en ADM **sin código contable asignado**, así que los scripts no
-  pueden referenciarla y las propuestas oscilaban. **Acción de Carlos:
-  asignarle código en ADM** (sugerido: serie 220.xx junto a los pasivos
-  corrientes). Hasta entonces, este hecho se pregunta citando H-06.
+- **Rango:** dictado técnico (revisión de contador, 2026-08-07)
+- **Tratamiento:** dinero de un cliente que aún no se devengó — un pago de
+  más, un anticipo de renta o de servicio — es un PASIVO desde que entra al
+  banco (obligación de devolver o de prestar lo pagado), y el libro debe
+  reflejar TODO lo que el banco recibió: si el recibo se asentó por menos, la
+  conciliación nunca cuadra. `Journals` con débito al banco y crédito a la
+  cuenta de pasivo de adelantos/anticipos de clientes del plan vivo. Se
+  cancela al devengarse (crédito al ingreso que corresponda, con su ITBIS si
+  aplica) o al devolverse (crédito al banco). NO se corrige el recibo
+  original (corregir en ADM implica anular, y anular BORRA — P-005).
 
 ## H-07 — Depósito recibido en garantía (alquiler, contratos)
 
-- **Rango:** dictado técnico (revisión de contador, 2026-08-07) — operativo
-  cuando la cuenta exista
+- **Rango:** dictado técnico (revisión de contador, 2026-08-07)
 - **Tratamiento:** pasivo mientras la garantía viva — NUNCA ingreso: es
   dinero ajeno condicionado (se devuelve al cumplirse el contrato, o se
   aplica a rentas/daños y RECIÉN entonces se reclasifica a ingreso). Débito
-  al banco, crédito a «Depósitos recibidos en garantía» (pasivo). Ojo con el
-  espejo: **180.01 Fianzas & Depósitos es ACTIVO** — son los depósitos que la
-  empresa ENTREGA; usarla acá invertiría el balance.
-- **Lo que falta:** la cuenta de pasivo NO existe en el plan (verificado
-  sobre las 215). **Acción de Carlos: crearla en ADM** (sugerido: serie
-  220.xx, «Depósitos Recibidos en Garantía»). Hasta entonces, el caso Formax
-  y similares se preguntan citando H-07.
+  al banco, crédito a la cuenta de pasivo de depósitos en garantía del plan
+  vivo. Ojo con el espejo: **180.01 Fianzas & Depósitos es ACTIVO** — son los
+  depósitos que la empresa ENTREGA; usarla acá invertiría el balance.
+- **Garantía ≠ anticipo:** la garantía se devuelve al final del contrato; el
+  anticipo se consume como ingreso al devengarse (H-06). Si el texto del
+  cliente no deja claro cuál es, se pregunta citando ambos.
 
 ## H-08 — Ingreso por tarjeta (adquirente «Servicios Digita»)
 
