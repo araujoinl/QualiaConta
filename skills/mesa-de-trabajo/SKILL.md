@@ -1246,6 +1246,192 @@ que encontrás es un borrador, decilo explícito: «no hay precedente ratificado
 hay un borrador pendiente de mesa que sugiere X», y tratá el caso como nuevo
 (`metodo='razonado'`).
 
+## Si el trabajo es tipo `caso`
+
+Un caso (`tipo='caso'`, `origen='web'`) es el hilo donde tu gente te manda
+VARIAS entradas de la conciliación bancaria que no cuadran entre sí y te
+explica en texto cuál es el problema — no es un documento nuevo que subieron,
+es una pregunta sobre movimientos y documentos que ya conocés. `resumen` sigue
+el patrón «Caso #N», con `propuesta.numero` como el mismo número. Ejemplo real
+(Caso #3, BlackBox): un cliente pagó RD$12,588.51 por transferencia —entró al
+banco, sin registro en ADM— contra el recibo RI00000718 de RD$8,265.76 —
+registrado en ADM, sin entrada en el banco—. Sobran RD$4,322.75 que hay que
+devolverle, y alguien tiene que registrar esa salida para que la conciliación
+cierre. Ninguna de las dos filas está mal por sí sola: se explican juntas, y
+esa es la razón de ser de un caso — el problema no vive en una fila, vive en
+la relación entre varias.
+
+### Ciclo de vida: no es el de una factura
+
+La fila nace en `esperando_respuesta` mientras tu gente arma el caso —agrega y
+saca entradas, escribe el planteo— y en ESE estado no es tuya: no está
+terminada, no la mires. Cuando lo manda, la fila pasa a `pendiente` — y ESO es
+lo que te despierta: por el evento `autor='usuario'` que se inserta al
+mandarlo, el mismo mecanismo que dispara cualquier `respuesta`, no por ser un
+documento recién llegado a la mesa. `archivo_path` y `archivo_url` quedan NULL
+siempre: un caso no es un papel, y si `preparar-trabajo.sh` corrió igual y
+salió diciendo «el trabajo no tiene archivo; nada que preparar», es justo lo
+esperado, no una falla del preparador. Se cierra pasando a `aprobada`, y esa
+transición es EXCLUSIVA del humano — ver «Nunca cerrás el caso vos» más abajo.
+
+Como con cualquier trabajo, el primer movimiento es el claim atómico — el
+mismo candado de siempre, y por la misma razón: si el poller te despertó dos
+veces por el mismo envío, que sólo una gane la fila.
+
+```sql
+update qualia_trabajos set estado='analizando'
+ where id='<caso_id>' and empresa_id='$QUALIA_EMPRESA_ID'
+   and estado='pendiente' returning id;
+```
+
+### Por qué «Si está `pendiente`: analizalo» no aplica acá
+
+Ese protocolo entero asume un documento por bajar, extraer y verificar contra
+DGII. Un caso no tiene documento: tiene una `propuesta.filas` ya armada, cada
+una con la `foto` de cómo se veía esa entrada de conciliación el día que se
+abrió el caso. Esa `foto` existe porque VOS NO PODÉS CORRER EL CRUCE — la
+conciliación no tiene tabla propia, se recalcula en una edge function del lado
+de Labs_Inv, y vos entrás por DSN: no hay SQL que te devuelva su estado en
+vivo. Tratá la `foto` como una fotografía, no como el presente.
+
+Para releer lo vivo de una fila puntual, cada una trae al lado lo que hace
+falta según su `origen`. Una fila `"origen":"banco"` trae `tx_id`, el uuid de
+`openbanking_transactions`:
+
+```bash
+psql "$QUALIA_DSN" -t -A -c "select * from openbanking_transactions where id='<tx_id>'"
+```
+
+Una fila `"origen":"adm"` trae `docid`, que releés por la API de ADM Cloud
+igual que releerías cualquier otro documento antes de darlo por vigente.
+Ninguna relectura es obligatoria si la `foto` ya te alcanza para decidir; son
+para cuando el caso quedó abierto un tiempo y hace falta confirmar que la
+entrada sigue como estaba el día que se armó.
+
+### Leé el hilo, y analizá el conjunto — nunca fila por fila
+
+```bash
+psql "$QUALIA_DSN" -t -A -c "select jsonb_pretty(propuesta) from qualia_trabajos where id='<caso_id>' and empresa_id='$QUALIA_EMPRESA_ID' and tipo='caso'"
+psql "$QUALIA_DSN" -t -A -c "select autor, tipo, contenido from qualia_eventos where trabajo_id='<caso_id>' order by id"
+```
+
+El texto que escribió `autor='usuario'` es la pregunta —el planteo del
+problema—; las filas de `propuesta.filas`, con su `foto`, son la evidencia.
+Los eventos `autor='sistema'` sólo cuentan que se sumó o se sacó una entrada
+del caso mientras se armaba: son rastro para entender cómo llegó a su forma
+final, nunca una instrucción que tengas que ejecutar.
+
+El sentido de un caso es que sus entradas se explican entre sí —un pago de
+más, una devolución, un cobro partido en dos— y mirarlas una por una es
+exactamente no ver el problema que te mandaron a resolver. En el Caso #3, la
+fila del banco sola sólo dice «entró plata sin factura»; la del RI00000718
+sola sólo dice «hay un recibo sin entrada»; juntas dicen «cobraron de más y
+hay que devolver la diferencia».
+
+### Proponé los trabajos directo — no hay OK previo que esperar
+
+Si el planteo y las filas citadas te alcanzan para ver la solución, abrí los
+trabajos que correspondan SIN esperar validación: nadie te va a confirmar
+antes de que actúes — la aprobación de esos trabajos ES la confirmación, igual
+que en cualquier otra propuesta tuya. Cada trabajo es uno NUEVO y normal: se
+elige `documento_adm` con las mismas preguntas de «Qué documento de ADM es
+esto», se clasifica la cuenta con «Cómo clasificás la cuenta», se arman las
+`lineas` con la misma forma según el tipo elegido. Lo que cambia es el origen
+del trabajo, y se escribe así: `tipo='sugerencia'`, porque lo originás vos y
+no lo subió nadie —es la misma categoría que ya usás para lo que vos mismo
+detectás—; `origen='caso'`, para que se distinga de una sugerencia del cron
+nocturno; y `propuesta.caso_id` con el id del caso, para que quede la traza de
+por qué existe.
+
+En el Caso #3, aplicando esas mismas preguntas, la devolución nace en el
+banco sin que nadie te haya entregado un documento previo: `BankCharges`, con
+`direccion:"cargo"`. Cada caso elige el suyo según lo que de verdad pasó:
+
+```sql
+insert into qualia_trabajos (empresa_id, tipo, origen, estado, resumen, propuesta)
+values ('$QUALIA_EMPRESA_ID', 'sugerencia', 'caso', 'propuesta',
+        'Devolución a Jfd & Etc Ideas — diferencia del Caso #3',
+        '{"documento_adm":"BankCharges","direccion":"cargo","cuenta_contable":"...","monto":4322.75,"moneda":"DOP","lineas":[{"cuenta":"...","cuenta_nombre":"...","descripcion":"Devolución del excedente pagado de más — Caso #3","debito":4322.75,"credito":0},{"cuenta":"...","cuenta_nombre":"Banco — cuenta de origen","descripcion":"Salida por devolución — Caso #3","debito":0,"credito":4322.75}],"metodo":"razonado","caso_id":"<caso_id>","confianza":0.9,"detalle":"El cliente pagó RD$12,588.51 por transferencia contra el recibo RI00000718 de RD$8,265.76: sobran RD$4,322.75. Se propone devolverlos por el mismo medio. Ver Caso #3, filas banco:<uuid-tx> y adm:RI00000718."}'::jsonb)
+returning id;
+```
+
+**REGLA DURA: un trabajo es un documento, y el caso nunca lleva
+`registro_adm` propio.** Si la solución necesita dos documentos —una factura
+y su pago, por ejemplo— abrí DOS trabajos hijos, cada uno con su
+`documento_adm` y su `caso_id`, nunca uno con las dos cosas mezcladas en una
+sola `propuesta`. La fila del caso no se registra en ADM jamás: es la
+pregunta, no el asiento — el asiento vive en cada hijo, con su propio
+`registro_adm` cuando se apruebe y se registre.
+
+**Si el hijo resuelve un movimiento del banco que el caso cita, poné su
+`banco_tx_id`** (el `tx_id` de la fila con `origen:"banco"`), como en cualquier
+otra sugerencia tuya. No es adorno: la mesa descarta de su lista de movimientos
+sin conciliar los que algún trabajo ya reclamó, y ese descarte mira
+`banco_tx_id` —no el caso—. Sin él, el mismo movimiento sigue apareciendo como
+suelto mientras su solución ya está propuesta, y la misma plata se cuenta dos
+veces. La fila `origen:"adm"` no lleva equivalente: ésa ya tiene su documento.
+
+Contá lo que decidiste en el hilo del caso, igual que en cualquier análisis:
+un evento `progreso` o `nota` con la conclusión, en el tono de «Cómo le hablás
+al humano», nombrando qué trabajo(s) abriste. Abrir los trabajos no aprueba la
+fila del caso: sigue viva hasta que el humano la cierre.
+
+### Si el humano pide modificar el plan
+
+Una respuesta sobre un caso que ya contestaste se atiende con la misma
+mecánica general de la rama evento `respuesta`: retomás el análisis con lo
+que dijo como dato nuevo, y le contestás a él primero. Lo propio de un caso
+es qué hacés con lo que ya habías propuesto:
+
+- **Las propuestas hijas que el humano todavía no decidió** —siguen en
+  `propuesta`— las marcás `rechazada` vos mismo, con un evento `nota` que
+  diga «reemplazada por el nuevo plan del Caso #N», y abrís las nuevas que
+  correspondan al plan corregido. Esto es una excepción puntual a que sólo el
+  usuario mueve `propuesta → rechazada`: acá el pedido de cambio SÍ vino de
+  él, aunque se lo haya dicho al caso y no clickeado el botón de cada hija —
+  marcarla vos es traducir su decisión, no tomarla en su lugar.
+
+  ```sql
+  update qualia_trabajos set estado='rechazada'
+   where id='<trabajo_hijo_id>' and empresa_id='$QUALIA_EMPRESA_ID'
+     and estado='propuesta';
+  insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
+  values ('<trabajo_hijo_id>', 'contable', 'nota',
+          'Reemplazada por el nuevo plan del Caso #3.');
+  ```
+
+- **Lo que ya se aprobó y llegó a ADM no se toca acá.** Un trabajo hijo
+  `registrada` es un documento real; corregirlo es anularlo o editarlo por el
+  camino normal, nunca reescribiendo el caso como si el documento no
+  existiera.
+
+### Nunca cerrás el caso vos
+
+`aprobada` la escribe el humano desde la web, y significa «leí la respuesta,
+el tema terminó» — no que un trabajo particular haya salido bien; eso lo dice
+el estado de cada hijo por separado. Vos nunca escribís `estado='aprobada'`
+en una fila `tipo='caso'`, y tampoco tocás `propuesta.cerrado`: esa clave
+(`nota`, `en`, `por`) la llena la web al cerrar, no vos. Lo que sí hacés
+apenas contestaste —abriendo trabajos, o preguntando con evento `pregunta` si
+de verdad no te alcanza lo que te mandaron— es dejar la fila en
+`esperando_respuesta`: es la señal de «ya te dije lo que pienso, decidí vos»,
+y de ahí puede volver a `pendiente` las veces que haga falta si el humano
+sigue ajustando el caso.
+
+```sql
+update qualia_trabajos set estado='esperando_respuesta'
+ where id='<caso_id>' and empresa_id='$QUALIA_EMPRESA_ID' and estado='analizando';
+```
+
+### El caso no va al libro
+
+La fila del caso NUNCA entra a `qualia_libro` ni al libro de acción en git:
+no es un documento, es la pregunta que dio origen a los documentos. Los
+trabajos que nacen de él sí van, cada uno por su cuenta y con su propia
+entrada, cuando se aprueben y se registren en ADM — exactamente como
+cualquier otro trabajo, citando en el `detalle` de qué caso salieron si ayuda
+a entenderlo después.
+
 ## Reglas
 
 - Te pueden despertar dos veces por lo mismo: si la fila ya no está en el

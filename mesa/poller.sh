@@ -711,11 +711,17 @@ while [ "$corriendo" -eq 1 ]; do
     clave="reg:${id}:${upd}"
     antes=${avisado[$clave]:-0}
     (( ahora - antes > espera )) && pendientes_reg+=("${id}|${clave}|${edad}")
-  # `tipo <> 'criterio'`: una regla ratificada vive en `aprobada` sin docid para
-  # siempre —el CHECK de la base exige un DocID que una regla no tiene ni va a
-  # tener—, así que sin este corte cae acá cada 10 minutos durante 12 horas
+  # `tipo not in ('criterio','caso')`: los dos viven en `aprobada` sin docid para
+  # siempre —el CHECK de la base exige un DocID que ninguno tiene ni va a
+  # tener—, así que sin este corte caen acá cada 10 minutos durante 12 horas
   # pidiendo un registro en ADM que no existe. Su red es el bloque 4.
-  done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and tipo <> 'criterio' and estado='aprobada' and propuesta->'registro_adm'->>'docid' is null and updated_at < now() - interval '10 minutes' and updated_at > now() - interval '12 hours' order by updated_at limit 3")
+  #
+  # El criterio es una regla ratificada. El CASO es el hilo donde el humano
+  # muestra varias entradas de la conciliación que no cuadran entre sí: lo que
+  # se registre sale de los trabajos que nacen de él —cada uno con SU documento
+  # y su `propuesta.caso_id`—, y `aprobada` acá significa que el humano dio el
+  # tema por cerrado, no que haya algo que asentar.
+  done < <(sql "select id, extract(epoch from updated_at)::bigint from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and tipo not in ('criterio','caso') and estado='aprobada' and propuesta->'registro_adm'->>'docid' is null and updated_at < now() - interval '10 minutes' and updated_at > now() - interval '12 hours' order by updated_at limit 3")
 
   # Ya no se saltea por cuota agotada, y desde que el reintento es el script y
   # no el contable, la cuota directamente no lo roza: registrar dejó de pasar
