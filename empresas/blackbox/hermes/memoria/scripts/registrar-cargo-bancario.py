@@ -16,6 +16,7 @@ Uso:
 import argparse
 import base64
 import json
+import mimetypes
 import os
 import re
 import subprocess
@@ -169,12 +170,15 @@ def subir_adjunto(guid, ruta):
     nombre = os.path.basename(ruta)
     with open(ruta, "rb") as f:
         contenido = f.read()
+    # No siempre es PDF: el papel de un pago sin NCF puede ser la foto que
+    # subio el humano (jpeg/png). El tipo sale de la extension.
+    tipo = mimetypes.guess_type(nombre)[0] or "application/octet-stream"
     borde = "----qualiaconta" + re.sub(r"\W", "", guid)
     cuerpo = b"".join([
         ("--%s\r\n" % borde).encode(),
         ('Content-Disposition: form-data; name="file"; filename="%s"\r\n'
          % nombre.replace('"', "_")).encode("utf-8"),
-        ("Content-Type: application/pdf\r\n\r\n").encode(),
+        ("Content-Type: %s\r\n\r\n" % tipo).encode(),
         contenido,
         ("\r\n--%s--\r\n" % borde).encode(),
     ])
@@ -462,7 +466,34 @@ def main():
     ncf = str(p.get("ncf") or "").strip()
     banco_ncf = str(p.get("banco") or "").strip()
     if not ncf:
-        print("  sin NCF: este cargo no tiene comprobante que adjuntar")
+        # Sin NCF no hay comprobante del banco, pero el pago puede tener papel
+        # propio: el documento del trabajo mismo, o el de una subida que se
+        # cerro como duplicado de esta propuesta (`comprobante_de_trabajo` en
+        # la propuesta, lo enlaza quien cierra el duplicado). Paso el
+        # 2026-08-07 con el anticipo ISR de julio: el comprobante DGII quedo
+        # varado en la subida cerrada y el cargo iba a quedar sin soporte.
+        duenio_papel = str(p.get("comprobante_de_trabajo") or args.trabajo)
+        bajar = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             "bajar-documento.sh")
+        r = subprocess.run(["bash", bajar, duenio_papel],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            print("  sin NCF y sin papel propio: el cargo queda sin adjunto "
+                  "(%s)" % (r.stderr.strip().splitlines() or ["?"])[-1][:160])
+        else:
+            ruta_doc = r.stdout.strip()
+            try:
+                subir_adjunto(guid, ruta_doc)
+                nombre_doc = os.path.basename(ruta_doc)
+                print("  adjunto: %s subido (papel del trabajo %s)"
+                      % (nombre_doc, duenio_papel))
+                sql("update qualia_trabajos set propuesta = jsonb_set(propuesta, "
+                    "'{registro_adm,adjunto}', to_jsonb(:'n'::text)) "
+                    "where id = :'id' and empresa_id = :'emp';",
+                    n=nombre_doc, id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
+            except Exception as e:  # noqa: BLE001 — el registro ya esta hecho
+                print("  OJO: no pude adjuntar el papel del pago (%s). El cargo "
+                      "queda REGISTRADO pero SIN soporte." % e)
     else:
         ruta_pdf = "/comprobantes/%s/%s.pdf" % (banco_ncf, ncf)
         if not os.path.exists(ruta_pdf):
