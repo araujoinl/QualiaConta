@@ -283,6 +283,9 @@ poke() {
 #   - VendorBills: el NCF es único por emisor y ADM además frena el duplicado.
 #   - BankCharges: manda Reference=banco_tx_id y, si hay un cargo gemelo que
 #     ningún trabajo reclama, muere con AMBIGUO en vez de adoptarlo.
+#   - Journals: sólo adopta el asiento que trae SU Reference=banco_tx_id, nunca
+#     un gemelo por fecha y monto, y antes de mandar verifica que débitos y
+#     créditos cierren — ADM autoriza asientos descuadrados sin chistar.
 #   - BankBankTransfers queda AFUERA a propósito (2026-08-04): su script todavía
 #     adopta el gemelo —misma fecha, monto y cuentas → «YA REGISTRADO: guardo y
 #     cierro»—, que es el error exacto que duplicó el CB00000169 en cargos. Dos
@@ -309,9 +312,15 @@ script_de_registro() {
     # «Pagos con tarjeta de credito detectados» de la mesa, que ya trae la
     # factura elegida por un humano: aca no hay nada que analizar.
     BillPayments)      echo "registrar-pago-factura.py" ;;
-    # Journals sigue SIN script y es a proposito: un asiento contable no tiene
-    # forma fija y ahi el juicio hace falta. Preferimos el camino caro al
-    # camino equivocado.
+    # El asiento de diario. Estuvo SIN script hasta el 2026-08-07 porque un
+    # asiento no tiene forma fija y ahí el juicio hace falta — pero ese juicio
+    # ya se gastó río arriba: cuando la fila llega acá, las líneas están
+    # escritas en la propuesta y un humano las aprobó mirándolas. Lo que queda
+    # es mecánica, y la mecánica tiene su barrera (ver arriba). Sin esto, cada
+    # asiento aprobado abría una sesión de LLM para copiar datos que ya
+    # estaban decididos, y el 2026-08-07 una de esas sesiones murió a mitad
+    # con un deploy y el Caso #1 quedó aprobado sin registrar.
+    Journals)          echo "registrar-asiento-diario.py" ;;
     *)                 return 1 ;;
   esac
 }
