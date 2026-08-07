@@ -32,6 +32,10 @@
 # Existe porque config.yaml vive dentro del volumen del contenedor y está
 # fuera de git: si el volumen se rehace, esta configuración se pierde y no
 # queda forma de reconstruirla. Acá está, verificada contra Hermes v0.19.0.
+# Por eso también administra el `reasoning_effort` (abajo): es un ajuste que se
+# eligió con medición y que, sin estar acá, se evaporaba con el volumen y
+# volvía al default sin que nadie lo notara — el síntoma habría sido «el
+# contable volvió a ir lento», seis semanas después y sin causa a la vista.
 #
 # El trabajo corre sobre Z.ai / GLM, con OpenRouter SOLO como red de seguridad.
 # La razón está medida, no supuesta: el plan de z.AI topa por cuenta cada 5
@@ -72,6 +76,52 @@ VISION='glm-4.6v'
 OR_PRINCIPAL='z-ai/glm-5.2'
 OR_LIVIANO='z-ai/glm-4.7'
 OR_VISION='z-ai/glm-4.6v'
+
+# --------------------------------------------------------------------------
+# Cuánto piensa el contable antes de contestar
+# --------------------------------------------------------------------------
+# `low`, y la razón está medida, no supuesta.
+#
+# Lo que hace lento a este agente es la SALIDA, y su salida es casi toda
+# razonamiento: una sesión real cerró con out=67.714 tokens de los cuales
+# reasoning=61.086 — el 90%. Sobre 5.448 llamadas del log, la latencia
+# correlaciona 0,76 con los tokens de salida y 0,04 con los de entrada; o sea
+# que el prompt gigante no le cuesta segundos (el caché de prefijo de z.AI pega
+# al 91%), pero pensar sí. Medido contra el endpoint de producción con el
+# prompt real: medium 14,8 s · low 8,8 s · minimal 3,7 s.
+#
+# Por qué no `medium`: son 6 segundos por llamada, con mediana de 10 llamadas
+# por sesión, sin que ninguna decisión mejore de forma visible.
+#
+# Por qué no `minimal`: ahí el razonamiento se APAGA, y el modo de falla de
+# este agente no es tardar — es inventar. La FP00001120 se registró con una
+# tasa de ITBIS que el papel nunca dijo porque el preparador despejó la base
+# para que la aritmética cerrara; ése es el error que un turno sin pensar
+# comete más seguido, y cuesta un asiento mal hecho en ADM, no seis segundos.
+# La prueba de verdad no es un banco: es la compuerta de la mesa. El contable
+# NO toca ADM sin aprobación humana —deja la propuesta y ahí se queda—, así que
+# un nivel de razonamiento que degrade se ve leyendo las propuestas antes de
+# aprobarlas. Al bajarlo, mirá con lupa la tasa de ITBIS (que la base sea
+# itbis/tasa y no haya un renglón «exentos» que salga de una resta) y el tipo de
+# documento (que un movimiento de banco no salga como Journals): son los dos
+# lugares donde pensar menos duele. Revertir es una línea y un reinicio.
+# (Hay además un banco de replay offline en la rama `abaratar-el-turno-del-contable`,
+# `mesa/replay-skill.py`, que compara contra las decisiones históricas.)
+#
+# Se puede probar otro nivel sin editar el script:
+#   MESA_REASONING_EFFORT=minimal ./configurar-modelo.sh
+ESFUERZO="${MESA_REASONING_EFFORT:-low}"
+
+# La lista sale de VALID_REASONING_EFFORTS en hermes_constants.py de esta
+# versión. Se valida acá y no se deja pasar: ante un valor desconocido Hermes
+# NO falla — escribe un warning en el log y sigue con su default. O sea que un
+# typo dejaría el contable en `medium` para siempre y el script diría "listo".
+# Ojo también con YAML: `no`, `off` y `false` son BOOLEANOS, y para Hermes eso
+# significa razonamiento APAGADO, que no es lo mismo que un nivel bajo.
+case "$ESFUERZO" in
+  minimal|low|medium|high|xhigh|max|ultra) ;;
+  *) echo "MESA_REASONING_EFFORT='$ESFUERZO' no existe — usá: minimal | low | medium | high | xhigh | max | ultra"; exit 1 ;;
+esac
 
 [ -f "$CONF" ] || { echo "No existe $CONF"; exit 1; }
 [ -f "$ENV_EMPRESA" ] || { echo "No existe $ENV_EMPRESA"; exit 1; }
@@ -171,13 +221,26 @@ fi
 #      propia el modelo principal sobrevive al tope pero el contable se queda
 #      sin leer imágenes ni comprimir contexto, que es una forma peor de estar
 #      caído porque desde afuera parece que funciona.
+#
+#   4. El esfuerzo de razonamiento, que va en `agent:` y NO en `model:`.
+#      Cuesta creerlo porque es una propiedad del modelo principal, pero el
+#      único lugar donde Hermes lo lee es `agent.reasoning_effort`
+#      (resolve_reasoning_config en hermes_constants.py, el chokepoint que usan
+#      todas las superficies). Escrito adentro de `model:` no rompe nada: se
+#      ignora en silencio y el contable sigue en el default. Existe además
+#      `agent.reasoning_overrides` por modelo, y a propósito NO se usa: la
+#      cadena de respaldo llama al mismo peso con OTRO nombre
+#      ('z-ai/glm-5.2'), así que un override por nombre dejaría el modo
+#      respaldo pensando distinto que el normal sin que nadie se entere.
 CONF="$CONF" PRINCIPAL="$PRINCIPAL" RESPALDO="$RESPALDO" LIVIANO="$LIVIANO" VISION="$VISION" \
 OR_PRINCIPAL="$OR_PRINCIPAL" OR_LIVIANO="$OR_LIVIANO" OR_VISION="$OR_VISION" MODO="$MODO" \
+ESFUERZO="$ESFUERZO" \
 python3 - <<'PY'
 import os, shutil, yaml
 
 conf = os.environ["CONF"]
 MODO = os.environ["MODO"]
+ESFUERZO = os.environ["ESFUERZO"]
 OR_BASE, OR_KEY = "https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"
 PRINCIPAL, RESPALDO = os.environ["PRINCIPAL"], os.environ["RESPALDO"]
 LIVIANO, VISION = os.environ["LIVIANO"], os.environ["VISION"]
@@ -231,6 +294,27 @@ def reemplazar_bloque(lineas, clave, cuerpo):
     raise SystemExit(f"no encontré {clave}: en el config")
 
 
+def fijar_escalar(lineas, bloque, clave, valor):
+    """Escribe UNA clave adentro de un bloque, sin tocar el resto.
+
+    Hace falta porque `agent:` no se puede reemplazar entero: adentro vive
+    `personalities`, catorce personajes con textos multilínea que este script
+    no administra y que no tiene por qué reescribir. Si la clave ya está se
+    pisa en su lugar; si no, entra pegada a la cabecera del bloque.
+    """
+    for i, l in enumerate(lineas):
+        if not l.startswith(bloque + ":"):
+            continue
+        fin = fin_de_bloque(lineas, i, 1)
+        for j in range(i + 1, fin):
+            if lineas[j].startswith(f"  {clave}:"):
+                lineas[j] = f"  {clave}: {valor}"
+                return lineas
+        lineas.insert(i + 1, f"  {clave}: {valor}")
+        return lineas
+    raise SystemExit(f"no encontré {bloque}: en el config")
+
+
 respaldo_archivo = conf + ".antes-configurar"
 shutil.copy2(conf, respaldo_archivo)
 lineas = open(conf, encoding="utf-8").read().split("\n")
@@ -262,6 +346,9 @@ else:
         cadena += ["  - provider: zai", f"    model: {m}"]
     cadena += entrada_or(OR_PRINCIPAL, 2)
 lineas = reemplazar_bloque(lineas, "fallback_providers", cadena)
+
+# --- 4) cuánto piensa, para el principal y para toda su cadena ---
+lineas = fijar_escalar(lineas, "agent", "reasoning_effort", ESFUERZO)
 
 # --- 2 y 3) ranuras auxiliares, cada una con su cadena ---
 inicio = next((i for i, l in enumerate(lineas) if l.startswith("auxiliary:")), None)
@@ -319,7 +406,15 @@ try:
         assert r.get("provider") == prov and r.get("model") == modelo, f"{tarea}: mal escrita"
         c = r.get("fallback_chain") or []
         assert len(c) == 1 and c[0].get("model") == respaldo_modelo, f"{tarea}: sin red"
+    ag = cfg.get("agent") or {}
+    # Se compara contra el string, no contra "hay algo": un `no`/`off` en el YAML
+    # llegaría acá como el booleano False, que para Hermes es el razonamiento
+    # APAGADO. Un `assert ag.get("reasoning_effort")` lo dejaría pasar como
+    # "distinto de vacío" y el contable arrancaría sin pensar.
+    assert ag.get("reasoning_effort") == ESFUERZO, \
+        f"reasoning_effort quedó en {ag.get('reasoning_effort')!r}, no en {ESFUERZO!r}"
     # Lo que el script NO administra y no puede haber tocado.
+    assert len(ag.get("personalities") or {}) >= 10, "se llevó puestas las personalities"
     assert (cfg.get("approvals") or {}).get("deny"), "se perdió approvals.deny"
     assert "Candado de flujo contra la firma" in texto, "se perdieron los comentarios de approvals"
 except (AssertionError, yaml.YAMLError) as exc:
@@ -334,7 +429,7 @@ echo
 docker exec "$CONTENEDOR" hermes fallback list 2>&1 | grep -E "Primary|[0-9]\." | sed 's/^/  /'
 echo
 CONF="$CONF" PRINCIPAL="$PRINCIPAL" LIVIANO="$LIVIANO" VISION="$VISION" \
-OR_PRINCIPAL="$OR_PRINCIPAL" MODO="$MODO" python3 - <<'PY'
+OR_PRINCIPAL="$OR_PRINCIPAL" MODO="$MODO" ESFUERZO="$ESFUERZO" python3 - <<'PY'
 import os, yaml
 c = yaml.safe_load(open(os.environ["CONF"], encoding="utf-8"))
 aux = c.get("auxiliary", {}) or {}
@@ -353,6 +448,16 @@ for k, (prov, v) in esperado.items():
     malas += 0 if ok else 1
     print(f"  {'OK ' if ok else 'MAL'} {k:<14} {s.get('provider') or '-':<7}"
           f" {s.get('model') or '-':<10} -> {red.get('model') or 'SIN RED'}")
+# El esfuerzo se verifica igual que las ranuras y por el mismo motivo: es una
+# ranura más que puede haber quedado en el default sin avisar. Se lee de
+# `agent`, que es el único lugar de donde Hermes lo levanta, y se compara con el
+# string exacto — `is not None` daría por bueno un False (razonamiento apagado).
+esf = (c.get("agent") or {}).get("reasoning_effort")
+esperado_esf = os.environ["ESFUERZO"]
+ok = esf == esperado_esf
+malas += 0 if ok else 1
+print(f"  {'OK ' if ok else 'MAL'} {'razonamiento':<14} {'agent':<7} {esf if esf is not None else 'SIN FIJAR'}")
+
 m = c.get("model", {}) or {}
 modo, or_principal = os.environ["MODO"], os.environ["OR_PRINCIPAL"]
 if modo == "respaldo":
