@@ -48,10 +48,20 @@ devengarse —anticipos de renta y depósitos en garantía de renta— se asient
 con débito al banco y crédito a **220.06 «Depósitos en Garantía por Renta»**
 (pasivo). Mientras «Adelanto de Clientes» siga sin código contable, los
 anticipos de renta también van a 220.06 (decisión del contador: un solo pasivo
-de renta; la distinción anticipo/garantía vive en el `detalle` del asiento). Al
-devengarse cada mes se reclasifica: débito 220.06, crédito **411.16 Renta
-Inmuebles**, reconociendo el ITBIS que corresponda — el monto recibido trae los
-impuestos incluidos, no se le suma nada.
+de renta; la distinción anticipo/garantía vive en el `detalle` del asiento). El
+destino después depende de cuál de los dos es (dictado del contador, chat
+2026-08-07):
+
+- **Anticipo** (renta pagada por adelantado que se consume): al devengarse cada
+  mes se reclasifica — débito 220.06, crédito **411.16 Renta Inmuebles**,
+  reconociendo el ITBIS que corresponda. El monto recibido trae los impuestos
+  incluidos, no se le suma nada.
+- **Garantía** (caso Formax, los RD$180,000): **cero devengo — «se quedan hasta
+  que desaloje»**. Permanecen en 220.06 la vida entera del contrato; recién al
+  desalojo se devuelven (débito 220.06, crédito banco) o se aplican a
+  renta/daños (débito 220.06, crédito 411.16 con su ITBIS en ese momento).
+  Reclasificarlos mensualmente sería reconocer ingreso de plata que sigue
+  siendo ajena.
 
 **Qué documento: NINGUNO de los que el agente puede escribir hoy — se
 pregunta.** El asiento de arriba es correcto; el tipo de documento con que
