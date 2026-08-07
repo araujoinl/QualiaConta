@@ -542,9 +542,21 @@ while [ "$corriendo" -eq 1 ]; do
   # el re-aviso de los 300s lo vuelve a tomar. Se pierde velocidad de pico y se
   # gana que TODAS salgan: antes las primeras salían rápido y el resto se
   # arrastraba o se caía.
-  enVuelo=$(sql "select count(*) from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='analizando'")
-  [ -z "${enVuelo:-}" ] && enVuelo=0
-  for t in "${despertado[@]}"; do (( ahora - t < 120 )) && enVuelo=$((enVuelo + 1)); done
+  # Los IDS y no el count: `despertado` cubre la ventana entre que se despierta
+  # al contable y que él marca `analizando`, pero hasta que no se supo CUÁLES
+  # estaban en vuelo no había forma de restar los que ya cruzaron — y el mismo
+  # trabajo se contaba dos veces, una por cada lista. Con el tope en 2, uno solo
+  # que el contable reclamara rápido llenaba la mesa entera durante dos minutos:
+  # la concurrencia real era 1. Se destrababa solo, así que nunca dio la cara.
+  analizandoIds=$(sql "select id from qualia_trabajos where empresa_id='${QUALIA_EMPRESA_ID}' and estado='analizando'")
+  enVuelo=0
+  for i in $analizandoIds; do [ -n "$i" ] && enVuelo=$((enVuelo + 1)); done
+  for id in "${!despertado[@]}"; do
+    (( ahora - despertado[$id] < 120 )) || continue
+    # Ya lo contó el query de arriba: sumarlo otra vez es contarlo dos veces.
+    case "$analizandoIds" in *"$id"*) continue ;; esac
+    enVuelo=$((enVuelo + 1))
+  done
   cupo=$(( MAX_ANALIZANDO - enVuelo ))
   if (( cupo <= 0 )) && (( ahora - cupo_avisado > 300 )); then
     cupo_avisado=$ahora
