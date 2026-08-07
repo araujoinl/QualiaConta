@@ -165,7 +165,14 @@ except FileNotFoundError:
 facturas = collections.defaultdict(list)
 nombres = {}
 for line in open(f"{RAW}/vendor-bills-detalle.jsonl"):
-    d = json.loads(line)["data"]
+    fila = json.loads(line)
+    # Borrada en ADM: no existe más, y contarla es contar una factura que nadie
+    # puede abrir. Es distinto de anulada —ésa sigue en ADM con `Void`— y la
+    # marca la pone el refresco del extractor al ver que el documento ya no
+    # contesta. La FP00001120 se borró el 2026-08-04 y seguía contando acá.
+    if fila.get("_eliminado"):
+        continue
+    d = fila["data"]
     if d.get("Void"):
         continue
     p = d.get("RelationshipID")

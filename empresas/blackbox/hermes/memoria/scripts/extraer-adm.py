@@ -543,6 +543,10 @@ def refrescar_detalles(slug, endpoint, estado, desde):
     El listado (`raw/<slug>.jsonl`) no se toca a propósito: es el índice de qué
     documentos existen, y eso no cambia al anular. Quien necesite el estado lee
     el detalle, que es lo que este refresco mantiene al día.
+
+    Un documento BORRADO no se puede volver a pedir, así que su detalle viejo es
+    lo único que queda de él: se conserva y se marca `_eliminado` afuera de
+    `data`. Anulado y borrado son distintos — el anulado sigue en ADM con `Void`.
     """
     st = estado_recurso(estado, slug, endpoint)
     archivo = os.path.join(BASE_DIR, "raw", f"{slug}-detalle.jsonl")
@@ -565,11 +569,54 @@ def refrescar_detalles(slug, endpoint, estado, desde):
         if fd and fd >= desde and doc.get("_id"):
             objetivo.append(n)
 
-    if not objetivo:
-        print(f"[{slug}] refresco: ningún doc desde {desde}", flush=True)
-        return (0, 0)
+    # Líneas cuyo `data` no es un documento: las dejó una corrida anterior al
+    # arreglo de abajo, guardando el sobre vacío de un documento borrado. Se
+    # restauran desde el listado —que conserva la cabecera de todo lo que
+    # existió— y quedan marcadas como eliminadas. Sin esto, el detalle queda con
+    # una línea que revienta a cualquiera que lea `data["DocDate"]`, que es como
+    # se leen todos estos archivos.
+    rotas = 0
+    cabeceras = None
+    for n, doc in enumerate(docs):
+        if not doc or not doc.get("_id") or campo(doc.get("data") or {}, CAMPOS_ID):
+            continue
+        if cabeceras is None:
+            cabeceras = {}
+            try:
+                with open(os.path.join(BASE_DIR, "raw", f"{slug}.jsonl"),
+                          encoding="utf-8") as f:
+                    for linea in f:
+                        try:
+                            fila = json.loads(linea)
+                        except json.JSONDecodeError:
+                            continue
+                        fid = campo(fila, CAMPOS_ID)
+                        if fid:
+                            cabeceras[str(fid)] = fila
+            except FileNotFoundError:
+                pass
+        cabecera = cabeceras.get(str(doc["_id"]))
+        if not cabecera:
+            continue
+        doc["data"] = cabecera
+        doc.setdefault("_eliminado", time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+        doc["_solo_cabecera"] = True      # sin las líneas: el detalle se perdió
+        lineas[n] = json.dumps(doc, ensure_ascii=False) + "\n"
+        rotas += 1
+        print(f"[{slug}] {doc.get('docid') or doc['_id']}: detalle vacío, "
+              f"restaurado desde el listado", flush=True)
 
-    cambiados = 0
+    if not objetivo:
+        if rotas:
+            tmp = archivo + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.writelines(lineas)
+            os.replace(tmp, archivo)
+        print(f"[{slug}] refresco: ningún doc desde {desde} "
+              f"({rotas} línea(s) reparada(s))", flush=True)
+        return (0, rotas)
+
+    cambiados = rotas
     for i, n in enumerate(objetivo, 1):
         doc = docs[n]
         try:
@@ -583,8 +630,26 @@ def refrescar_detalles(slug, endpoint, estado, desde):
             print(f"[{slug}] refresco {doc['_id']}: {mensaje} — dejo la línea vieja",
                   file=sys.stderr, flush=True)
             continue
-        if sin_firmas(det) != sin_firmas(doc.get("data")):
+        if not campo(det if isinstance(det, dict) else {}, CAMPOS_ID):
+            # Un documento BORRADO en ADM contesta {success:true, data:null}, y
+            # `desenvolver_detalle` devuelve el sobre entero porque no hay `data`
+            # que desenvolver. Guardar eso pisa el único registro que queda de un
+            # documento que ya no se puede volver a pedir: la primera corrida se
+            # llevó así el detalle de la FP00001120, borrada en ADM el 2026-08-04.
+            # El dato viejo se conserva y el hecho se anota AFUERA de `data`, para
+            # que quien lee el documento lo siga leyendo igual y quien necesite el
+            # estado lo pregunte. Anulado y borrado no son lo mismo: el anulado
+            # sigue existiendo en ADM con `Void`, éste ya no existe.
+            if not doc.get("_eliminado"):
+                doc["_eliminado"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                lineas[n] = json.dumps(doc, ensure_ascii=False) + "\n"
+                cambiados += 1
+                print(f"[{slug}] {doc.get('docid') or doc['_id']}: ya no existe en "
+                      f"ADM — marcado como eliminado, conservo el detalle",
+                      flush=True)
+        elif sin_firmas(det) != sin_firmas(doc.get("data")):
             doc["data"] = det
+            doc.pop("_eliminado", None)   # volvió a existir: la marca ya no es cierta
             lineas[n] = json.dumps(doc, ensure_ascii=False) + "\n"
             cambiados += 1
         if i % 25 == 0 or i == len(objetivo):
