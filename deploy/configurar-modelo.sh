@@ -123,6 +123,30 @@ case "$ESFUERZO" in
   *) echo "MESA_REASONING_EFFORT='$ESFUERZO' no existe — usá: minimal | low | medium | high | xhigh | max | ultra"; exit 1 ;;
 esac
 
+# --------------------------------------------------------------------------
+# Cuántas llamadas puede hacer una sesión antes de que Hermes la corte
+# --------------------------------------------------------------------------
+# `agent.max_turns` — "max tool-calling iterations (shared with subagents)",
+# cli.py:474 de esta versión. El default de fábrica es 500, que en la práctica
+# es "sin tope": la sesión desbocada del log llegó a 184 llamadas y quemó ~5M
+# de tokens de entrada — UN TERCIO de la ventana de 5 h de z.AI en una sola
+# sesión, sin producir nada que 20 llamadas no hubieran producido.
+#
+# 60 = ~3× el p90 real (21 llamadas por sesión, mediana 9, medido 2026-08-07
+# con mesa/medir-turnos.py sobre 471 sesiones): ninguna sesión legítima del
+# histórico lo habría rozado, y una en bucle muere a tiempo. Si Hermes corta,
+# la fila del trabajo queda en 'analizando' y las redes del poller la rescatan
+# (reserva muerta a los 20 min → pendiente → re-aviso), así que el costo de un
+# corte es un reintento, no un trabajo perdido.
+MAX_TURNS="${MESA_MAX_TURNS:-60}"
+case "$MAX_TURNS" in
+  ''|*[!0-9]*) echo "MESA_MAX_TURNS='$MAX_TURNS' no es un entero"; exit 1 ;;
+esac
+if [ "$MAX_TURNS" -lt 25 ] || [ "$MAX_TURNS" -gt 500 ]; then
+  echo "MESA_MAX_TURNS=$MAX_TURNS fuera de rango sano (25-500): por debajo del p90×tolerancia corta sesiones legítimas"
+  exit 1
+fi
+
 [ -f "$CONF" ] || { echo "No existe $CONF"; exit 1; }
 [ -f "$ENV_EMPRESA" ] || { echo "No existe $ENV_EMPRESA"; exit 1; }
 
@@ -234,7 +258,7 @@ fi
 #      respaldo pensando distinto que el normal sin que nadie se entere.
 CONF="$CONF" PRINCIPAL="$PRINCIPAL" RESPALDO="$RESPALDO" LIVIANO="$LIVIANO" VISION="$VISION" \
 OR_PRINCIPAL="$OR_PRINCIPAL" OR_LIVIANO="$OR_LIVIANO" OR_VISION="$OR_VISION" MODO="$MODO" \
-ESFUERZO="$ESFUERZO" \
+ESFUERZO="$ESFUERZO" MAX_TURNS="$MAX_TURNS" \
 python3 - <<'PY'
 import os, shutil, yaml
 
@@ -350,6 +374,9 @@ lineas = reemplazar_bloque(lineas, "fallback_providers", cadena)
 # --- 4) cuánto piensa, para el principal y para toda su cadena ---
 lineas = fijar_escalar(lineas, "agent", "reasoning_effort", ESFUERZO)
 
+# --- 5) el freno de sesión (ver el comentario de MAX_TURNS arriba) ---
+lineas = fijar_escalar(lineas, "agent", "max_turns", os.environ["MAX_TURNS"])
+
 # --- 2 y 3) ranuras auxiliares, cada una con su cadena ---
 inicio = next((i for i, l in enumerate(lineas) if l.startswith("auxiliary:")), None)
 if inicio is None:
@@ -413,6 +440,10 @@ try:
     # "distinto de vacío" y el contable arrancaría sin pensar.
     assert ag.get("reasoning_effort") == ESFUERZO, \
         f"reasoning_effort quedó en {ag.get('reasoning_effort')!r}, no en {ESFUERZO!r}"
+    # Entero exacto, no "hay algo": un string colado ('60s') lo ignoraría
+    # Hermes en silencio y el freno quedaría en el default 500.
+    assert ag.get("max_turns") == int(os.environ["MAX_TURNS"]), \
+        f"max_turns quedó en {ag.get('max_turns')!r}, no en {os.environ['MAX_TURNS']}"
     # Lo que el script NO administra y no puede haber tocado.
     assert len(ag.get("personalities") or {}) >= 10, "se llevó puestas las personalities"
     assert (cfg.get("approvals") or {}).get("deny"), "se perdió approvals.deny"
@@ -429,7 +460,7 @@ echo
 docker exec "$CONTENEDOR" hermes fallback list 2>&1 | grep -E "Primary|[0-9]\." | sed 's/^/  /'
 echo
 CONF="$CONF" PRINCIPAL="$PRINCIPAL" LIVIANO="$LIVIANO" VISION="$VISION" \
-OR_PRINCIPAL="$OR_PRINCIPAL" MODO="$MODO" ESFUERZO="$ESFUERZO" python3 - <<'PY'
+OR_PRINCIPAL="$OR_PRINCIPAL" MODO="$MODO" ESFUERZO="$ESFUERZO" MAX_TURNS="$MAX_TURNS" python3 - <<'PY'
 import os, yaml
 c = yaml.safe_load(open(os.environ["CONF"], encoding="utf-8"))
 aux = c.get("auxiliary", {}) or {}
@@ -457,6 +488,10 @@ esperado_esf = os.environ["ESFUERZO"]
 ok = esf == esperado_esf
 malas += 0 if ok else 1
 print(f"  {'OK ' if ok else 'MAL'} {'razonamiento':<14} {'agent':<7} {esf if esf is not None else 'SIN FIJAR'}")
+mt = (c.get("agent") or {}).get("max_turns")
+ok = mt == int(os.environ["MAX_TURNS"])
+malas += 0 if ok else 1
+print(f"  {'OK ' if ok else 'MAL'} {'max_turns':<14} {'agent':<7} {mt if mt is not None else 'SIN FIJAR (default 500)'}")
 
 m = c.get("model", {}) or {}
 modo, or_principal = os.environ["MODO"], os.environ["OR_PRINCIPAL"]
