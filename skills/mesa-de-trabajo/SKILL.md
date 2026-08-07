@@ -1019,6 +1019,21 @@ values ('$QUALIA_EMPRESA_ID', '<trabajo_id>', '<texto de la entrada>', '<metodo>
   manda la sección «Si el trabajo es tipo `criterio`», y un criterio rechazado
   JAMÁS engendra otro criterio: se muerde la cola.
 
+  **Atendé TODOS los rechazos recientes, no sólo el que te nombraron.** El
+  poller agrupa: cuando caen varios seguidos —lo normal al rehacer el plan de un
+  caso, donde se rechazan tres o cuatro pasos de un tirón— sólo el primero abre
+  sesión, y los demás quedan esperando que vos los mires en ésta. Antes se
+  despertaba uno por cada uno: cuatro sesiones de LLM que llenaban el cupo y
+  dejaban el trabajo de verdad haciendo cola detrás.
+
+  ```bash
+  psql "$QUALIA_DSN" -t -A -F'|' -c "select t.id, t.resumen, (select e.contenido from qualia_eventos e where e.trabajo_id=t.id and e.autor='usuario' order by e.id desc limit 1) from qualia_trabajos t where t.empresa_id='$QUALIA_EMPRESA_ID' and t.estado='rechazada' and t.updated_at > now() - interval '15 minutes' and not exists (select 1 from qualia_eventos x where x.trabajo_id=t.id and x.autor='contable' and x.id > (select max(y.id) from qualia_eventos y where y.trabajo_id=t.id and y.autor='usuario'))"
+  ```
+
+  El `not exists` es lo que evita el bucle: trae sólo los que todavía no
+  respondiste. Contestá cada uno con su `nota`, y si varios comparten el motivo
+  —el plan entero se rehizo— alcanza con un criterio, no con cuatro iguales.
+
   **Y si explicó el porqué, esa explicación es un criterio negativo — mismo
   carril, ningún atajo.** La pantalla se lo prometió al aprobar el rechazo («si
   explicás el porqué, el contable lo guarda como criterio»), así que no puede

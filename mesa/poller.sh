@@ -425,6 +425,9 @@ case "${cuota_hasta:-}" in ''|*[!0-9]*) cuota_hasta=0 ;; esac
 # contarlos el tope se pasaría de largo en el tick siguiente.
 declare -A despertado
 cupo_avisado=0
+# Cuándo se despertó por el último rechazo: los que caen detrás en la misma
+# tanda se agrupan en esa sesión en vez de abrir una cada uno.
+ultimo_rechazo=0
 
 while [ "$corriendo" -eq 1 ]; do
   # Latido para el healthcheck del compose: si este archivo envejece, el
@@ -658,6 +661,31 @@ while [ "$corriendo" -eq 1 ]; do
     if [ "$estado" = "aprobada" ] && [ -z "$docid" ]; then
       registrar_directo "$tid"
       wm=$eid
+      continue
+    fi
+    # Los RECHAZOS se agrupan: el primero despierta, los que caen detrás dentro
+    # de la ventana avanzan el watermark sin abrir sesión propia. Un rechazo no
+    # le pide al contable que haga nada —sólo que registre por qué se le dijo
+    # que no—, y eso lo puede leer de todos juntos en una sola pasada.
+    #
+    # Rechazar cuatro pasos seguidos, que es lo normal cuando un plan se rehace,
+    # abría cuatro sesiones de LLM: llenaban el cupo («4 en vuelo, máx 2») y el
+    # trabajo real esperaba turno detrás de ellas. La skill le dice que al
+    # despertarse por un rechazo mire TODOS los rechazados recientes, así que
+    # los agrupados no se pierden.
+    if [ "$estado" = "rechazada" ]; then
+      ahora=$(date +%s)
+      if (( ahora - ultimo_rechazo < 180 )); then
+        wm=$eid
+        continue
+      fi
+      if poke "$tid" "accion_usuario"; then
+        wm=$eid
+        ultimo_rechazo=$ahora
+        despertado[$tid]=$ahora
+      else
+        break
+      fi
       continue
     fi
     if poke "$tid" "accion_usuario"; then
