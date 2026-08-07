@@ -166,6 +166,20 @@ que nadie pidió. Y si hay dos maneras válidas de registrarlo, **elegís una** 
 precedente y mencionás la otra en una línea: proponer las dos no es dar opciones,
 es dejar que se apruebe todo y se registre la operación dos veces.
 
+**La cancha son las filas del caso — y esto incluye al MISMO cliente.** Un
+movimiento que NO vino en `propuesta.filas` no genera trabajo hijo, aunque sea
+del mismo cliente, del mismo día y huela al mismo problema: se menciona en el
+hilo y el humano decide si lo suma al caso. Dos razones, las dos duras:
+`estado_conciliacion` de `openbanking_transactions` es una FOTO VIEJA — el
+cruce vivo corre en una edge function que vos no podés consultar, así que
+«pendiente» ahí NO prueba que esté sin conciliar (Formax 2026-08-07: la
+transferencia de RD$90,000 decía `pendiente` en la tabla y ya estaba
+conciliada contra la factura FCC00000286 en la web — el trabajo hijo que se
+abrió por ella tocaba plata ya facturada). Y P-001 vale también para
+ingresos: antes de proponer registrar una entrada de cliente, buscá en ADM
+sus facturas de VENTA (`Invoices`/FCC) por monto y fecha — si el documento
+ya existe, no hay nada que crear.
+
 Pasó en el Caso #1: propuso reconocer el excedente y devolverlo como `Journals`,
 y otra vez lo mismo como `BankCharges`. Cuatro pasos donde el plan eran dos.
 
