@@ -161,3 +161,75 @@ Es la ficha del modelo, **no** una medición contra el endpoint coding: la
 corrida empírica con un prompt de ~40k del plan de preentrenamiento sigue
 pendiente. Hasta hacerla, sigue rigiendo el presupuesto conservador de ≤35k
 input por turno.
+
+## Verificado 2026-08-07 (latencia, cuota y razonamiento)
+
+### Lo que de verdad cuesta: entrada contra salida
+
+La sospecha de que un prompt grande hace lento al contable es **falsa**, y vale
+escribirlo porque ya costó un día de trabajo. Medido sobre las 5.448 llamadas
+que su propio `agent.log` tenía guardadas:
+
+    corr(tokens de salida, latencia) = 0,76      <- lo que te hace lento
+    corr(tokens de entrada, latencia) = 0,04     <- lo que NO te hace lento
+
+El caché de prefijo de z.AI pega al **92%** en producción, así que re-mandar el
+mismo SKILL.md en cada turno no cuesta segundos. Comprobado también en banco,
+contra el endpoint de producción y fijando la salida en 700 tokens: un prompt de
+1.141 tokens tarda 12,0 s y uno de 27.822 tarda 11,9 s.
+
+**Pero la CUOTA sí se mide en entrada, y los cacheados cuentan a precio
+completo.** Los dos cortes de 5 h que quedaron en el log:
+
+| corte | llamadas | entrada |
+|---|---|---|
+| reset 2026-08-03 15:40 | 666 | **15,20 M** |
+| reset 2026-08-04 03:45 | 690 | **15,10 M** |
+
+Las llamadas difieren 3,5%; los tokens de entrada, 0,7%. Ésa es la respuesta a
+la pregunta que `plan-preentrenamiento.md` deja abierta: el tope del Coding Plan
+no es por prompts, es por tokens de entrada, y ronda los **15,1 M por ventana de
+5 horas**.
+
+Corolario para cualquier optimización futura: recortar el prompt compra CUOTA
+(más trabajo por ventana, menos cortes de horas), no segundos. Los segundos se
+compran en la salida.
+
+Se reproduce con `mesa/medir-turnos.py`, que lee el `agent.log` del contenedor y
+reporta entrada, salida, latencia, caché, las dos correlaciones y con cuánto se
+topó cada corte.
+
+### Cuánto piensa: `reasoning_effort`
+
+El 90-95% de lo que el contable escribe es razonamiento, no respuesta: una
+sesión real cerró con `out=67.714` de los cuales `reasoning=61.086`. Como la
+latencia la manda la salida, ésa es la única perilla que la mueve de verdad.
+Medido contra el endpoint de producción con el prompt real:
+
+| nivel | latencia | tokens de razonamiento |
+|---|---|---|
+| `medium` (era el default) | 14,8 s | 847 |
+| `low` (el que corre hoy) | **8,8 s** | 348 |
+| `minimal` | 3,7 s | 0 |
+
+**Va en `agent.reasoning_effort`, no en `model:`.** Es el único lugar donde
+Hermes lo lee (`resolve_reasoning_config`); escrito dentro de `model:` no rompe
+nada — se ignora en silencio y el contable sigue en el default, que es la peor
+clase de error. Y ojo con YAML: `no`, `off` y `false` son BOOLEANOS, y para
+Hermes eso significa razonamiento APAGADO, que no es lo mismo que un nivel bajo.
+
+Por qué `low` y no `minimal`: en `minimal` el razonamiento se apaga, y el modo
+de falla de este agente no es tardar — es inventar. La FP00001120 se registró
+con una tasa de ITBIS que el papel nunca dijo porque se despejó la base para que
+la aritmética cerrara. Seis segundos no valen reabrir esa puerta.
+
+Lo escribe `deploy/configurar-modelo.sh` y lo verifica en su bloque `esperado`,
+contra el string exacto y no contra «hay algo». No se toca a mano en el server:
+`config.yaml` vive en el volumen, fuera de git, y un valor puesto a mano se
+evapora con el próximo volumen sin que nadie se entere.
+
+Para probar otro nivel o volver atrás, sin editar el script:
+
+```bash
+MESA_REASONING_EFFORT=medium ./configurar-modelo.sh
+```
