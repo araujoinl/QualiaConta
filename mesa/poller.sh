@@ -293,6 +293,12 @@ poke() {
 script_de_registro() {
   case "${1:-}" in
     VendorBills)       echo "registrar-en-adm.py" ;;
+    # La nota de credito de un proveedor la registra el MISMO script: es el
+    # mismo papel del mismo tercero, y ahi adentro se subdivide por el NCF.
+    # Esta entrada es para cuando la propuesta llegue bien declarada; cuando
+    # llega diciendo `VendorBills` —que es como llego la primera— el script la
+    # endereza igual y corrige la fila.
+    VendorCreditNotes) echo "registrar-en-adm.py" ;;
     BankCharges)       echo "registrar-cargo-bancario.py" ;;
     # El script existia desde el 2026-08-03 —lo uso el contable para TE00000212
     # y TE00000214— y nunca se engancho: el registro-sin-LLM se construyo antes
