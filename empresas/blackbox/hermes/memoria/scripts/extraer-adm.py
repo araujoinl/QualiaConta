@@ -15,6 +15,8 @@ USO (dentro del gateway, como /opt/data/memoria/scripts/extraer-adm.py):
                                                # nombre de endpoint o "banco"
     python3 extraer-adm.py --desde 2026-09-01  # delta: re-pagina y agrega SOLO docs
                                                # con ID no visto (append, sin tocar lo ya bajado)
+    python3 extraer-adm.py --refrescar-desde 2026-07-01   # re-pide el DETALLE de los docs
+                                               # con fecha >= esa y reemplaza su línea
 
 SALIDAS:
     /opt/data/preentrenamiento/raw/<slug>.jsonl          # 1 doc por línea (listado)
@@ -506,6 +508,86 @@ def extraer_detalles(slug, endpoint, detalle, estado, max_docs=None):
     return bajados
 
 
+def refrescar_detalles(slug, endpoint, estado, desde):
+    """Vuelve a pedir el detalle de los docs con fecha >= `desde` y REEMPLAZA su
+    línea en raw/<slug>-detalle.jsonl. Devuelve (revisados, cambiados).
+
+    Por qué existe: el delta sólo AGREGA lo que no estaba, así que un documento
+    ya bajado se congela en el estado que tenía ese día. Anular no crea un
+    documento nuevo —cambia uno viejo—, y por eso ninguna anulación posterior
+    entraba jamás al volcado. El 2026-08-06 eso dejó a Claro fuera de la caja de
+    recurrentes: la copia local contaba como viva la FP00001131 del 31/07, que
+    en ADM está anulada, y ese día 31 le rompía el patrón del día 4.
+
+    Reescribe el archivo entero desde memoria (son ~1.100 líneas) con
+    `os.replace`, así que un lector concurrente ve el archivo viejo o el nuevo,
+    nunca uno a medias. Un 4xx en un doc puntual CONSERVA la línea vieja: un
+    error de red no puede borrar lo único que sabemos del documento.
+
+    El listado (`raw/<slug>.jsonl`) no se toca a propósito: es el índice de qué
+    documentos existen, y eso no cambia al anular. Quien necesite el estado lee
+    el detalle, que es lo que este refresco mantiene al día.
+    """
+    st = estado_recurso(estado, slug, endpoint)
+    archivo = os.path.join(BASE_DIR, "raw", f"{slug}-detalle.jsonl")
+    try:
+        with open(archivo, encoding="utf-8") as f:
+            lineas = f.readlines()
+    except FileNotFoundError:
+        print(f"[{slug}] refresco: no hay detalle bajado todavía, salto", flush=True)
+        return (0, 0)
+
+    docs, objetivo = [], []
+    for n, linea in enumerate(lineas):
+        try:
+            doc = json.loads(linea)
+        except json.JSONDecodeError:
+            docs.append(None)          # línea ilegible: se conserva tal cual
+            continue
+        docs.append(doc)
+        fd = fecha_doc(doc.get("data") or {})
+        if fd and fd >= desde and doc.get("_id"):
+            objetivo.append(n)
+
+    if not objetivo:
+        print(f"[{slug}] refresco: ningún doc desde {desde}", flush=True)
+        return (0, 0)
+
+    cambiados = 0
+    for i, n in enumerate(objetivo, 1):
+        doc = docs[n]
+        try:
+            det = desenvolver_detalle(get_api(f"{endpoint}/{doc['_id']}"))
+        except ErrorExtractor as e:
+            mensaje = str(e)
+            if "HTTP 5" in mensaje or "error de red" in mensaje:
+                raise   # 5xx agotado / red caída: cortar sin escribir nada
+            st["detalle_errores"].append({"id": doc["_id"], "error": mensaje,
+                                          "refresco": desde})
+            print(f"[{slug}] refresco {doc['_id']}: {mensaje} — dejo la línea vieja",
+                  file=sys.stderr, flush=True)
+            continue
+        if det != doc.get("data"):
+            doc["data"] = det
+            lineas[n] = json.dumps(doc, ensure_ascii=False) + "\n"
+            cambiados += 1
+        if i % 25 == 0 or i == len(objetivo):
+            print(f"[{slug}] refresco: {i}/{len(objetivo)}", flush=True)
+
+    if cambiados:
+        tmp = archivo + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.writelines(lineas)
+        os.replace(tmp, archivo)
+    st["refresco"] = {"desde": desde, "revisados": len(objetivo),
+                      "cambiados": cambiados,
+                      "corrido": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    guardar_estado(estado)
+    print(f"[{slug}] refresco desde {desde}: {len(objetivo)} revisados, "
+          f"{cambiados} cambiado(s)", flush=True)
+    return (len(objetivo), cambiados)
+
+
 # ======================================================================
 # BANCO — volcado de Supabase/openbanking
 # ======================================================================
@@ -614,6 +696,17 @@ def correr_dry_run(seleccion):
 # MAIN
 # ======================================================================
 
+def valor_es_fecha(v):
+    """Las fechas de los flags se comparan como texto contra `DocDate` (que
+    viene ISO), así que un valor con otro formato no falla: filtra mal y en
+    silencio. Se valida al entrar."""
+    try:
+        time.strptime(v, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+
 def main():
     p = argparse.ArgumentParser(
         description="Extractor total ADM Cloud + banco (Capa A del preentrenamiento). "
@@ -626,7 +719,17 @@ def main():
     p.add_argument("--desde", metavar="YYYY-MM-DD",
                    help="delta: re-pagina y agrega solo docs con ID nuevo "
                         "(el valor queda registrado como corte en estado.json)")
+    p.add_argument("--refrescar-desde", metavar="YYYY-MM-DD",
+                   help="re-pide el detalle de los docs con fecha >= esa y "
+                        "reemplaza su línea (así entran las anulaciones, que el "
+                        "delta no ve porque no crean un documento nuevo)")
     args = p.parse_args()
+
+    for flag, valor in (("--desde", args.desde),
+                        ("--refrescar-desde", args.refrescar_desde)):
+        if valor and not valor_es_fecha(valor):
+            print(f"{flag} '{valor}' no es una fecha YYYY-MM-DD", file=sys.stderr)
+            return 1
 
     faltantes = [v for v in ENV_ADM if not os.environ.get(v)]
     if faltantes:
@@ -664,6 +767,10 @@ def main():
                 extraer_listado(slug, endpoint, modo, estado, desde=args.desde)
                 if detalle != SIN_DETALLE:
                     extraer_detalles(slug, endpoint, detalle, estado)
+                    # Después de bajar lo nuevo: lo viejo que cambió de estado.
+                    if args.refrescar_desde:
+                        refrescar_detalles(slug, endpoint, estado,
+                                           args.refrescar_desde)
             except ErrorExtractor as e:
                 st = estado_recurso(estado, slug, endpoint)
                 st["error"] = str(e)
