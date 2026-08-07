@@ -508,6 +508,22 @@ def extraer_detalles(slug, endpoint, detalle, estado, max_docs=None):
     return bajados
 
 
+def sin_firmas(v):
+    """Copia del doc con las URLs firmadas recortadas al path. Las de los
+    adjuntos (`Files[].URI`) llevan una firma temporal de Azure que ADM
+    re-genera en CADA lectura, así que comparando el documento crudo TODOS
+    salen «cambiados» siempre: el archivo se reescribiría cada hora y el log
+    diría 68 cambios cuando no hubo ninguno. La firma no es parte del
+    documento, es la llave para bajarlo — y encima vence en una hora."""
+    if isinstance(v, dict):
+        return {k: sin_firmas(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [sin_firmas(x) for x in v]
+    if isinstance(v, str) and "?" in v and ("sv=" in v or "sig=" in v):
+        return v.split("?", 1)[0]
+    return v
+
+
 def refrescar_detalles(slug, endpoint, estado, desde):
     """Vuelve a pedir el detalle de los docs con fecha >= `desde` y REEMPLAZA su
     línea en raw/<slug>-detalle.jsonl. Devuelve (revisados, cambiados).
@@ -567,7 +583,7 @@ def refrescar_detalles(slug, endpoint, estado, desde):
             print(f"[{slug}] refresco {doc['_id']}: {mensaje} — dejo la línea vieja",
                   file=sys.stderr, flush=True)
             continue
-        if det != doc.get("data"):
+        if sin_firmas(det) != sin_firmas(doc.get("data")):
             doc["data"] = det
             lineas[n] = json.dumps(doc, ensure_ascii=False) + "\n"
             cambiados += 1
