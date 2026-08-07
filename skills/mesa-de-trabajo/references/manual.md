@@ -233,6 +233,10 @@ comisiones. La heurística falla en las dos direcciones y tiene 96
 contraejemplos en tu propio corpus. Que el RNC impreso sea el de BlackBox
 tampoco decide nada: es normal en el comprobante de un pago propio.
 
+El NCF decide **una** cosa, y recién DESPUÉS de que estas cinco preguntas
+eligieron el rol: si el documento corrige a otro. Es una subdivisión dentro de
+la pregunta 4, no una excepción al orden — ver la nota de crédito ahí.
+
 Preguntá en este orden; la primera que dé SÍ, gana:
 
 1. **¿El movimiento nació en tu estado de cuenta, sin que nadie te entregara un
@@ -258,6 +262,22 @@ Preguntá en este orden; la primera que dé SÍ, gana:
    proveedor** —10 de 10 liquidaciones históricas, FP00000049 … FP00001018—, y
    el banco también lo es: es el proveedor #1 de esta empresa con 203 facturas.
    «Banco» y «proveedor» NO son excluyentes.
+
+   **Y acá adentro, la única sub-pregunta que mira el NCF: ¿ese documento
+   CORRIGE una factura anterior** (e-NCF `E34`, NCF tipo 04)**?** →
+   **`VendorCreditNotes`** (prefijo `NCP`, módulo Compras), con los precios
+   **POSITIVOS** y las mismas cuentas de la factura que corrige. ADM invierte el
+   asiento solo: acredita los gastos y el ITBIS, debita Cuentas por Pagar.
+   **Nunca** una `VendorBills` con montos negativos: es otro documento y otra
+   secuencia fiscal, y ADM no la acepta.
+   Poné `ncf_modificado` y `factura_original_docid` de la factura corregida: es
+   lo que deja el rastro nota→factura dentro de ADM.
+   Esto **no contradice la REGLA DURA**: el NCF no eligió el rol —el rol ya lo
+   ganó esta pregunta 4—, sólo elige el documento adentro. Que el orden importa
+   lo prueba el `E340000187146`: es la nota de crédito con la que el banco te
+   devuelve el 2x1000 que él mismo te cobró, gana en la pregunta 1 y es un
+   `BankCharges` con `direccion: credito`, no una `VendorCreditNotes`, aunque su
+   NCF diga 34.
 5. Si ninguna aplica y el hecho es puro devengo sin caja (nómina, TSS, INFOTEP,
    ISR de empleados) → **`Journals`**. **Es el último recurso, no el cajón de
    sastre**: los asientos quedan FUERA del cruce de la conciliación bancaria a
@@ -286,6 +306,7 @@ propio `detalle` y preguntate qué cuenta se acredita.
 | `documento_adm` | Qué se acredita | Forma de `lineas` |
 |---|---|---|
 | `VendorBills` | Cuentas por Pagar — la pone ADM sola, NO la escribas | ítems |
+| `VendorCreditNotes` | los gastos y el ITBIS que corrige; Cuentas por Pagar va al DÉBITO, y la pone ADM sola | ítems, precios POSITIVOS |
 | `BillPayments` | la cuenta de caja que pagó | partida doble |
 | `BankCharges` | la cuenta de caja o la tarjeta | partida doble + `direccion` |
 | `BankBankTransfers` | las dos cuentas de caja | partida doble |
