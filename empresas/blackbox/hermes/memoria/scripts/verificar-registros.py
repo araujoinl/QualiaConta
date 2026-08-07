@@ -62,8 +62,14 @@ BASE = "https://api.admcloud.net"
 # `GET /api/VendorBills/{uuid-de-la-NCP}` contesta `success:true, data:null`,
 # indistinguible de un documento borrado, y este script le pone lapida a algo
 # que esta vivo. Probado contra la NCP00000006 el 2026-08-07.
+# `BillPayments` faltaba desde que la mesa empezó a registrar pagos: sus 34
+# documentos (PP00000751 …) caían al `indeterminado` de «tipo desconocido» y no
+# se verificaban NUNCA, ni vivos ni muertos. Es el mismo agujero que el de la
+# nota de credito, al lado. Sondeado el 2026-08-07: el readback por UUID se
+# comporta igual que el de los otros —devuelve el documento, con `Void`— y los
+# 34 estan vigentes, asi que sumarlo no marca ninguno.
 ENDPOINTS = {"VendorBills", "VendorCreditNotes", "BankCharges",
-             "BankBankTransfers", "Journals"}
+             "BankBankTransfers", "BillPayments", "Journals"}
 
 
 def env(n):
