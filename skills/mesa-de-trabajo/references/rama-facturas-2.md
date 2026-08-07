@@ -158,6 +158,19 @@ update qualia_trabajos set estado='analizando'
      historico local es una FOTO vieja: si el NCF aparece ahi, confirma por API
      que el docid sigue existiendo antes de marcar nada — un documento eliminado
      en ADM no es un duplicado, es el que hay que volver a registrar.
+   - **Al cerrar una subida como duplicado de un trabajo VIVO de la mesa, el
+     papel no se descarta.** Si el trabajo vigente no tiene documento propio
+     (`archivo_path` null — tipico de una sugerencia nacida del banco, como un
+     pago de impuestos), su papel ES la subida que estas cerrando: antes de
+     ponerla en `error`, anota en la propuesta del vigente
+     `"comprobante_de_trabajo": "<id de la subida cerrada>"` (un `jsonb_set`
+     sobre `propuesta`; las columnas `archivo_*` no las podes escribir) y deja
+     un evento nota en el vigente diciendo que su comprobante vive ahi. El
+     script de registro (`registrar-cargo-bancario.py`) baja ese papel con
+     `bajar-documento.sh` y lo adjunta al documento en ADM. Sin este enlace el
+     cargo se registra sin soporte y el papel bueno queda varado en una fila en
+     `error` — paso el 2026-08-07 con el comprobante DGII del anticipo ISR de
+     julio (trabajos 672eacb4 → 646ed1cf).
 
 5. **Verificá el comprobante contra DGII — SIEMPRE llená el campo `dgii`**, aun
    cuando no aplique. Nunca lo dejes vacío: quien mira la propuesta no puede
