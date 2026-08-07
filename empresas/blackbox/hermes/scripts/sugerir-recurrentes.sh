@@ -61,6 +61,8 @@
 # CORRE TODOS LOS DÍAS y es idempotente: una fila por proveedor y período. Si en
 # la corrida de hoy el proveedor ya facturó y ayer no, la fila se ACTUALIZA — sin
 # eso, un «no llegó» de principio de mes se quedaba mintiendo hasta fin de mes.
+# Lo mismo con el pago: la factura llega impaga y se paga días después, así que
+# el estado de pago cambia SIEMPRE después de escrita la fila.
 #
 # Env: QUALIA_DSN, QUALIA_EMPRESA_ID. Opcional QUALIA_RAW, QUALIA_HOY
 # (YYYY-MM-DD, para probar), QUALIA_DRY_RUN=1. stdout vacío = silencio.
@@ -353,13 +355,23 @@ for prov, fs in facturas.items():
     if ya is None:
         inserts.append(f"({esc(EMPRESA)}::uuid, 'sugerencia', 'cron_conciliacion', 'propuesta', "
                        f"{esc(resumen[:200])}, {esc(json.dumps(propuesta, ensure_ascii=False))}::jsonb)")
-    elif bool(ya.get("llego")) != llego or not ya.get("aldia"):
+    elif (bool(ya.get("llego")) != llego
+          or bool(ya.get("pagada")) != bool(propuesta.get("pagada"))
+          or not ya.get("aldia")):
         # Cuando el estado CAMBIÓ, o cuando la fila viene de la versión que sólo
         # emitía ausencias y no trae `vencido`: ésa se quedó además con la fecha
         # de la corrida en vez de la del proveedor, así que hay que reescribirla
         # una vez. Fuera de esos dos casos no se toca — reescribirla todos los
         # días movería `updated_at` sin que haya pasado nada y la mesa lo leería
         # como actividad del contable.
+        #
+        # PAGARLA TAMBIÉN ES UN CAMBIO DE ESTADO. Mirando sólo `llego`, el chip
+        # de la caja quedaba congelado en el valor del día que la factura
+        # apareció, y ése es «sin pagar» SIEMPRE: la factura llega primero y se
+        # paga después. La FP00001076 de Humano se pagó el 2026-08-06 con el
+        # PP00000783 y la mesa la seguía mostrando impaga. `AppliedPayments` ya
+        # llega fresco —`refrescar-recurrentes.sh` re-pide el detalle del mes en
+        # curso cada hora—, así que lo único que faltaba era volver a escribirla.
         updates.append(f"update qualia_trabajos set resumen = {esc(resumen[:200])}, "
                        f"propuesta = {esc(json.dumps(propuesta, ensure_ascii=False))}::jsonb "
                        f"where id = {esc(ya['id'])}::uuid;")
