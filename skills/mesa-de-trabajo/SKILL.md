@@ -787,8 +787,15 @@ update qualia_trabajos
 ```sql
 insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
 values ('<id>', 'contable', 'pregunta', '¿Este flete de Marítima Dominicana es de la importación de julio o gasto local?');
+-- Los DOS estados desde los que se pregunta: 'analizando' cuando estás en el
+-- análisis, y 'aprobada' cuando el registro en ADM se trabó y necesitás al
+-- humano (el AMBIGUO del cargo bancario, por ejemplo). Con el guard viejo —sólo
+-- 'analizando'— preguntar desde una fila aprobada escribía el evento y dejaba el
+-- UPDATE en CERO filas sin fallar: psql decía «UPDATE 0», la web no la mostraba
+-- esperando respuesta y el poller la reintentaba dos horas hasta rendirse.
 update qualia_trabajos set estado='esperando_respuesta'
- where id='<id>' and empresa_id='$QUALIA_EMPRESA_ID' and estado='analizando';
+ where id='<id>' and empresa_id='$QUALIA_EMPRESA_ID'
+   and estado in ('analizando','aprobada');
 ```
 
 9. Si algo revienta: `estado='error'` + `error_detalle` legible + evento `nota`.

@@ -123,7 +123,7 @@ de ADM (la web auto-detecta la forma por la presencia de `precio`/`cantidad`):
 **Quién decide el valor de `documento_adm`, y cómo**: en las sugerencias lo fija
 el script del carril (`sugerir-cargos.sh` → `BankCharges`, etc.); en una factura
 lo elige el contable con el criterio de la sección «Qué documento de ADM es esto»
-de `skills/mesa-de-trabajo/references/manual.md`, que decide por el ROL del hecho. **El NCF no
+de `skills/mesa-de-trabajo/SKILL.md`, que decide por el ROL del hecho. **El NCF no
 entra en esa decisión** — 45 de 1.109 facturas de proveedor históricas no lo
 tienen y 51 de 159 cargos bancarios sí. No es una etiqueta: `poller.sh` elige con
 qué script registrar según este campo.
@@ -169,15 +169,6 @@ entrada nueva del libro inserta también una fila acá (`entrada`, `metodo`,
 - **QualiaConta**: `skills/mesa-de-trabajo/` (cómo opera el contable),
   `mesa/poller.sh` (sidecar `mesa` en el compose de cada empresa), este doc.
 
-  Desde el 2026-08-07 esa carpeta está partida y **el `SKILL.md` ya no es el
-  manual**: es una puerta de 472 tokens que manda a correr
-  `scripts/abrir-trabajo.sh`, y ese script imprime la fila del trabajo junto al
-  procedimiento que le toca. `references/manual.md` es el manual completo —lo
-  recibe todo turno con contabilidad adentro, igual que antes— y
-  `references/libro.md` y `references/registro.md` son extractos verbatim para
-  los dos trabajos mecánicos. Los extractos NO se editan: se generan con
-  `mesa/cortar-extractos.py` desde el manual, y `mesa/verificar-corte.sh`
-  comprueba que sigan siendo tajadas exactas.
 - **Labs_Inv**: migraciones `20260802041946_qualia_conta_mesa_trabajo.sql` y
   `20260802042624_qualia_conta_grants_worker.sql`, tab `QualiaContaTab.jsx`,
   servicio `qualiaContaService.js`.
