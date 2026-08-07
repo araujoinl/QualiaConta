@@ -101,3 +101,12 @@ services:
       # Histórico de VendorBills para el chequeo de duplicados por grep,
       # sólo lectura. Si el mount no existe, el prep lo salta con motivo.
       - ./hermes/preentrenamiento:/preentrenamiento:ro
+      # Memoria curada completa, sólo lectura: el proponedor determinista lee
+      # el bloque del proveedor en proveedores.md (su marca AMBIGUO es
+      # compuerta dura).
+      - ./hermes/memoria:/memoria:ro
+      # Libreta general del 606 (rnc-tipo-gasto.json), sólo lectura.
+      - ../../nucleo-contable:/nucleo-contable:ro
+      # Libro de acción, ESCRITURA: escribir-libro.py deja acá la entrada por
+      # plantilla tras el registro directo.
+      - ./hermes/libro-de-accion:/libro

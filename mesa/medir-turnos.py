@@ -118,6 +118,44 @@ def leer_locales(rutas):
     return lineas
 
 
+# La métrica del SPEC §4.6 — "qué porcentaje del trabajo se resuelve sin el
+# modelo grande. Si no sube, el sistema no está aprendiendo por más que lo
+# parezca." La fuente es la BASE, no agent.log: lo que NO pasó por el modelo
+# no deja rastro en el log del modelo. El psql corre dentro del sidecar (que
+# ya tiene DSN); acá solo vuelven los contadores.
+CONSULTA_SIN_LLM = r"""
+select
+  count(*) filter (where tipo='factura'
+                     and estado in ('propuesta','aprobada','registrada','rechazada')),
+  count(*) filter (where tipo='factura'
+                     and estado in ('propuesta','aprobada','registrada','rechazada')
+                     and propuesta ? 'proponedor'),
+  (select count(*) from qualia_libro l
+    where l.empresa_id = t.empresa_id and l.created_at > now() - interval '%(dias)s days'),
+  (select count(distinct e.trabajo_id) from qualia_eventos e
+    where e.contenido like '📖 Entrada del libro escrita por plantilla%%'
+      and e.created_at > now() - interval '%(dias)s days')
+from qualia_trabajos t
+where created_at > now() - interval '%(dias)s days'
+group by empresa_id;
+"""
+
+
+def medir_sin_llm(dias=14):
+    """(facturas, por_proponedor, entradas_libro, libro_plantilla) o None."""
+    cmd = ["ssh", "codebox",
+           "docker exec -i qualiaconta-mesa-blackbox sh -c "
+           "'psql \"$QUALIA_DSN\" -t -A -F \"|\"'"]
+    r = subprocess.run(cmd, input=CONSULTA_SIN_LLM % {"dias": dias},
+                       capture_output=True, text=True, errors="ignore")
+    if r.returncode != 0 or not r.stdout.strip():
+        return None
+    try:
+        return [int(x) for x in r.stdout.strip().splitlines()[0].split("|")]
+    except (ValueError, IndexError):
+        return None
+
+
 def correlacion(xs, ys):
     if len(xs) < 2:
         return float("nan")
@@ -202,6 +240,26 @@ def main():
         total = sum(agrupado.values())
         for k, v in sorted(agrupado.items(), key=lambda x: -x[1]):
             print(f"  {k:34s} {v:6,}  {100*v/total:5.1f}%")
+
+    sin_llm = medir_sin_llm()
+    print()
+    if sin_llm is None:
+        print("trabajo sin modelo grande (SPEC §4.6): NO PUDE MEDIR (la base no")
+        print("  contestó por ssh). No es que sea cero: es que no miré.")
+    else:
+        fact, prop, libro, plantilla = sin_llm
+        print("trabajo sin modelo grande (SPEC §4.6, últimos 14 días — si no sube,")
+        print("no está aprendiendo por más que lo parezca):")
+        if fact:
+            print("  facturas propuestas sin sesión LLM   %3d de %3d  (%.0f%%)"
+                  % (prop, fact, 100.0 * prop / fact))
+        else:
+            print("  sin facturas en la ventana")
+        if libro:
+            print("  entradas de libro por plantilla      %3d de %3d  (%.0f%%)"
+                  % (plantilla, libro, 100.0 * plantilla / libro))
+        print("  (la factura del proponedor ya no toca el modelo en TODO su ciclo:")
+        print("   propuesta, registro y libro corren por scripts)")
 
     if cortes_cuota:
         print()

@@ -100,6 +100,17 @@ services:
       # Scripts de la memoria del contable (consultar-ncf-dgii.py, etc.),
       # sólo lectura: el preparador los reusa en vez de duplicarlos.
       - ./hermes/memoria/scripts:/memoria-scripts:ro
+      # Memoria curada completa, sólo lectura: el proponedor determinista lee
+      # el bloque del proveedor en proveedores.md (el tratamiento típico
+      # matiza al agg, y su marca AMBIGUO es compuerta dura).
+      - ./hermes/memoria:/memoria:ro
+      # Libreta general del 606 (rnc-tipo-gasto.json), sólo lectura: el tipo
+      # de gasto del proponedor sale de ahí, como en buscar-precedente.py.
+      - ../../nucleo-contable:/nucleo-contable:ro
+      # Libro de acción, ESCRITURA: escribir-libro.py deja acá la entrada por
+      # plantilla tras el registro directo (chown a HERMES_UID, como el prep,
+      # para que quede commiteable desde afuera).
+      - ./hermes/libro-de-accion:/libro
       # Histórico de VendorBills para el chequeo de duplicados por grep,
       # sólo lectura. Si el mount no existe, el prep lo salta con motivo.
       - ./hermes/preentrenamiento:/preentrenamiento:ro

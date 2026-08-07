@@ -138,11 +138,19 @@ leerlo te devuelve exactamente el razonamiento que el humano acaba de rechazar.
 Antes de despertarte, un preparador determinista (`preparar-trabajo.sh`, corre
 en el sidecar, sin LLM) pudo dejar el trabajo masticado en
 `/tmp/mesa/<trabajo_id>/dossier.json`. El claim atómico (paso 1, abajo) sigue
-siendo SIEMPRE tu primer movimiento; recién después del claim mirá el dossier:
+siendo SIEMPRE tu primer movimiento — y tu primer movimiento es UN comando,
+no cinco (cada llamada tuya re-paga el prompt entero contra la cuota):
 
 ```bash
-cat /tmp/mesa/<trabajo_id>/dossier.json
+bash /opt/data/memoria/scripts/leer-contexto.sh <trabajo_id> --claim
 ```
+
+Hace el claim y te imprime TODO junto: la fila, el hilo, el rastro del
+proponedor determinista si lo hubo (`clasificacion.json`: por qué el camino
+sin LLM NO propuso — ése es tu punto de partida, no lo re-descubras), el
+dossier y el precedente del proveedor ya buscado. Si la primera línea dice
+`CLAIM: perdido`, PARÁ sin escribir nada, como siempre. En las ramas donde no
+hay claim (`accion_usuario`, `escribir_libro`), corrélo SIN `--claim`.
 
 - **Si existe**: el documento YA está local en `archivo.path` (convertido a jpg
   si era HEIC, con `texto.txt` si hubo texto), y la extracción, la verificación
@@ -472,8 +480,10 @@ salió de regex sobre texto o de una pasada de visión y puede leer mal un dígi
 Nada del dossier te exime del juicio contable: la cuenta, el precedente y la
 propuesta siguen siendo tuyos.
 
-1. **Claim atómico** — si no devuelve fila, otro proceso lo tomó o ya no está
-   pendiente: PARÁ ahí, sin escribir nada.
+1. **Claim atómico** — con el mismo `leer-contexto.sh <id> --claim` de arriba
+   (te lo hace y te trae el contexto en la misma corrida). `CLAIM: perdido` =
+   otro proceso lo tomó o ya no está pendiente: PARÁ ahí, sin escribir nada.
+   El SQL de referencia, por si el script no está:
 
 ```sql
 update qualia_trabajos set estado='analizando'
@@ -675,13 +685,15 @@ update qualia_trabajos set estado='analizando'
    - Nunca uses el padrón para dar por verificado el comprobante: saber de quién
      es el RNC no dice nada de si el NCF está autorizado.
 
-6. **Buscá precedente** — primero el comando de la sección «Cómo clasificás
-   la cuenta» (`buscar-precedente.py`, nunca `python3 -c`), y después
-   tu memoria y tu libro (`memoria/proveedores.md`,
-   `memoria/criterios.md`, `libro-de-accion/`). El Alcance de cada entrada dice
-   si aplica. Con precedente → `metodo='precedente'` y su `precedente_ref`. Si
-   lo resolvió un script tuyo → `metodo='script'`. Caso nuevo →
-   `metodo='razonado'`, apoyado en el núcleo DGII (citá la norma en `detalle`).
+6. **Buscá precedente** — la salida de `buscar-precedente.py` YA vino en
+   `leer-contexto.sh` (la corrió con el RNC del dossier): usala de ahí, y
+   volvé a correrlo solo para OTRA búsqueda (`--cuenta`, `--plan`, un término
+   distinto — nunca `python3 -c`). Después tu memoria y tu libro
+   (`memoria/proveedores.md`, `memoria/criterios.md`, `libro-de-accion/`). El
+   Alcance de cada entrada dice si aplica. Con precedente →
+   `metodo='precedente'` y su `precedente_ref`. Si lo resolvió un script tuyo
+   → `metodo='script'`. Caso nuevo → `metodo='razonado'`, apoyado en el
+   núcleo DGII (citá la norma en `detalle`).
 
 7. **Andá contando lo que hacés** — la web lo muestra en vivo:
 
@@ -690,17 +702,50 @@ insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
 values ('<trabajo_id>', 'contable', 'progreso', 'Recibí la factura de Sunix por RD$45,200 — la estoy revisando contra DGII y contra cómo hemos registrado a este proveedor antes.');
 ```
 
-8. **Cerrá con la propuesta** (jsonb con la forma del contrato) y el `resumen`.
-   Ejemplo COMPLETO y coherente (VendorBills en forma de items, aritmética que
-   cuadra: 38,305.08 + 6,894.92 = 45,200.00):
+8. **Cerrá con la propuesta en UNA corrida** — escribí un JSON a
+   `/tmp/mesa/<trabajo_id>/turno.json` y aplicalo:
+
+```bash
+python3 /opt/data/memoria/scripts/aplicar-propuesta.py /tmp/mesa/<trabajo_id>/turno.json
+```
+
+   Hace todo en una transacción — tus eventos de cierre, la propuesta, el
+   resumen y el estado — con los guards del contrato adentro, y si el guard
+   no matchea REVIENTA con el motivo (la trampa del «UPDATE 0» silencioso ya
+   mordió dos veces; este script la mata). Ejemplo COMPLETO y coherente
+   (VendorBills en forma de items, aritmética que cuadra:
+   38,305.08 + 6,894.92 = 45,200.00):
+
+```json
+{
+  "trabajo_id": "<trabajo_id>",
+  "eventos": [{"tipo": "progreso", "contenido": "A este proveedor siempre lo registramos como combustible: te armé la propuesta igual que las 94 anteriores."}],
+  "estado": "propuesta",
+  "resumen": "Factura Isla Dominicana — RD$45,200 combustible flotilla",
+  "propuesta": {"proveedor":"Isla Dominicana De Petroleo Corporation","rnc":"101008172","ncf":"E310000012345","fecha":"2026-08-01","moneda":"DOP","monto":45200.00,"itbis":6894.92,"tipo_gasto":{"codigo":"02","nombre":"Gastos por Trabajos, Suministros y Servicios"},"documento_adm":"VendorBills","lineas":[{"descripcion":"Gasoil flotilla","cantidad":1,"precio":38305.08,"grupo_impuesto":"ITBIS","itbis":6894.92,"cuenta":"620.11","cuenta_nombre":"Combustible"}],"metodo":"precedente","precedente_ref":"agg:proveedor-cuentas.json#101008172","confianza":0.95,"detalle":"Combustible de flotilla. Cuenta 620.11 por precedente: 94 de 96 usos de cuenta sobre 96 facturas históricas de este proveedor."}
+}
+```
+
+   El mismo script cierra las preguntas (`"estado": "esperando_respuesta"`
+   con tu evento `pregunta`) y los errores (`"estado": "error"` con
+   `error_detalle`). El SQL de referencia, por si el script no está:
 
 ```sql
 update qualia_trabajos
-   set estado='propuesta',
-       resumen='Factura Isla Dominicana — RD$45,200 combustible flotilla',
-       propuesta='{"proveedor":"Isla Dominicana De Petroleo Corporation","rnc":"101008172","ncf":"E310000012345","fecha":"2026-08-01","moneda":"DOP","monto":45200.00,"itbis":6894.92,"tipo_gasto":{"codigo":"02","nombre":"Gastos por Trabajos, Suministros y Servicios"},"documento_adm":"VendorBills","lineas":[{"descripcion":"Gasoil flotilla","cantidad":1,"precio":38305.08,"grupo_impuesto":"ITBIS","itbis":6894.92,"cuenta":"620.11","cuenta_nombre":"Combustible"}],"metodo":"precedente","precedente_ref":"agg:proveedor-cuentas.json#101008172","confianza":0.95,"detalle":"Combustible de flotilla. Cuenta 620.11 por precedente: 94 de 96 usos de cuenta sobre 96 facturas históricas de este proveedor."}'::jsonb
+   set estado='propuesta', resumen='…', propuesta='…'::jsonb
  where id='<trabajo_id>' and empresa_id='$QUALIA_EMPRESA_ID' and estado='analizando';
 ```
+
+   **Dejá el borrador del libro en la MISMA propuesta**, campo
+   `borrador_libro`, mientras el análisis está fresco: al aprobarse, la
+   entrada la materializa una plantilla (`escribir-libro.py`, la corre el
+   poller) SIN abrirte otra sesión — usa tu borrador si está y el `detalle` a
+   secas si no, y el que redacta con el caso en la cabeza sos vos ahora, no
+   un turno frío tres horas después. Forma:
+   `"borrador_libro":{"titulo":"…","caso":"…","por_que":"…","sosten":"norma o precedente citado","alcance":"a qué casos futuros aplica"}`.
+   `Aprobó` y DocID NO van — todavía no existen; los pone la plantilla al
+   materializar. El `alcance` escribilo como siempre: sin alcance, la entrada
+   documenta pero no automatiza.
 
    **`tipo_gasto` es OBLIGATORIO en toda factura** y es un eje DISTINTO de la
    cuenta contable — no los confundas:
@@ -801,6 +846,12 @@ update qualia_trabajos set estado='esperando_respuesta'
 9. Si algo revienta: `estado='error'` + `error_detalle` legible + evento `nota`.
 
 ## Si el motivo es `accion_usuario`
+
+Contexto completo en una corrida (sin `--claim`: acá no hay claim que ganar):
+
+```bash
+bash /opt/data/memoria/scripts/leer-contexto.sh <trabajo_id>
+```
 
 Mirá el último evento con `autor='usuario'` del trabajo y el estado actual:
 
@@ -1179,8 +1230,12 @@ values ('<trabajo_id>', 'contable', 'nota',
 2026-08-04 el poller registra las aprobaciones él mismo, corriendo el script del
 tipo de documento sin despertarte: al aprobar no queda nada que decidir, y hacer
 que un modelo lea esta skill entera para ejecutar un comando fijo costaba tokens
-y ataba el registro a que hubiera cupo de LLM. Te despierta después, para lo
-único que es tuyo acá: **escribir el libro de acción**.
+y ataba el registro a que hubiera cupo de LLM. Y desde el proponedor
+determinista, la entrada del libro también la escribe una plantilla
+(`escribir-libro.py`) apenas cierra el registro — con tu `borrador_libro` si lo
+dejaste. **Si llegaste acá es porque la plantilla NO pudo** (un dato que falta,
+un borrador ilegible): leé su motivo en el log del poller si hace falta, y hacé
+vos lo único que es tuyo: **escribir el libro de acción**.
 
 Hacé sólo eso, y en este orden:
 

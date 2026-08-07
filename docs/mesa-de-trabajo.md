@@ -39,6 +39,15 @@ usuario aprueba/rechaza/responde ─→ (siempre insertando un evento autor=usua
   configuración. El payload es apenas un puntero (`trabajo_id`, `motivo`); el
   contable relee la base como única fuente de verdad, así que un POST espurio
   no puede hacerle registrar nada.
+- Entre el preparador y el poke vive el **proponedor determinista**
+  (`mesa/proponer-directo.py`, desde 2026-08-07): si el documento es de un
+  proveedor conocido y pasa todas sus compuertas, arma la propuesta con UNA
+  llamada de clasificación (sin sesión Hermes) y deja la fila en `propuesta`
+  — el contable ni se despierta. Cualquier duda degrada al poke de siempre,
+  con el motivo en `/tmp/mesa/<id>/clasificacion.json` para la sesión. La
+  contracara existe desde el mismo día: tras el registro directo, la entrada
+  del libro la escribe una plantilla (`mesa/escribir-libro.py`). Una factura
+  repetida ya no toca el modelo en NINGÚN punto de su ciclo.
 - El poller no marca nada por sí mismo: todos los cambios de estado los hace
   el contable (o la web). Si el poller despierta dos veces por lo mismo, el
   claim atómico y la idempotencia de la skill lo absorben.
@@ -187,6 +196,32 @@ fallo y sigue) y loggea resumen a `/home/codebox/qualia-docs/respaldo.log`
 sin URLs (llevan token firmado). Ojo: no filtra por `archivo_path` sino por
 nombre + URL presentes — hay filas con URL válida y path nulo que también
 se respaldan.
+
+## Escalar a varias empresas: el freno tiene que ser GLOBAL (diseño, sin implementar)
+
+`MAX_ANALIZANDO` vive dentro del poller de CADA empresa, pero el recurso que
+protege —la cuota y el límite de ritmo de z.AI— es UNO por cuenta: con 18
+sesiones simultáneas z.AI devolvió 464 respuestas 429 (2026-08-03). Con una
+empresa, tope local y global son lo mismo; con dos dejan de serlo, y cincuenta
+facturas subidas a la vez en empresas distintas serían la misma estampida por
+otra puerta.
+
+Diseño acordado el 2026-08-07, para implementarse **cuando la segunda empresa
+se conecte** — no antes:
+
+- El semáforo vive en `qualia_servicio` (la fila por empresa ya existe y todos
+  los pollers ya la escriben): cada poller publica su `en_vuelo` en cada tick
+  y, antes de despertar al contable, suma los `en_vuelo` de las empresas que
+  comparten la misma cuenta de modelo contra un tope global
+  (`MESA_MAX_GLOBAL`). Sin coordinador y sin locks entre procesos: la base ya
+  es el punto de encuentro, y un conteo optimista alcanza — pasarse por 1 en
+  una carrera es inofensivo; la estampida que importa es de decenas.
+- Empresa con llave de z.AI PROPIA (el `.env` por empresa ya lo permite) no
+  entra en la suma: su tope es el local de siempre.
+- La otra mitad del freno es por sesión: `agent.max_turns`
+  (deploy/configurar-modelo.sh). El semáforo evita muchas sesiones a la vez;
+  `max_turns` evita que UNA sesión se coma la ventana entera (pasó: 184
+  llamadas ≈ 5M de entrada ≈ un tercio de la ventana de 5 h).
 
 ## Calibración por instancia (aprendida 2026-08-02, Blackbox)
 
