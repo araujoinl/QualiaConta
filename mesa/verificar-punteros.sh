@@ -268,6 +268,23 @@ for nombre, d in DOCS.items():
         if any(f in nombrados for f in vive):
             lineas_resueltas.add(linea)
             return
+        # El nucleo se INYECTA en todas las sesiones: un puntero hacia el
+        # SKILL.md nunca cuelga, este en el archivo que este.
+        if "SKILL.md" in vive:
+            lineas_resueltas.add(linea)
+            return
+        # Grupos co-servidos: abrir-trabajo.sh entrega estas piezas JUNTAS
+        # (el analisis viaja en dos salidas encadenadas), asi que un puntero
+        # entre ellas siempre encuentra su destino en la misma sesion.
+        # ⚠ Espejo de archivos_de_rama() en scripts/abrir-trabajo.sh: si alla
+        # cambia la composicion de una rama, esto se actualiza a mano.
+        CO_SERVIDOS = [
+            {"rama-facturas-1.md", "comun-asientos.md", "rama-facturas-2.md"},
+        ]
+        for grupo in CO_SERVIDOS:
+            if nombre in grupo and any(f in grupo for f in vive):
+                lineas_resueltas.add(linea)
+                return
 
         colgados.append({
             "archivo": nombre,

@@ -461,32 +461,41 @@ RUTEO_TODAS = "TODAS"
 
 
 def rutear(tipo, estado, voz, docid="", libro="0"):
-    """Qué archivo le toca a esa fila. Devuelve el nombre o RUTEO_TODAS.
+    """Qué DESTINO le toca a esa fila (partición completa, reglas R1-R8).
 
     Reimplementación independiente de la cadena de `abrir-trabajo.sh`: existe
     para que `--verificar-ruteo` compare dos cabezas distintas y no el script
     consigo mismo. Si se toca una, hay que tocar la otra — y el chequeo avisa.
+
+    Devuelve: None (R1/R2, nada que hacer) · "DEGRADE" (tipo/estado
+    desconocido: el router ya no vuelca todo —no cabe en el tope del tool—,
+    da la lista de comandos y no imprime ninguna valla) · "nucleo" (el
+    procedimiento vive en el SKILL.md inyectado) · o el destino con archivos.
     """
-    # Un tipo o un estado que el router no conoce cae al manual, igual que todo
-    # lo demás: en la partición angosta «te mando todo» y «te mando el manual»
-    # son lo mismo, porque el manual ES el original entero.
     if tipo not in TIPOS or estado not in ESTADOS:
-        return "manual.md"
+        return "DEGRADE"
     if estado == "analizando":
-        return None                                  # M1 — la tiene otro turno
+        return None                                  # R1 — la tiene otro turno
     if estado in ("aprobada", "registrada") and libro != "0" and voz != "usuario":
-        return None                                  # M2 — cerrada y con libro
+        return None                                  # R2 — cerrada y con libro
+    if tipo == "caso":
+        return "casos"                               # R3
+    if tipo == "criterio":
+        return "nucleo"                              # R4
     if estado == "registrada" and libro == "0" and voz != "usuario":
-        return "libro.md"                            # M3
+        return "nucleo"                              # R5 — escribir_libro, del núcleo
     if estado == "aprobada" and not docid and voz != "usuario":
-        return "registro.md"                         # M4
-    return "manual.md"                               # M5 — hay contabilidad
+        return "respuestas"                          # R6 — registro trabado
+    if estado == "pendiente":
+        return "facturas-p1"                         # R7 — análisis (parte 1 de 2)
+    return "respuestas"                              # R8 — contestar o corregir
 
 
-# La rama `pendiente` se entrega en tres archivos por mantenibilidad, pero es
-# UNA sola rama: así la definió `archivos_de_rama()` del router y así se aprobó
-# el alcance (SKILL.md 118-774).
-ORDEN_CANONICO = ["manual.md", "libro.md", "registro.md"]
+# El orden canónico de la partición completa; espejo del router (que es la
+# autoridad vía --archivos-de). El análisis viaja en dos salidas: la parte 2
+# NO entra en la grilla del ruteo porque se pide con `parte2`, fuera del ruteo.
+ORDEN_CANONICO = ["rama-facturas-1.md", "comun-asientos.md", "rama-facturas-2.md",
+                  "rama-respuestas.md", "rama-casos.md"]
 
 
 def archivos_de(rama, skill_dir, docid=""):
@@ -923,8 +932,14 @@ def verificar_ruteo(bash, skill_dir):
                         # del router. La lista de archivos ya no lo es: se la
                         # pide al propio router, justamente para que no vuelva a
                         # desincronizarse. Este check cubre la mitad que importa.
-                        archivos_mios = ([] if mio is None
-                                         else archivos_de(mio, Path(router).parent.parent, docid))
+                        # None y DEGRADE no imprimen vallas (veredicto / lista
+                        # de comandos); `nucleo` imprime UNA valla sin archivo.
+                        if mio is None or mio == "DEGRADE":
+                            archivos_mios = []
+                        elif mio == "nucleo":
+                            archivos_mios = ["nucleo"]
+                        else:
+                            archivos_mios = archivos_de(mio, Path(router).parent.parent, docid)
                         probadas += 1
                         if archivos_router != archivos_mios:
                             desacuerdos += 1
