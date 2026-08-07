@@ -37,6 +37,14 @@
 # tenía cómo enterarse de un recurrente que no se parece a los que ya conoce, y
 # un contrato nuevo tarda medio año en poder demostrarlo.
 #
+# Y LOS CORTES SÓLO SE APLICAN UNA VEZ. Un proveedor que ya entró a la caja no
+# se vuelve a juzgar: sale de ahí por el rechazo y por nada más. Son cortes para
+# DESCUBRIR, y usados todos los días se vuelven lo contrario de lo que la caja
+# promete — el proveedor desaparece en silencio en cuanto una factura rara le
+# mueve la estadística, y su última fila se queda congelada diciendo «todavía no
+# facturó» sobre una factura que sí llegó. Claro, 2026-08-06: 20 meses
+# facturando el día 4, afuera por una anulada del 31/07 (dispersión 5,4 → 7,24).
+#
 # El caso que lo pidió: Emprendia Consulting factura la regencia farmacéutica
 # todos los meses por RD$6.490 y falla DOS de los tres cortes — 3 meses de los 6
 # que se piden, y dispersión 9,7 por una factura de febrero (día 9, RD$89.284,70)
@@ -79,6 +87,7 @@ select json_build_object(
                           'prov', coalesce(propuesta->>'proveedor_id', propuesta->>'proveedor'),
                           'periodo', propuesta->>'periodo',
                           'llego', coalesce((propuesta->>'llego')::boolean, false),
+                          'pagada', coalesce((propuesta->>'pagada')::boolean, false),
                           'aldia', (propuesta ? 'monto_tipico')))
                         from qualia_trabajos
                         where empresa_id = '${QUALIA_EMPRESA_ID}'
@@ -120,7 +129,19 @@ periodo = HOY.strftime("%Y-%m")
 # Lo ya emitido de ESTE período, por proveedor. Las corridas viejas indexaban por
 # nombre; se aceptan las dos llaves para no re-emitir sobre lo que ya existe.
 emitidas = {}
+# Todos los que ALGUNA VEZ entraron a la caja, de cualquier período. Los tres
+# cortes de abajo existen para DESCUBRIR un patrón donde nadie lo declaró, y
+# sobre uno que ya está en la caja no tienen nada que decidir: eso ya se decidió.
+# Volver a juzgarlo cada día lo hace desaparecer en silencio en cuanto una
+# factura rara le mueve la estadística, y encima deja su última fila congelada
+# mintiendo —la caja no dice «dejé de mirar a éste», dice «todavía no facturó»—.
+# Pasó el 2026-08-06 con Claro: 20 meses facturando el día 4 y salió de la caja
+# porque una factura anulada del 31/07 le subió la dispersión de 5,4 a 7,24.
+# De la caja se sale por UNA sola puerta, que es el rechazo tuyo.
+conocidos = set()
 for e in (estado.get("emitidas") or []):
+    if e.get("prov"):
+        conocidos.add(e["prov"])
     if e.get("periodo") == periodo and e.get("prov"):
         emitidas[e["prov"]] = e
 
@@ -181,15 +202,19 @@ for prov, fs in facturas.items():
     if prov in rechazados or nombre in rechazados:
         continue                                   # dijiste que no. Nunca más.
     vigilado = prov in vigilados
+    # Ya está en la caja: entró alguna vez y no lo rechazaste. Vale lo mismo que
+    # el alta a mano —los dos son «este proveedor va acá, ya se sabe»— y por eso
+    # se saltea los tres cortes igual que el vigilado.
+    conocido = prov in conocidos or nombre in conocidos
     meses = sorted({f["fecha"][:7] for f in fs})
     dias = [int(f["fecha"][8:10]) for f in fs]
     dispersion = statistics.pstdev(dias) if len(dias) > 1 else 0.0
 
     # Los tres cortes existen para DESCUBRIR un patrón donde nadie lo declaró.
-    # Sobre un proveedor que pusiste vos en la lista no tienen nada que decidir:
-    # ya dijiste que es recurrente. Se saltean los tres y no sólo el de meses,
-    # porque el caso que motivó todo esto falla dos.
-    if not vigilado:
+    # Sobre un proveedor que pusiste vos en la lista, o que ya está en la caja,
+    # no tienen nada que decidir: eso ya se decidió. Se saltean los tres y no
+    # sólo el de meses, porque el caso que motivó todo esto falla dos.
+    if not vigilado and not conocido:
         if len(meses) < MESES_MINIMOS:
             continue
         if len(fs) / len(meses) > MAX_POR_MES:
