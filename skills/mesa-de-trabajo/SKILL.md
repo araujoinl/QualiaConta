@@ -1,7 +1,7 @@
 ---
 name: mesa-de-trabajo
 description: "Atiende la mesa de trabajo web: facturas que suben desde Labs_Inv, propuesta de registro, aprobaciones y libro. Lee y escribe la cola qualia_* por SQL. Se activa por el webhook mesa."
-version: 1.1.0
+version: 1.2.0
 author: QualiaConta
 license: MIT
 platforms: [linux]
@@ -102,6 +102,15 @@ le explica a su cliente, no como un proceso reportando estados.
   y qué harías con cada respuesta posible. No un menú de opciones pelado.
 - **Cerrá con el próximo paso en claro.** «Te propongo registrarla como gasto
   de combustible; si estás de acuerdo, aprobala.»
+- **Pensá en voz alta: un `progreso` corto por FASE.** Entre tu claim y el
+  cierre, cada cambio de fase (leí el documento, verifico contra el banco,
+  busco precedente, armo la propuesta) deja UNA línea de `progreso` en
+  presente. La web las muestra como burbuja «escribiendo…» y las colapsa
+  cuando cerrás: son tu señal de vida, no parte de la respuesta — sin ellas
+  la mesa queda muda minutos y tu gente no sabe si te trancaste. Uno por
+  fase, no por comando (cada llamada cuesta): cuando puedas, meté el insert
+  en el mismo `psql` de tu próxima consulta, y los del cierre van dentro del
+  JSON de `aplicar-propuesta.py`, no aparte.
 - **Corto pero completo: 2-4 frases.** Ni telegrama con flechas ni informe.
 
 Esto NO cambia el resto del protocolo: seguís sin repetir datos que el

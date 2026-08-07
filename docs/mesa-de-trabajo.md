@@ -166,6 +166,28 @@ Regla clave: **toda acción del usuario en la web inserta un evento con
 aprobar/rechazar). El poller vigila esos eventos para despertar al contable;
 sin evento, no hay despertar.
 
+### El chat fantasma: los `progreso` mientras el contable trabaja
+
+Los eventos `progreso` con `autor=contable` que caen entre el claim (fila en
+`analizando`) y el cierre del turno son el contable **pensando en voz alta**.
+No son parte de la respuesta: son la señal de que se está moviendo. Convención
+para la web:
+
+- **Mientras la fila está en `analizando`**, esos `progreso` se pintan como
+  burbuja fantasma — atenuada, con indicador de "escribiendo…" — encima del
+  hilo normal.
+- **Cuando el turno cierra** (la fila sale de `analizando` hacia `propuesta`,
+  `esperando_respuesta` o `error`), la burbuja se colapsa y queda solo la
+  respuesta. Los `progreso` del turno quedan accesibles tras un "ver detalle";
+  **las filas jamás se borran** — el hilo sigue siendo la historia completa.
+- **Tranque visible**: si la fila sigue en `analizando` y el último evento del
+  contable tiene más de ~10 minutos, la web lo marca como posible tranque en
+  vez de seguir mostrando "escribiendo…".
+
+La pieza web (burbuja, colapso, detector de tranque) vive en Labs_Inv
+(`QualiaContaTab.jsx`). Del lado del contable, la cadencia la fija la skill:
+un `progreso` corto por fase, nunca una fase larga en silencio.
+
 ## qualia_libro
 
 Espejo consultable del libro de acción para la vista web. **El archivo en git
