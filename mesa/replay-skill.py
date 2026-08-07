@@ -461,44 +461,32 @@ RUTEO_TODAS = "TODAS"
 
 
 def rutear(tipo, estado, voz, docid="", libro="0"):
-    """Qué rama le toca a esa fila. Devuelve el nombre del archivo o RUTEO_TODAS."""
-    if tipo not in TIPOS:
-        return RUTEO_TODAS
-    if tipo == "caso":
-        return "rama-caso.md"                       # R1
-    if tipo == "criterio":
-        return "rama-criterio.md"                   # R2
-    if estado not in ESTADOS:
-        return RUTEO_TODAS
+    """Qué archivo le toca a esa fila. Devuelve el nombre o RUTEO_TODAS.
+
+    Reimplementación independiente de la cadena de `abrir-trabajo.sh`: existe
+    para que `--verificar-ruteo` compare dos cabezas distintas y no el script
+    consigo mismo. Si se toca una, hay que tocar la otra — y el chequeo avisa.
+    """
+    # Un tipo o un estado que el router no conoce cae al manual, igual que todo
+    # lo demás: en la partición angosta «te mando todo» y «te mando el manual»
+    # son lo mismo, porque el manual ES el original entero.
+    if tipo not in TIPOS or estado not in ESTADOS:
+        return "manual.md"
     if estado == "analizando":
-        return None                                 # R3 — nada que hacer
-    if estado == "pendiente" and voz == "usuario":
-        return "rama-accion-usuario.md"             # R4
-    if estado == "pendiente":
-        return "rama-pendiente.md"                  # R5
-    if estado == "aprobada" and not docid:
-        return "rama-registro-pendiente.md"         # R6
-    if estado == "registrada" and libro == "0":
-        return "rama-escribir-libro.md"             # R7
-    if estado == "aprobada" and docid and libro == "0":
-        return "rama-escribir-libro.md"             # R8
-    if estado in ("propuesta", "esperando_respuesta", "rechazada", "error"):
-        return "rama-accion-usuario.md"             # R9
-    if estado in ("aprobada", "registrada") and voz == "usuario":
-        return "rama-accion-usuario.md"             # R10
-    if estado in ("aprobada", "registrada"):
-        return None                                 # R11 — nada que hacer
-    return RUTEO_TODAS
+        return None                                  # M1 — la tiene otro turno
+    if estado in ("aprobada", "registrada") and libro != "0" and voz != "usuario":
+        return None                                  # M2 — cerrada y con libro
+    if estado == "registrada" and libro == "0" and voz != "usuario":
+        return "libro.md"                            # M3
+    if estado == "aprobada" and not docid and voz != "usuario":
+        return "registro.md"                         # M4
+    return "manual.md"                               # M5 — hay contabilidad
 
 
 # La rama `pendiente` se entrega en tres archivos por mantenibilidad, pero es
 # UNA sola rama: así la definió `archivos_de_rama()` del router y así se aprobó
 # el alcance (SKILL.md 118-774).
-ORDEN_CANONICO = [
-    "rama-pendiente.md", "ref-registro-adm.md", "ref-clasificacion.md",
-    "rama-accion-usuario.md", "rama-escribir-libro.md", "rama-registro-pendiente.md",
-    "rama-criterio.md", "rama-caso.md",
-]
+ORDEN_CANONICO = ["manual.md", "libro.md", "registro.md"]
 
 
 def archivos_de(rama, skill_dir, docid=""):

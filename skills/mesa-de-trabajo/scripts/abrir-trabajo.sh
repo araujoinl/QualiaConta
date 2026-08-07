@@ -45,7 +45,8 @@
 # ─────────────────────────────── CONTRATO ───────────────────────────────
 #
 # Uso:  bash abrir-trabajo.sh <trabajo_id> [motivo]
-#       bash abrir-trabajo.sh --dump-ramas     (candado de la partición, sin base)
+#       bash abrir-trabajo.sh --dump-ramas     (vuelca los tres archivos, sin base)
+#       bash abrir-trabajo.sh --archivos-de <archivo.md>   (la tabla, para afuera)
 #
 # READ-ONLY PURO: cero insert, cero update, cero archivos. En particular NO hace
 # el claim `pendiente -> analizando`: ese candado sigue siendo del agente y vive
@@ -97,86 +98,30 @@ EV_MAX="${MESA_EVENTO_MAX_CHARS:-800}"
 [[ "$PROP_MAX" =~ ^[0-9]+$ ]] || { grito "MESA_PROPUESTA_MAX_BYTES no es un entero; uso 4000"; PROP_MAX=4000; }
 [[ "$EV_MAX"  =~ ^[0-9]+$ ]] || { grito "MESA_EVENTO_MAX_CHARS no es un entero; uso 800";     EV_MAX=800; }
 
-# ORDEN CANÓNICO = el orden en que estas secciones arrancaban en el SKILL.md
-# viejo (el número es la línea de su primera línea de contenido en
-# `git show <commit-de-la-particion>^:skills/mesa-de-trabajo/SKILL.md`).
-# `--dump-ramas` las concatena en este orden: es el candado de la partición.
-# Si el diff contra el archivo viejo no cierra, lo PRIMERO que hay que mirar es
-# el orden de este array.
+# Los TRES archivos de la partición. `manual.md` es el SKILL.md viejo entero,
+# byte por byte: es lo que recibe cualquier turno con contabilidad adentro, o
+# sea que para ellos NADA cambió. `libro.md` y `registro.md` son extractos
+# verbatim del mismo manual para los dos trabajos que son puramente mecánicos.
+#
+# La partición es ANGOSTA a propósito. La versión ancha —seis ramas, una por
+# situación— se probó y se descartó: tres pasadas de revisión hallaron 3, 6 y 6
+# reglas que seguían escritas pero en el archivo que ese turno no recibe, y tres
+# de las últimas seis las creó la ronda de arreglos anterior. El corte paga
+# donde el trabajo es mecánico (un procedimiento autocontenido) y pelea donde es
+# contable (un análisis usa todo el manual). Acá sólo se corta lo primero.
 ORDEN_CANONICO=(
-  rama-pendiente.md            # SKILL.md viejo, línea 118
-  ref-clasificacion.md         # SKILL.md viejo, línea 234
-  rama-accion-usuario.md       # SKILL.md viejo, línea 775
-  ref-registro-adm.md          # SKILL.md viejo, línea 800
-  rama-escribir-libro.md       # SKILL.md viejo, línea 1148
-  rama-registro-pendiente.md   # SKILL.md viejo, línea 1178
-  rama-criterio.md             # SKILL.md viejo, línea 1222
-  rama-caso.md                 # SKILL.md viejo, línea 1264
+  manual.md
+  libro.md
+  registro.md
 )
 
-# Qué archivos componen cada rama. Los dos `ref-*` NO son ramas: son
-# procedimientos que DOS ramas distintas necesitan, y por eso viven aparte —
-# duplicarlos en las dos sería tener dos copias que derivan (decisión #6 de la
-# partición). El router los entrega junto con su rama, así que el agente nunca
-# gasta un turno en `cat`: quién los necesita lo dice la prosa de cada rama.
-#   ref-clasificacion.md ......... la piden `pendiente`, `caso` y `accion_usuario`
-#                                  mientras la fila no tenga DocID (ver abajo)
-#   ref-registro-adm.md .......... la piden `accion_usuario` y `registro_pendiente`
-# La rama va SIEMPRE primero y el ref después: el ref es el procedimiento al que
-# la rama delega, y cada archivo va con su propia valla que lo nombra.
-#
-# Por qué `accion_usuario` mira el DocID: cuando el humano corrige algo, el
-# contable no sólo contesta — muchas veces reescribe la propuesta entera. Y el
-# contrato de la propuesta (el `tipo_gasto` obligatorio, el cuadre bajo 0,05 y
-# sobre todo «que sume NO alcanza», que es la regla que nació de registrar la
-# FP00001120 con una tasa de ITBIS que el papel nunca dijo) vive en
-# ref-clasificacion.md. Sin ese archivo, el turno que MÁS se revisa —una
-# propuesta ya corregida es la que menos se mira al aprobar— la reescribiría a
-# ciegas. El corte es el DocID y no el tipo de evento: una corrección llega
-# igual como `nota` que como `respuesta` (223 contra 19 en la historia), así que
-# mirar el tipo dejaría fuera el caso más común. Con DocID ya no hay propuesta
-# que rehacer: ese camino va al libro.
+# Qué archivos componen cada destino. En la partición angosta, uno solo: cada
+# archivo se basta a sí mismo y trae su propio prólogo (protocolo, tono y la
+# REGLA DURA de no inventar números). No hay refs compartidos que entregar —
+# eran justamente los que generaban punteros de un archivo a otro que después se
+# contradecían entre sí.
 archivos_de_rama() {
-  case "$1" in
-    rama-pendiente.md)          printf '%s\n' rama-pendiente.md          ref-clasificacion.md ;;
-    rama-caso.md)               printf '%s\n' rama-caso.md               ref-clasificacion.md ;;
-    # El criterio se lleva también «el humano actuó»: su rama cubre `aprobada` y
-    # `rechazada`, pero `poller.sh` lo despierta ante CUALQUIER evento de usuario
-    # y en cualquier estado (línea 657, incondicional). Un criterio en
-    # `propuesta` o `esperando_respuesta` sobre el que alguien comenta sin
-    # decidir llegaba sin claim, sin cómo contestar y sin a qué estado moverlo.
-    # Es la rama que nadie probó nunca —cero filas `tipo='criterio'` en la
-    # base— y son 2.576 tokens sobre el 0% de las llamadas de hoy.
-    rama-criterio.md)           printf '%s\n' rama-criterio.md           rama-accion-usuario.md ;;
-    rama-accion-usuario.md)
-      # Esta rama NUNCA registra en ADM, y por eso NO se lleva ref-registro-adm.md
-      # (12 KB en el 34,7% de las llamadas, sin cubrir un solo riesgo). Se
-      # verifica en la cadena de arriba: una fila `aprobada` sin DocID la agarra
-      # R6 antes, y las que llegan acá por R9 —propuesta, esperando_respuesta,
-      # rechazada, error— no tienen nada que registrar. Los tokens que eso
-      # libera son justamente los que paga el archivo de abajo.
-      #
-      # SIN DocID va TAMBIÉN la rama de análisis, y no es por generosidad: ese
-      # turno REHACE la propuesta. De las 19 correcciones reales del corpus, 10
-      # son «corregiste lo que viste» —«leíste mal el NCF», «el importe es
-      # 750.00»—, o sea que hay que volver a extraer, re-verificar contra DGII y
-      # rearmar los renglones. Es un análisis con contexto extra, no una
-      # respuesta. Enumerar las reglas sueltas que le faltaban (las tasas, el
-      # kit de DGII, la fecha de emisión, el duplicado por NCF) arregla las que
-      # alguien alcanzó a listar y deja afuera las que no; darle el
-      # procedimiento entero cierra la clase.
-      # CON DocID: no hay propuesta que rehacer, y su propio texto manda a lo
-      # que dice la rama del libro. Antes ese puntero apuntaba a un archivo que
-      # el router no entregaba, mientras el núcleo le prohibía abrirlo: una
-      # orden y su contraorden.
-      if [ -z "${DOCID:-}" ]; then
-        printf '%s\n' rama-accion-usuario.md rama-pendiente.md ref-clasificacion.md
-      else
-        printf '%s\n' rama-accion-usuario.md rama-escribir-libro.md
-      fi ;;
-    rama-registro-pendiente.md) printf '%s\n' rama-registro-pendiente.md ref-registro-adm.md ;;
-    *) printf '%s\n' "$1" ;;
-  esac
+  printf '%s\n' "$1"
 }
 
 usable() { [ -f "$1" ] && [ -r "$1" ] && [ -s "$1" ]; }
@@ -190,23 +135,17 @@ usable() { [ -f "$1" ] && [ -r "$1" ] && [ -s "$1" ]; }
 # refs—, así que medía payloads que en producción no existen.
 # El DocID se pasa por entorno (DOCID=...), igual que lo tiene el ruteo normal.
 if [ "${1:-}" = "--archivos-de" ]; then
-  [ -n "${2:-}" ] || { echo "uso: abrir-trabajo.sh --archivos-de <rama.md|TODAS>" >&2; exit 2; }
-  if [ "$2" = "TODAS" ]; then
-    # El degrade también se pregunta acá: el ORDEN importa —es el orden en que
-    # el agente va a leer— y tenerlo copiado afuera ya produjo 132 falsos
-    # desacuerdos en el arnés, con el mismo conjunto de archivos barajado.
-    printf '%s\n' "${ORDEN_CANONICO[@]}"
-  else
-    archivos_de_rama "$2"
-  fi
+  [ -n "${2:-}" ] || { echo "uso: abrir-trabajo.sh --archivos-de <archivo.md>" >&2; exit 2; }
+  archivos_de_rama "$2"
   exit 0
 fi
 
-# ─────────────────────── --dump-ramas: el candado ───────────────────────
-# Vuelca las ramas concatenadas en orden canónico, SIN cabecera, SIN vallas y
-# SIN tocar la base. Es contra esta salida que se hace el diff byte a byte con
-# el SKILL.md viejo menos los bloques promovidos al núcleo: el mismo script que
-# rutea es el que prueba la partición.
+# ─────────────────────── --dump-ramas ───────────────────────
+# Vuelca los tres archivos, SIN cabecera, SIN vallas y SIN tocar la base. Sirve
+# para mirar de un saque qué está publicado. El candado de la partición NO se
+# hace contra esta salida: lo hace `mesa/verificar-corte.sh`, que alinea cada
+# archivo contra el SKILL.md viejo — `manual.md` tiene que ser el original byte
+# por byte, y los dos extractos, tramos verbatim de él.
 if [ "${1:-}" = "--dump-ramas" ]; then
   faltan=0
   for a in "${ORDEN_CANONICO[@]}"; do
@@ -404,60 +343,50 @@ RAMA=""; REGLA=""; VEREDICTO=""; RAZON_DEGRADE=""
 TIPOS_OK=" factura sugerencia criterio caso "
 ESTADOS_OK=" pendiente analizando propuesta esperando_respuesta aprobada rechazada registrada error "
 
+# Las reglas se evalúan EN ORDEN; la primera que matchea gana. Son pocas y el
+# default es el manual entero: acá el riesgo NO es simétrico. Mandar el manual a
+# un trabajo mecánico cuesta tokens; mandar un extracto a un trabajo contable
+# cuesta un asiento mal hecho en ADM. Ante cualquier duda, manual.
 if [[ "$TIPOS_OK" != *" $TIPO "* ]]; then
-  RAZON_DEGRADE="tipo desconocido: '$TIPO'"
-
-# R1 y R2 van primero y son INCONDICIONALES: ni siquiera miran el estado. Eso
-# resuelve estructuralmente el cruce del viejo SKILL.md:1019 —«esta rama NO
-# aplica si el trabajo es tipo criterio»—: un criterio no ve jamás la rama de
-# accion_usuario, porque el corte por tipo lo hace el router y no la prosa. Y un
-# criterio nace ya en 'propuesta', así que nunca cae en 'pendiente'.
-elif [ "$TIPO" = "caso" ]; then
-  RAMA="rama-caso.md";     REGLA="R1 — es un caso, y el caso tiene su propio hilo"
-elif [ "$TIPO" = "criterio" ]; then
-  RAMA="rama-criterio.md"; REGLA="R2 — es un criterio: una regla, no un documento"
-
+  RAZON_DEGRADE="tipo desconocido: '$TIPO'"; RAMA="manual.md"
 elif [[ "$ESTADOS_OK" != *" $ESTADO "* ]]; then
-  RAZON_DEGRADE="estado desconocido: '$ESTADO'"
+  RAZON_DEGRADE="estado desconocido: '$ESTADO'"; RAMA="manual.md"
 
-# R3: este script corre ANTES del claim, así que ver 'analizando' significa que
-# otro turno tiene la fila. Mandarle 12k tokens de rama para que después el
-# claim le falle es exactamente el gasto que este script existe para eliminar.
+# M1: este script corre ANTES del claim, así que ver 'analizando' significa que
+# otro turno tiene la fila. Mandarle un manual entero para que después el claim
+# le falle es justo el gasto que este script existe para eliminar.
 elif [ "$ESTADO" = "analizando" ]; then
-  REGLA="R3 — la fila está reservada por otro turno"
+  REGLA="M1 — la fila está reservada por otro turno"
   VEREDICTO="Esta fila está en 'analizando': otro turno la tiene. No repitas nada, no
 escribas nada. Si ese turno murió, el poller la libera a los 20 minutos y volvés
 a despertar."
 
-# R4 vs R5 es el «Paso 0» hecho mecánicamente. La excepción forzar_relectura no
-# es opcional: el poller deja pasar ese evento como trabajo_nuevo a propósito,
-# porque pedir que se relea el documento es lo único que necesita al preparador.
-elif [ "$ESTADO" = "pendiente" ] && [ "$ULTIMA_VOZ" = "usuario" ] && [ "$ULTIMO_FORZAR" != "true" ]; then
-  RAMA="rama-accion-usuario.md";     REGLA="R4 — el hilo ya tiene voz del humano: no es un análisis nuevo"
-elif [ "$ESTADO" = "pendiente" ]; then
-  RAMA="rama-pendiente.md";          REGLA="R5 — pendiente sin voz del humano: analizalo"
-
-elif [ "$ESTADO" = "aprobada" ] && [ -z "$DOCID" ]; then
-  RAMA="rama-registro-pendiente.md"; REGLA="R6 — aprobada y todavía sin DocID en ADM"
-
-# R7 NO exige docid: 'registrada' sin docid es un estado real y su propia rama
-# lo cubre («si el registro_adm.docid no está, no inventes la entrada»).
-elif [ "$ESTADO" = "registrada" ] && [ "$LIBRO_N" = "0" ]; then
-  RAMA="rama-escribir-libro.md";     REGLA="R7 — registrada y sin entrada en el libro"
-elif [ "$ESTADO" = "aprobada" ] && [ -n "$DOCID" ] && [ "$LIBRO_N" = "0" ]; then
-  RAMA="rama-escribir-libro.md";     REGLA="R8 — aprobada con DocID y sin entrada en el libro"
-
-elif [ "$ESTADO" = "propuesta" ] || [ "$ESTADO" = "esperando_respuesta" ] \
-  || [ "$ESTADO" = "rechazada" ] || [ "$ESTADO" = "error" ]; then
-  RAMA="rama-accion-usuario.md";     REGLA="R9 — la pelota está del lado del humano ($ESTADO)"
-elif { [ "$ESTADO" = "aprobada" ] || [ "$ESTADO" = "registrada" ]; } && [ "$ULTIMA_VOZ" = "usuario" ]; then
-  RAMA="rama-accion-usuario.md";     REGLA="R10 — cerrada y con libro, pero el humano volvió a hablar"
-elif [ "$ESTADO" = "aprobada" ] || [ "$ESTADO" = "registrada" ]; then
-  REGLA="R11 — cerrada, registrada y con su libro escrito"
+# M2: cerrada, registrada y con su libro escrito. No hay trabajo.
+elif { [ "$ESTADO" = "aprobada" ] || [ "$ESTADO" = "registrada" ]; } \
+  && [ "$LIBRO_N" != "0" ] && [ "$ULTIMA_VOZ" != "usuario" ]; then
+  REGLA="M2 — cerrada, registrada y con su libro escrito"
   VEREDICTO="Ya está registrada en ADM y su entrada de libro ya existe. No dupliques el
 libro. Nada que hacer."
+
+# M3 y M4 son los DOS únicos atajos, y los dos exigen que el humano no haya
+# hablado: si habló, hay que contestarle, y contestar no es mecánico.
+#
+# M3 pide `registrada` y no acepta `aprobada`+docid, aunque el poller también
+# despierte por ésa. El motivo es del texto, no del router: el extracto abre
+# diciendo «la fila ya está en registrada» y ordena «no cambies el estado», y el
+# UPDATE que cierra la fila —con su trampa de no tocar `updated_at`, que sin
+# grant mata el UPDATE entero— vive en el bloque de registro. Una fila
+# `aprobada`+docid+sin libro no la mira ningún barrido del poller: se queda ahí
+# para siempre. Va al manual.
+elif [ "$ESTADO" = "registrada" ] && [ "$LIBRO_N" = "0" ] && [ "$ULTIMA_VOZ" != "usuario" ]; then
+  RAMA="libro.md";    REGLA="M3 — registrada, sin libro y sin voz del humano"
+elif [ "$ESTADO" = "aprobada" ] && [ -z "$DOCID" ] && [ "$ULTIMA_VOZ" != "usuario" ]; then
+  RAMA="registro.md"; REGLA="M4 — aprobada, sin DocID y sin voz del humano"
+
+# M5: TODO lo demás —analizar, corregir, un caso, un criterio, un estado raro—
+# recibe el manual completo. Para esos turnos nada cambió respecto de hoy.
 else
-  RAZON_DEGRADE="ninguna regla matcheó"   # cinturón: no debería pasar nunca
+  RAMA="manual.md";   REGLA="M5 — hay contabilidad de por medio: manual completo"
 fi
 
 # El archivo de la rama tiene que existir DE VERDAD. Éste es el degrade que va a
@@ -465,7 +394,7 @@ fi
 # cabecera y sin procedimiento, y ese fallo sería silencioso.
 if [ -n "$RAMA" ]; then
   while read -r a; do
-    usable "$RAMAS_DIR/$a" || { RAZON_DEGRADE="falta o está vacío $a"; RAMA=""; break; }
+    usable "$RAMAS_DIR/$a" || { RAZON_DEGRADE="falta o está vacío $a"; RAMA="manual.md"; break; }
   done < <(archivos_de_rama "$RAMA")
 fi
 
@@ -563,7 +492,7 @@ if [ -n "$RAMA" ]; then
 elif [ -n "$VEREDICTO" ]; then
   printf 'rama       : NINGUNA — no hay nada que hacer   [regla %s]\n' "$REGLA"
 else
-  printf 'rama       : NO PUDE DECIDIR — te mando todas   [%s]\n' "$RAZON_DEGRADE"
+  printf 'rama       : NO PUDE DECIDIR — te mando el manual entero   [%s]\n' "$RAZON_DEGRADE"
 fi
 printf 'dossier    : %s  %s\n' "$DOSSIER" "$DOS_ESTADO"
 printf '             (%s)\n' "$DOS_NOTA"
@@ -644,11 +573,12 @@ if [ -n "$RAMA" ]; then
 fi
 
 # ═══════════════════════ El degrade ═══════════════════════
-# O una rama, o todas. Nunca medio cerebro: un agente con la mitad del
+# Acá sólo se llega si ni siquiera `manual.md` está en su lugar, porque toda la
+# cadena de arriba cae en él. Nunca medio cerebro: un agente con la mitad del
 # procedimiento trabaja convencido sobre reglas que no aplican.
 grito "NO PUDE DECIDIR LA RAMA (tipo='$TIPO' estado='$ESTADO' motivo='${MOTIVO:-}' trabajo=${ID:0:8}): $RAZON_DEGRADE."
-grito "Mando todas las ramas completas: el agente trabaja igual, pero esto es"
-grito "un bug del router y cuesta ~26.600 tokens cada vez. Arreglalo."
+grito "Mando lo que haya: el agente trabaja igual, pero esto es un bug de la"
+grito "publicación —falta un archivo de references/— y hay que arreglarlo."
 
 impresas=0
 for a in "${ORDEN_CANONICO[@]}"; do

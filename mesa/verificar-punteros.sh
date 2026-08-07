@@ -61,14 +61,17 @@ ESTRICTO = sys.argv[2] == "1"
 SKILL = os.path.join(DIR, "SKILL.md")
 ARCHIVOS = [SKILL] + sorted(glob.glob(os.path.join(DIR, "references", "*.md")))
 
-# Los cuatro motivos que manda el poller. Cada uno tiene su rama: nombrar un
-# motivo con un verbo de «anda a leer» es mandar al lector a otro archivo.
-RAMA_POR_MOTIVO = {
-    "escribir_libro": "rama-escribir-libro.md",
-    "accion_usuario": "rama-accion-usuario.md",
-    "registro_pendiente": "rama-registro-pendiente.md",
-    "trabajo_nuevo": "rama-pendiente.md",
-}
+# En la particion ANGOSTA los cuatro motivos del poller ya no son cuatro
+# archivos: `manual.md` los tiene a los cuatro adentro. Nombrar un motivo dejo
+# de ser mandar al lector a otro lado.
+RAMA_POR_MOTIVO = {}
+
+# Archivos que son EXTRACTOS verbatim de manual.md. Sus punteros hacia afuera no
+# cuelgan: el manual entero esta a un `cat` y su propio encabezado lo dice. Sin
+# esto el candado marcaria como colgado cada «ver la seccion X» que el extracto
+# heredo del original, que es texto que nadie escribio para vivir suelto.
+EXTRACTOS = ("libro.md", "registro.md")
+ESCAPE = "references/manual.md"
 
 MIN_SUBCADENA = 12  # bajo esto solo vale la igualdad exacta: «el tuyo» no es una seccion
 
@@ -183,8 +186,24 @@ def archivos_nombrados(ctx, propio):
         nombrados.add("SKILL.md")
     if re.search(r"est[e|a] mismo archivo", ctx, re.I):
         nombrados.add(propio)
+    # Un extracto declara su escape UNA vez, en su encabezado, y con eso alcanza
+    # para todos sus punteros: lo que no este en el extracto esta en el manual,
+    # que es el original entero y esta a un `cat`. Exigirle a cada renglon
+    # heredado que se auto-explique seria pedirle al texto viejo que sepa que lo
+    # extrajeron.
+    if propio in EXTRACTOS and ESCAPE in CABECERAS.get(propio, ""):
+        nombrados.add(ESCAPE)
+        nombrados.add(os.path.basename(ESCAPE))   # `vive` habla en basenames
+        nombrados.add(propio)
     return nombrados
 
+
+# Encabezado de cada archivo (su H1 y lo que lo sigue hasta el primer H2): ahi
+# es donde un extracto declara de donde salio y a que archivo caer.
+CABECERAS = {}
+for _p in ARCHIVOS:
+    _txt = open(_p, encoding="utf-8").read().split("\n## ")[0]
+    CABECERAS[os.path.basename(_p)] = _txt
 
 colgados = []
 revisar = []
@@ -292,6 +311,10 @@ for nombre, d in DOCS.items():
         if ignorable(m.start()):
             continue
         motivo = m.group(1)
+        # En la particion angosta ningun motivo tiene archivo propio: los cuatro
+        # viven dentro de manual.md, asi que nombrarlos no manda a ningun lado.
+        if motivo not in RAMA_POR_MOTIVO:
+            continue
         destino = RAMA_POR_MOTIVO[motivo]
         linea = d.linea_de(m.start())
         ctx = d.contexto(m.start(), m.end())
