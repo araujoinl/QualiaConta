@@ -52,9 +52,18 @@ import urllib.request
 
 BASE = "https://api.admcloud.net"
 
-# Los cuatro documentos que la mesa sabe registrar. El endpoint es el mismo
-# nombre que `propuesta.documento_adm`, que es lo que escribe el contable.
-ENDPOINTS = {"VendorBills", "BankCharges", "BankBankTransfers", "Journals"}
+# Los documentos que la mesa sabe registrar. El endpoint es el mismo nombre que
+# `propuesta.documento_adm`, que es lo que escribe el contable.
+#
+# `VendorCreditNotes` NO es decorativo: sin el, la nota de credito de un
+# proveedor cae al `indeterminado` de «tipo de documento desconocido» y no se
+# verifica NUNCA, ni viva ni muerta. Y con `documento_adm` mintiendo —diciendo
+# `VendorBills` sobre una NCP, que es como nacio la primera— es peor todavia:
+# `GET /api/VendorBills/{uuid-de-la-NCP}` contesta `success:true, data:null`,
+# indistinguible de un documento borrado, y este script le pone lapida a algo
+# que esta vivo. Probado contra la NCP00000006 el 2026-08-07.
+ENDPOINTS = {"VendorBills", "VendorCreditNotes", "BankCharges",
+             "BankBankTransfers", "Journals"}
 
 
 def env(n):

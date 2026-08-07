@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Registra en ADM Cloud una factura de proveedor ya aprobada en la mesa.
+"""Registra en ADM Cloud un documento de proveedor ya aprobado en la mesa.
+
+Son DOS: la factura (`VendorBills`, prefijo FP) y la nota de credito con la que
+el proveedor corrige una factura suya (`VendorCreditNotes`, prefijo NCP). Es el
+mismo papel entregado por el mismo tercero, asi que comparten proveedor,
+cuentas, cuadre y adjunto; lo que cambia es el endpoint, tres campos del payload
+y el signo. Ver es_nota_credito() y normalizar_nota_credito().
 
 Existe como ARCHIVO por la misma razon que buscar-precedente.py: el guardian de
 comandos de Hermes marca el flag `-c` de cualquier interprete y consulta a un
@@ -22,6 +28,10 @@ errores caros. Todas estan medidas en produccion:
   - Los filtros ?Reference= y ?DocID= mienten: se pagina y se filtra local.
   - No hay clave de idempotencia: ante timeout NO se reintenta.
   - ADM frena duplicados por NCF y por Reference, pero sirve avisar antes.
+  - Una nota de credito va con los precios POSITIVOS. ADM invierte el asiento
+    solo: acredita los gastos y el ITBIS, y debita Cuentas por Pagar. Mandarle
+    precios negativos a `VendorBills` no es un atajo — es otro documento y otra
+    secuencia fiscal.
 
 Uso:
     registrar-en-adm.py --trabajo <uuid>            # registra
@@ -63,7 +73,13 @@ TAX_SCHEDULES = {
 
 def resolver_tasa_linea(itbis, cantidad, precio):
     """Dado el ITBIS y la base de una linea, devuelve (TaxScheduleID, TaxPercent).
-    Si itbis<=0 -> exento. Si la tasa no calza con un schedule conocido, morir."""
+    Si itbis<=0 -> exento. Si la tasa no calza con un schedule conocido, morir.
+
+    El `<= 0` sigue siendo `<= 0` y no `== 0` a proposito. Una nota de credito
+    llega con todo en negativo, pero se endereza en la puerta
+    (normalizar_nota_credito), asi que aca abajo un negativo ya no es una nota
+    de credito: es una linea mal capturada, y tratarla como exenta es el
+    degradado correcto — no despejarle una tasa dividiendo dos negativos."""
     itbis = float(itbis or 0)
     if itbis <= 0:
         return (None, 0.0)
@@ -365,7 +381,87 @@ def asegurar_proveedor(p, simular):
     return d["data"], termino
 
 
-# ------------------------------------------------------------------ factura
+# ------------------------------------------------------- nota de credito
+def es_nota_credito(p):
+    """True si el papel es la nota de credito de un proveedor (e-NCF tipo 34).
+
+    OJO CON EL ALCANCE, que es todo el asunto: esto NO dice «un E34 es una nota
+    de credito». Dice «DENTRO de la familia proveedor, un E34 es la nota de
+    credito de esa familia». El rol del hecho ya lo eligio la skill —a este
+    script solo llega lo que gano la pregunta 4 del router, «un tercero te
+    entregó un documento»— y aca abajo el tipo fiscal solo elige el documento
+    dentro de ese rol.
+
+    La diferencia no es teorica y tiene contraejemplo vivo: el E340000187146 es
+    la nota de credito con la que el banco devuelve el impuesto 2x1000 que el
+    mismo cobro. Nace en el estado de cuenta, gana la pregunta 1 y es un
+    `BankCharges` con `direccion: credito`. Subir esta regla al poller o
+    enunciarla como «^E34 -> VendorCreditNotes» se lo lleva puesto.
+
+    Y por eso mismo NO se mira `documento_adm`: en la NC de Claro del 2026-08-07
+    el modelo escribio ahi «VendorBills» y mando los montos en negativo, o sea
+    justo el camino equivocado. El NCF es un hecho fiscal; el campo es una
+    opinion."""
+    return bool(re.match(r"^\s*E34", str(p.get("ncf") or ""), re.I))
+
+
+def normalizar_nota_credito(p):
+    """Devuelve la propuesta con los montos en POSITIVO, que es como ADM quiere
+    una nota de credito: el asiento lo invierte el propio ADM.
+
+    Se endereza UNA vez y en la puerta, y de ahi para abajo nadie mas se entera
+    de que existen las notas de credito. No es cosmetica: con el total en
+    negativo, `cuadre.cuadrar_items()` corta por `objetivo <= 0` y se saltea el
+    cuadre EN SILENCIO, y `verificar_cuadre()` compara contra un `monto` que ya
+    no es el del papel. Tolerar negativos habria que hacerlo en cuatro lugares;
+    enderezar, en uno.
+
+    Con los signos MEZCLADOS muere. Una nota con dos lineas negativas y una
+    positiva no es algo que `abs()` pueda arreglar: es una lectura a medias, y
+    aplanarla inventaria plata. Es el guard barato que evita que la
+    normalizacion tape un error de captura."""
+    montos = [l.get("precio") for l in (p.get("lineas") or [])]
+    signos = {1 if float(m or 0) > 0 else -1 for m in montos if float(m or 0) != 0}
+    if len(signos) > 1:
+        morir("la nota de credito trae los precios con signos MEZCLADOS (%s). No "
+              "la enderezo: eso inventaria plata. Volve al documento y capturala "
+              "entera con un solo signo." % ", ".join(str(m) for m in montos))
+
+    p = dict(p)
+    p["monto"] = abs(float(p.get("monto") or 0))
+    p["itbis"] = abs(float(p.get("itbis") or 0))
+    p["lineas"] = [dict(l, precio=abs(float(l.get("precio") or 0)),
+                        itbis=abs(float(l.get("itbis") or 0)))
+                   for l in (p.get("lineas") or [])]
+    return p
+
+
+def resolver_invoice_id(docid, ncf_modificado):
+    """UUID de la factura que la nota de credito corrige, o None.
+
+    Es lo que hace un humano: la NCP00000004 —la unica que registro una persona
+    en ADM— trae el `InvoiceID` puesto, y la NCP00000006 que registro el agente
+    no. Deja el rastro nota->factura dentro de ADM.
+
+    NO aplica nada: la 00000004 tiene el link y sigue con saldo -15.06 desde
+    enero. Aplicar es otro documento (`VendorCreditApplications`, prefijo ACP).
+
+    Y por eso mismo NO mata el registro si no lo encuentra: es una comodidad,
+    no un hecho fiscal. Cambiar un link faltante por un registro que no ocurre
+    es el desvio que este script existe para evitar."""
+    docid = str(docid or "").strip().upper()
+    ncf = str(ncf_modificado or "").strip().upper()
+    if not docid and not ncf:
+        return None
+    for f in paginar("VendorBills"):
+        if docid and str(f.get("DocID") or "").strip().upper() == docid:
+            return f.get("ID")
+        if ncf and str(f.get("NCF") or "").strip().upper() == ncf:
+            return f.get("ID")
+    return None
+
+
+# ------------------------------------------------------------------ documento
 def mapa_cuentas():
     """codigo de cuenta -> UUID. La propuesta trae el codigo ("611.17"), que es
     como piensa el contable; ADM necesita el UUID. La traduccion la hace este
@@ -379,7 +475,8 @@ def mapa_cuentas():
     return mapa
 
 
-def armar_payload(p, relationship_id, payment_term_id):
+def armar_payload(p, relationship_id, payment_term_id,
+                  recurso="VendorBills", invoice_id=None):
     lineas = p.get("lineas") or []
     if not lineas:
         morir("la propuesta no trae lineas")
@@ -440,6 +537,20 @@ def armar_payload(p, relationship_id, payment_term_id):
         "ExpenseTypeID": (p.get("tipo_gasto") or {}).get("adm_id") or TIPO_GASTO_DEFECTO,
         "Items": items,
     }
+
+    if recurso == "VendorCreditNotes":
+        # Lo que la nota de credito NO lleva, leido de las dos NCP registradas
+        # (NCP00000004 y NCP00000006), no supuesto:
+        #   - `PaymentTermID`: null en las dos, y ni siquiera existe en la
+        #     definicion del swagger AP. En VendorBills es obligatorio (sin el
+        #     responde «Este termino de pago no existe»); aca es ruido.
+        #   - `InvoiceModificationReasonID`: null en las dos. Es el campo del
+        #     motivo, pero nadie lo usa en esta empresa y su catalogo no lo
+        #     leyo nadie. Mandarlo seria inventar un dato con un GUID a dedo.
+        #   - `FiscalSequenceTypeID`: null en las dos, como en toda esta API.
+        payload.pop("PaymentTermID", None)
+        if invoice_id:
+            payload["InvoiceID"] = invoice_id
 
     # ADM frena un duplicado por DOS claves independientes: el NCF y la
     # referencia del proveedor. Sin NINGUNA de las dos deja pasar el mismo
@@ -519,7 +630,7 @@ def verificar_cuadre(p, payload):
             "  ADM cobraria    total %.2f  ITBIS %.2f  (18%% sobre %.2f de base)\n"
             "  diferencia      %.2f\n"
             "Alguna linea tiene el precio o el grupo de impuesto mal leido, o la\n"
-            "factura trae un descuento que no se capturo. Corregi las lineas o\n"
+            "documento trae un descuento que no se capturo. Corregi las lineas o\n"
             "preguntale al humano; NO se registra un documento que no coincide."
             % (total_papel, itbis_papel, total_adm, itbis_adm, base,
                total_adm - total_papel))
@@ -556,7 +667,7 @@ def verificar_cuadre(p, payload):
                 % (propia, base, exento, t_ok, base_ok))
 
 
-def verificar_duplicado(ncf, referencia, doc_date=None):
+def verificar_duplicado(ncf, referencia, doc_date=None, recurso="VendorBills"):
     """Aviso temprano. ADM tambien lo frena, pero mejor no gastar el POST.
 
     NO se pagina el historico entero. /api/VendorBills viene del mas NUEVO al
@@ -572,28 +683,39 @@ def verificar_duplicado(ncf, referencia, doc_date=None):
     avisar ANTES de gastar el POST, no la unica defensa.
 
     Que el documento tenga al menos UNA de las dos claves lo garantiza
-    armar_payload(), que corre tambien con --simular."""
+    armar_payload(), que corre tambien con --simular.
+
+    El corte por fecha es SOLO para las facturas, que son 1100 y crecen. Las
+    notas de credito son 6 en toda la historia de la empresa: paginarlas
+    enteras es una sola llamada, y cortar ahi seria pagar el riesgo de perderse
+    un duplicado viejo a cambio de nada."""
     corte = fecha_corte(doc_date)
 
     def ya_es_viejo(lote):
         ultimo = str(lote[-1].get("DocDate") or "")[:10]
         return bool(ultimo) and ultimo < corte
 
-    for f in paginar("VendorBills", cortar=ya_es_viejo):
+    for f in paginar(recurso, cortar=ya_es_viejo if recurso == "VendorBills" else None):
         if str(f.get("NCF") or "").strip().upper() == str(ncf).upper():
             morir("YA REGISTRADA: %s tiene ese NCF" % f.get("DocID"))
         if referencia and str(f.get("Reference") or "").strip() == str(referencia):
             morir("YA REGISTRADA: %s tiene esa referencia" % f.get("DocID"))
 
 
-def leer_de_vuelta(guid):
+def leer_de_vuelta(guid, recurso="VendorBills"):
     """El POST solo devuelve el UUID; el DocID sale de acá. Y hay que confirmar
     que el documento devuelto sea EL nuestro: pasarle cualquier cosa a getbyid
-    devuelve otro documento con success:true."""
-    d = (llamar("GET", "VendorBills/%s" % guid).get("data")) or {}
+    devuelve otro documento con success:true.
+
+    El recurso va como parametro y no clavado: preguntarle a `VendorBills` por
+    el UUID de una nota de credito devuelve `success:true` con `data:null`
+    —probado el 2026-08-07 contra la NCP00000006—, que es indistinguible de un
+    documento borrado. Ese mismo error, del otro lado, es el que hacia que el
+    cron de verificacion le pusiera lapida a una nota que estaba viva."""
+    d = (llamar("GET", "%s/%s" % (recurso, guid)).get("data")) or {}
     if str(d.get("ID") or "").lower() != guid.lower():
-        morir("el readback devolvio OTRO documento (%s). La factura puede estar "
-              "creada igual: buscala por NCF antes de reintentar." % d.get("DocID"))
+        morir("el readback devolvio OTRO documento (%s). El documento puede estar "
+              "creado igual: buscalo por NCF antes de reintentar." % d.get("DocID"))
     return d
 
 
@@ -614,6 +736,25 @@ def main():
     if estado != "aprobada":
         morir("el trabajo esta en '%s': solo se registra lo aprobado" % estado)
     p = json.loads(propuesta_txt)
+
+    # Que documento es. Se decide ACA, con el NCF, y no con `documento_adm`:
+    # ese campo lo escribe el modelo y en la NC de Claro del 2026-08-07 dijo
+    # «VendorBills» con los montos en negativo, o sea el camino equivocado.
+    # Cuando discrepan gana el hecho fiscal, y la fila se corrige (ver el
+    # UPDATE del final): si quedara mintiendo, el cron de verificacion le
+    # preguntaria a `VendorBills` por el UUID de una NCP, recibiria
+    # `data:null` y le pondria lapida a un documento vivo.
+    nota = es_nota_credito(p)
+    recurso = "VendorCreditNotes" if nota else "VendorBills"
+    nombre_doc = "nota de credito" if nota else "factura"
+    declarado = str(p.get("documento_adm") or "").strip()
+    if nota:
+        if declarado and declarado != recurso:
+            print("OJO: la propuesta declaraba %s, pero el NCF %s es una nota de "
+                  "credito de proveedor (e-NCF tipo 34). Registro por %s y "
+                  "corrijo la fila." % (declarado, p.get("ncf"), recurso))
+        p = normalizar_nota_credito(p)
+
     # Abortar solo si el registro esta VIVO. En ADM revertir BORRA el documento
     # (no lo anula), asi que la fila se queda con el docid + una lapida
     # (`eliminado_en`). Sin esta distincion una factura corregida no se podia
@@ -624,14 +765,38 @@ def main():
     reg = p.get("registro_adm") or {}
     muerto = reg.get("eliminado_en") or reg.get("anulado_en")
     if reg.get("docid") and not muerto:
-        morir("ya tiene registro_adm vivo: %s" % reg["docid"])
+        # `--simular` NO muere aca, y es lo que hace probable esta cosa:
+        # simular nunca hace POST ni escribe la mesa, asi que a cambio de nada
+        # convierte cada fila ya registrada en un caso de prueba end-to-end.
+        # Sin esto no habia forma de correr una nota de credito completa sin
+        # crear un documento en ADM, que es justo lo que no se puede hacer:
+        # esta API no tiene clave de idempotencia.
+        if not args.simular:
+            morir("ya tiene registro_adm vivo: %s" % reg["docid"])
+        print("SIMULACION sobre una fila YA REGISTRADA como %s. No se escribe "
+              "nada, ni en la mesa ni en ADM: esto es solo el payload que "
+              "saldria hoy." % reg["docid"])
     if reg.get("docid"):
         print("nota: la fila trae %s pero fue %s el %s — registro de nuevo" % (
             reg["docid"],
             "eliminada" if reg.get("eliminado_en") else "anulada", muerto))
 
     rid, termino_pago = asegurar_proveedor(p, args.simular)
-    payload = armar_payload(p, rid, termino_pago)
+
+    invoice_id = None
+    if nota:
+        invoice_id = resolver_invoice_id(p.get("factura_original_docid"),
+                                         p.get("ncf_modificado"))
+        if invoice_id:
+            print("corrige: %s (%s)" % (p.get("factura_original_docid") or "?",
+                                        p.get("ncf_modificado") or "sin NCF"))
+        else:
+            print("  nota: no encontre en ADM la factura que corrige (%s / %s). "
+                  "Va sin InvoiceID: es un rastro, no un hecho fiscal."
+                  % (p.get("factura_original_docid") or "sin docid",
+                     p.get("ncf_modificado") or "sin NCF"))
+
+    payload = armar_payload(p, rid, termino_pago, recurso, invoice_id)
 
     if args.simular:
         print()
@@ -642,30 +807,62 @@ def main():
         return
 
     verificar_cuadre(p, payload)
-    verificar_duplicado(payload["NCF"], payload["Reference"], payload.get("DocDate"))
+    verificar_duplicado(payload["NCF"], payload["Reference"],
+                        payload.get("DocDate"), recurso)
 
-    d = llamar("POST", "VendorBills", cuerpo=payload)
+    d = llamar("POST", recurso, cuerpo=payload)
     if not d.get("success") or not isinstance(d.get("data"), str):
-        morir("ADM rechazo la factura: %s" % sanear(d.get("message")))
+        morir("ADM rechazo la %s: %s" % (nombre_doc, sanear(d.get("message"))))
     guid = d["data"]
 
-    doc = leer_de_vuelta(guid)
-    print("REGISTRADA: %s (uuid %s)" % (doc.get("DocID"), guid))
+    doc = leer_de_vuelta(guid, recurso)
+    print("REGISTRADA: %s %s (uuid %s)" % (nombre_doc, doc.get("DocID"), guid))
     print("  total %s | itbis %s" % (doc.get("TotalAmount"), doc.get("TaxAmount")))
+
+    # Lo que se le agrega a la fila cuando es una nota de credito, y por que
+    # cada cosa:
+    #
+    #  - `documento_adm` queda diciendo la VERDAD. Es el router de la mesa: lo
+    #    leen el poller para elegir script, `verificar-registros.py` para saber
+    #    a que endpoint preguntar, y la web para nombrar el documento. Dejarlo
+    #    mintiendo es lo que hacia que el cron le preguntara a `VendorBills`
+    #    por el UUID de una NCP, recibiera `data:null` y la marcara eliminada.
+    #  - `documento_adm_declarado` guarda lo que habia dicho el modelo. Es la
+    #    evidencia de que la skill sigue torcida, y lo unico que permite contar
+    #    cuantas veces pasa en vez de descubrirlo de a una.
+    #  - `aplicacion_pendiente` deja escrita la deuda: registrar la nota NO la
+    #    aplica contra la factura. Eso es otro documento (ACP) y todavia no lo
+    #    hace nadie — la NCP00000004 lleva flotando desde enero. Escribirlo es
+    #    la diferencia entre plata mal contada VISIBLE y plata mal contada
+    #    invisible, que es como la FP00001027 quedo abierta por RD$28.
+    extra, variables = "", dict(
+        doc=doc.get("DocID"), guid=guid, ref=payload["Reference"],
+        recurso=recurso, id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
+    if nota:
+        extra = (" || jsonb_build_object("
+                 "'documento_adm', :'recurso', "
+                 "'documento_adm_declarado', propuesta->>'documento_adm', "
+                 "'aplicacion_pendiente', jsonb_build_object("
+                 "'factura_docid', propuesta->>'factura_original_docid', "
+                 "'ncf_modificado', propuesta->>'ncf_modificado', "
+                 "'monto', :'monto'::numeric))")
+        variables["monto"] = "%.2f" % float(p.get("monto") or 0)
 
     sql("update qualia_trabajos set propuesta = propuesta || "
         "jsonb_build_object('registro_adm', jsonb_build_object("
-        "'docid', :'doc', 'uuid', :'guid', 'documento', 'VendorBills', "
-        "'fecha', now()::date, 'reference', :'ref')) "
-        "where id = :'id' and empresa_id = :'emp';",
-        doc=doc.get("DocID"), guid=guid, ref=payload["Reference"],
-        id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
+        "'docid', :'doc', 'uuid', :'guid', 'documento', :'recurso', "
+        "'fecha', now()::date, 'reference', :'ref'))" + extra + " "
+        "where id = :'id' and empresa_id = :'emp';", **variables)
     print("  guardado en la mesa")
+    if nota:
+        print("  FALTA APLICARLA contra %s: registrar la nota no la aplica. Es "
+              "otro documento (VendorCreditApplications, prefijo ACP) y hoy se "
+              "hace a mano." % (p.get("factura_original_docid") or "su factura"))
 
     # El adjunto. Era el unico paso que quedaba a mano y se comia el 55% del
     # turno (ver subir_adjunto). Va DESPUES de guardar el docid a proposito: el
     # docid es el dato irremplazable y no se hace esperar detras de una subida.
-    # Si falla NO se aborta — la factura ya esta registrada y eso es lo que hay
+    # Si falla NO se aborta — el documento ya esta registrado y eso es lo que hay
     # que dejar asentado; el adjunto se reintenta.
     ruta, motivo = bajar_documento(args.trabajo)
     if not ruta:
@@ -685,7 +882,7 @@ def main():
                 sid=da.get("data") if isinstance(da.get("data"), str) else "",
                 id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
         else:
-            print("  ADJUNTO FALLO (%s). La factura SI quedo registrada."
+            print("  ADJUNTO FALLO (%s). El documento SI quedo registrado."
                   % sanear(da.get("message")))
             print("  Reintentalo con el curl del SKILL sobre uuid %s, y OJO: el"
                   % guid)
