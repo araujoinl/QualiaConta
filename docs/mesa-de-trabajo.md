@@ -69,6 +69,7 @@ Una fila por documento arrastrado o sugerencia del contable.
 | `pendiente → analizando` | contable, claim atómico |
 | `analizando → propuesta` | contable, con `propuesta` y `resumen` llenos |
 | `analizando → esperando_respuesta` | contable, tras evento `pregunta` |
+| `aprobada → esperando_respuesta` | contable, cuando el registro en ADM se traba y necesita al humano (el `AMBIGUO` de un cargo bancario, p. ej.). Habilitada el 2026-08-07: antes el `update` guardaba `and estado='analizando'` y desde `registro_pendiente` matcheaba CERO filas sin fallar — el evento quedaba escrito, la fila seguía `aprobada` y el poller la reintentaba dos horas |
 | `esperando_respuesta → analizando` | contable, al llegar la respuesta |
 | `propuesta`/`pendiente`/`error` `→ analizando` | contable, cuando el usuario corrige una propuesta suya. **`esperando_respuesta` NO es el único origen de una respuesta**: sólo lo es cuando el contable preguntó. El caso común es que el humano corrija por su cuenta y la fila siga en `propuesta` |
 | `propuesta → aprobada` / `rechazada` | usuario en la web. NUNCA el contable |
@@ -122,7 +123,7 @@ de ADM (la web auto-detecta la forma por la presencia de `precio`/`cantidad`):
 **Quién decide el valor de `documento_adm`, y cómo**: en las sugerencias lo fija
 el script del carril (`sugerir-cargos.sh` → `BankCharges`, etc.); en una factura
 lo elige el contable con el criterio de la sección «Qué documento de ADM es esto»
-de `skills/mesa-de-trabajo/SKILL.md`, que decide por el ROL del hecho. **El NCF no
+de `skills/mesa-de-trabajo/references/manual.md`, que decide por el ROL del hecho. **El NCF no
 entra en esa decisión** — 45 de 1.109 facturas de proveedor históricas no lo
 tienen y 51 de 159 cargos bancarios sí. No es una etiqueta: `poller.sh` elige con
 qué script registrar según este campo.
@@ -167,6 +168,16 @@ entrada nueva del libro inserta también una fila acá (`entrada`, `metodo`,
 
 - **QualiaConta**: `skills/mesa-de-trabajo/` (cómo opera el contable),
   `mesa/poller.sh` (sidecar `mesa` en el compose de cada empresa), este doc.
+
+  Desde el 2026-08-07 esa carpeta está partida y **el `SKILL.md` ya no es el
+  manual**: es una puerta de 472 tokens que manda a correr
+  `scripts/abrir-trabajo.sh`, y ese script imprime la fila del trabajo junto al
+  procedimiento que le toca. `references/manual.md` es el manual completo —lo
+  recibe todo turno con contabilidad adentro, igual que antes— y
+  `references/libro.md` y `references/registro.md` son extractos verbatim para
+  los dos trabajos mecánicos. Los extractos NO se editan: se generan con
+  `mesa/cortar-extractos.py` desde el manual, y `mesa/verificar-corte.sh`
+  comprueba que sigan siendo tajadas exactas.
 - **Labs_Inv**: migraciones `20260802041946_qualia_conta_mesa_trabajo.sql` y
   `20260802042624_qualia_conta_grants_worker.sql`, tab `QualiaContaTab.jsx`,
   servicio `qualiaContaService.js`.
