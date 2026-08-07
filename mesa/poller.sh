@@ -702,7 +702,21 @@ while [ "$corriendo" -eq 1 ]; do
     # seguridad del bloque 3 lo vuelve a ver cada 10 minutos hasta las 12 horas,
     # serían ~20 sesiones de LLM por criterio ratificado, con `error` como final
     # probable: rojo en «Te toca» sobre una regla recién aprobada.
-    if [ "$tipo" = "criterio" ]; then
+    #
+    # El CASO va por el mismo corte y por la misma razón, aunque no sea una
+    # regla: cerrarlo lo deja en `aprobada` sin docid, que es la firma exacta de
+    # «hay que registrar esto». Y no hay qué registrar — lo que va a ADM son sus
+    # trabajos HIJOS, cada uno con su documento y su `propuesta.caso_id`;
+    # `aprobada` en un caso significa que el humano dio el tema por cerrado. El
+    # 2026-08-07, al cerrar el Caso #1, esto abrió una sesión de LLM para asentar
+    # un documento inexistente («sin script para documento_adm='vacío'»), que
+    # además compite por el cupo de dos en vuelo con el trabajo de verdad.
+    #
+    # Se despierta igual, con `accion_usuario`: es el único motivo que le hace
+    # LEER el hilo, que es lo que un caso recién cerrado tiene para ofrecer.
+    # `registro_pendiente` no servía ni de casualidad — esa rama de la skill
+    # arranca dando por hecho que el documento ya está en ADM.
+    if [ "$tipo" = "criterio" ] || [ "$tipo" = "caso" ]; then
       if poke "$tid" "accion_usuario"; then wm=$eid; else break; fi
       continue
     fi
@@ -816,7 +830,14 @@ while [ "$corriendo" -eq 1 ]; do
   # `tipo not in ('criterio','caso')`: los dos viven en `aprobada` sin docid para
   # siempre —el CHECK de la base exige un DocID que ninguno tiene ni va a
   # tener—, así que sin este corte caen acá cada 10 minutos durante 12 horas
-  # pidiendo un registro en ADM que no existe. Su red es el bloque 4.
+  # pidiendo un registro en ADM que no existe.
+  #
+  # La red del CRITERIO es el bloque 4, que lo pesca por su pata propia
+  # (`tipo='criterio' and estado='aprobada'`). El CASO no tiene red: no entra
+  # por esa pata ni por la otra, que pide `estado='registrada'`. Si el poke del
+  # bloque 2 no llega, nadie lo reintenta. Se deja así a sabiendas —un caso
+  # cerrado no le debe nada a ADM, y el hilo con la nota de cierre queda escrito
+  # igual en la mesa— pero no está cubierto, que es distinto de estar resuelto.
   #
   # El criterio es una regla ratificada. El CASO es el hilo donde el humano
   # muestra varias entradas de la conciliación que no cuadran entre sí: lo que
