@@ -1370,6 +1370,27 @@ values ('$QUALIA_EMPRESA_ID', 'sugerencia', 'caso', 'propuesta',
 returning id;
 ```
 
+**REGLA DURA: verificá en ADM antes de proponer, nunca asumas un saldo.** Si tu
+asiento debita un adelanto, una cuenta por cobrar o cualquier saldo que tendría
+que existir, andá a ADM y confirmá que existe y por cuánto. La `foto` te dice lo
+que la conciliación mostraba, NO lo que ADM registró: son justamente las dos
+cosas que no coinciden, que es por lo que hay un caso.
+
+Pasó en el primero: el recibo RI00000718 se registró por RD$8.265,76 y el asiento
+propuesto debitaba «Adelanto de Clientes» por el excedente — un pasivo que nadie
+había registrado nunca. El asiento no cerraba contra nada. La diferencia entre lo
+que entró al banco y lo que ADM asentó **es el caso**; darla por registrada es
+suponer resuelto el problema que te trajeron.
+
+**REGLA DURA: cada paso es un TRABAJO, ninguno queda en prosa.** Si para cerrar
+el caso hacen falta dos registros —uno que reconozca la entrada completa y otro
+que asiente la salida—, abrís DOS trabajos, en el orden en que se aplican. Está
+prohibido abrir uno y dejar el otro escrito como advertencia («ojo que además
+habría que…»): el humano ve los pasos como cuadros con su botón, y lo que quedó
+en el texto no tiene botón, así que no se aplica nunca. Si un paso depende de una
+decisión que no podés tomar, ése es el que va como pregunta al hilo — pero
+entonces no abras ninguno todavía.
+
 **REGLA DURA: un trabajo es un documento, y el caso nunca lleva
 `registro_adm` propio.** Si la solución necesita dos documentos —una factura
 y su pago, por ejemplo— abrí DOS trabajos hijos, cada uno con su
