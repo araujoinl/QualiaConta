@@ -1302,11 +1302,26 @@ falta según su `origen`. Una fila `"origen":"banco"` trae `tx_id`, el uuid de
 psql "$QUALIA_DSN" -t -A -c "select * from openbanking_transactions where id='<tx_id>'"
 ```
 
+**Copiá ese `select *` tal cual, y si armás uno propio usá ESTOS nombres.** Las
+columnas de esa tabla están en español, y traducirlas al inglés es el error que
+ya se cometió: `amount`, `booking_date` y `account_name` no existen y el query
+muere tres veces seguidas antes de que se te ocurra mirar el esquema. Son:
+
+`id` · `account_id` · `fecha_posteo` · `fecha_efectiva` · `nro_cheque` ·
+`nro_referencia` · `descripcion` · `monto` · `balance` · `raw` ·
+`estado_conciliacion` · `banco` · `cuenta_numero` · `cuenta_origen` ·
+`nombre_origen` · `qualia_trabajo_id`
+
 Una fila `"origen":"adm"` trae `docid`, que releés por la API de ADM Cloud
 igual que releerías cualquier otro documento antes de darlo por vigente.
-Ninguna relectura es obligatoria si la `foto` ya te alcanza para decidir; son
-para cuando el caso quedó abierto un tiempo y hace falta confirmar que la
-entrada sigue como estaba el día que se armó.
+
+**Pero empezá por la `foto`, no por la tabla.** Ya trae fecha, monto, moneda,
+cuenta, descripción, referencia y el estado que mostraba la conciliación: para
+decidir qué hay que registrar, alcanza casi siempre. La relectura es para
+cuando el caso quedó abierto un tiempo y hace falta confirmar que la entrada
+sigue como estaba el día que se armó, o cuando necesitás un dato que la foto no
+guarda. Salir a leer la tabla como primer paso es gastar turnos en lo que ya
+tenés en la mano.
 
 ### Leé el hilo, y analizá el conjunto — nunca fila por fila
 
