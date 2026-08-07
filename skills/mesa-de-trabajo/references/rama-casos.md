@@ -39,6 +39,13 @@ update qualia_trabajos set estado='analizando'
    and estado='pendiente' returning id;
 ```
 
+**En el MISMO comando del claim** (un solo `psql`, dos statements) dejá un
+evento `progreso` de UNA línea diciendo qué vas a hacer («Leí el caso del
+depósito de Formax — estoy verificando el movimiento y el tratamiento»). Tu
+gente queda mirando una pantalla muda mientras trabajás: esa línea es lo que
+la web muestra mientras piensan — no cuesta un turno extra y sí cuesta
+confianza no ponerla. El análisis fino va después, en tu respuesta final.
+
 ### Por qué «Si está `pendiente`: analizalo» no aplica acá
 
 Ese protocolo entero asume un documento por bajar, extraer y verificar contra

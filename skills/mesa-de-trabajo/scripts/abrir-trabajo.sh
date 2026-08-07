@@ -101,6 +101,13 @@ RAMAS_DIR="${MESA_RAMAS_DIR:-$AQUI/../references}"
 DOSSIER_DIR="${MESA_DOSSIER_DIR:-/tmp/mesa}"
 PROP_MAX="${MESA_PROPUESTA_MAX_BYTES:-4000}"
 EV_MAX="${MESA_EVENTO_MAX_CHARS:-800}"
+# Criterios transversales de la empresa (C-001, C-002…): dictados del contador
+# que MANDAN sobre el razonamiento propio. Se sirven JUNTO a la rama de casos —
+# el caso Formax v2 (2026-08-07) salió mal exactamente porque C-002 existía en
+# la memoria y ninguna pieza del flujo se lo puso delante al contable. Fuera
+# del contenedor el archivo no existe y se omite sin drama (los tests locales
+# y el banco A/B no lo ven; en el server siempre está).
+MEMORIA_DIR="${MESA_MEMORIA_DIR:-/opt/data/memoria}"
 
 # Los dos topes viajan CRUDOS a SQL (son enteros, no van entrecomillados), así
 # que se validan como enteros o no viajan: es la única vía de inyección que
@@ -646,6 +653,19 @@ fi
 
 if [ -n "$RAMA" ]; then
   while read -r a; do imprimir_archivo "$a"; done < <(archivos_de_rama "$RAMA")
+  # Los criterios de empresa viajan con la rama de casos: son dictados del
+  # contador y en la jerarquía van ANTES que el precedente y que tu propio
+  # razonamiento. Servirlos acá es determinista; esperar que el modelo los
+  # vaya a buscar ya falló una vez (Formax v2). ~5k, entra sobrado en el tope.
+  if [ "$RAMA" = "casos" ] && usable "$MEMORIA_DIR/criterios.md"; then
+    printf '\n<<<MESA:INSTRUCCIONES rama=criterios-empresa>>>\n'
+    printf 'Criterios RATIFICADOS del contador de esta empresa. Salen de\n'
+    printf '%s/criterios.md\n' "$MEMORIA_DIR"
+    printf 'Si uno calza con el hecho del caso, SU tratamiento manda — el contador ya\n'
+    printf 'lo razonó. Uno marcado [BORRADOR] no se cita.\n\n'
+    cat -- "$MEMORIA_DIR/criterios.md"
+    printf '\n<<<FIN INSTRUCCIONES>>>\n'
+  fi
   # La parte 1 del análisis cierra con la ORDEN de pedir la parte 2 — es lo
   # último que el modelo lee, que es donde una orden pesa más. Sin la parte 2
   # el análisis no tiene el protocolo de propuesta ni el formato del turno.
