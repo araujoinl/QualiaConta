@@ -734,7 +734,15 @@ def main():
         morir("ese trabajo no existe en la mesa")
     estado, propuesta_txt = filas[0][0], filas[0][1]
     if estado != "aprobada":
-        morir("el trabajo esta en '%s': solo se registra lo aprobado" % estado)
+        # `--simular` tampoco muere aca, por lo mismo que en el guard de
+        # registro vivo: no escribe nada. Y hace falta que sean LOS DOS. Una
+        # fila ya registrada esta en 'registrada', asi que con solo el otro
+        # guard exceptuado el caso de prueba moria igual, un renglon antes
+        # (probado el 2026-08-07 contra la NC de Claro).
+        if not args.simular:
+            morir("el trabajo esta en '%s': solo se registra lo aprobado" % estado)
+        print("SIMULACION sobre un trabajo en '%s' (solo se registra lo "
+              "aprobado)." % estado)
     p = json.loads(propuesta_txt)
 
     # Que documento es. Se decide ACA, con el NCF, y no con `documento_adm`:
