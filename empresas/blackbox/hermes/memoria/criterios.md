@@ -45,13 +45,19 @@ adquirente o la tasa, el criterio se revisa (no se parchea en silencio).
 
 **Enunciado:** dinero de un cliente por renta de nave/local recibido ANTES de
 devengarse —anticipos de renta y depósitos en garantía de renta— se registra
-`Journals` con débito al banco y crédito a **220.06 «Depósitos en Garantía por
-Renta»** (pasivo). Mientras «Adelanto de Clientes» siga sin código contable,
-los anticipos de renta también van a 220.06 (decisión del contador: un solo
-pasivo de renta; la distinción anticipo/garantía vive en el `detalle` del
-asiento). Al devengarse cada mes se reclasifica: débito 220.06, crédito
-**411.16 Renta Inmuebles**, reconociendo el ITBIS que corresponda — el monto
-recibido trae los impuestos incluidos, no se le suma nada.
+con débito al banco y crédito a **220.06 «Depósitos en Garantía por Renta»**
+(pasivo). La forma ejecutable del documento depende de dónde nació la plata:
+si entró por el estado de cuenta (transferencia/depósito), va como
+**`BankCharges` en crédito** — un `Journals` haría el mismo asiento pero el
+candado del sistema bloquea asientos sobre cuenta de banco y la conciliación
+no lee `/api/Journals`, así que quedaría sin conciliar para siempre
+(descubierto y ratificado en el registro CB00000258, 2026-08-07). Mientras
+«Adelanto de Clientes» siga sin código contable, los anticipos de renta
+también van a 220.06 (decisión del contador: un solo pasivo de renta; la
+distinción anticipo/garantía vive en el `detalle` del asiento). Al devengarse
+cada mes se reclasifica: débito 220.06, crédito **411.16 Renta Inmuebles**,
+reconociendo el ITBIS que corresponda — el monto recibido trae los impuestos
+incluidos, no se le suma nada.
 
 **Evidencia:** caso Formax 2026-08-07 (RD$180,000, anticipo de 2 meses de
 renta de nave industrial, impuestos incluidos). Plan vivo verificado ese día:
