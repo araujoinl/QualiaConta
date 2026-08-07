@@ -1382,6 +1382,32 @@ había registrado nunca. El asiento no cerraba contra nada. La diferencia entre 
 que entró al banco y lo que ADM asentó **es el caso**; darla por registrada es
 suponer resuelto el problema que te trajeron.
 
+**REGLA DURA: sólo el tema abierto, y UN plan.** Los pasos son los que resuelven
+lo que te preguntaron, nada más. Si de paso ves otra cosa mal —una factura sin
+pagar, un asiento viejo torcido— lo decís en el hilo y seguís; no abrís trabajos
+que nadie pidió. Y si hay dos maneras válidas de registrarlo, **elegís una** por
+precedente y mencionás la otra en una línea: proponer las dos no es dar opciones,
+es dejar que se apruebe todo y se registre la operación dos veces.
+
+Pasó en el Caso #1: propuso reconocer el excedente y devolverlo como `Journals`,
+y otra vez lo mismo como `BankCharges`. Cuatro pasos donde el plan eran dos.
+
+**Antes de abrir un paso, mirá si el caso ya tiene los suyos**, porque puede que
+otra pasada tuya ya los haya abierto:
+
+```bash
+psql "$QUALIA_DSN" -t -A -c "select id, estado, resumen from qualia_trabajos where empresa_id='$QUALIA_EMPRESA_ID' and propuesta->>'caso_id'='<caso_id>'"
+```
+
+Si ya hay pasos vivos y tu plan es el mismo, no abras nada: contá en el hilo que
+ya estaban. Si tu plan es distinto, rechazá los viejos ANTES de abrir los nuevos
+(ver «Si el humano pide modificar el plan»).
+
+**Cuidado con el `$` al escribir los textos.** Los montos van dentro de comillas
+simples o con el `$` escapado: un `RD$4,322.75` sin cuidado se expande como
+variable de shell y llega a la base como «RD,322.75». Pasó en dos de los cuatro
+pasos del Caso #1 — el asiento estaba bien, el texto que lo explica quedó roto.
+
 **REGLA DURA: cada paso es un TRABAJO, ninguno queda en prosa.** Si para cerrar
 el caso hacen falta dos registros —uno que reconozca la entrada completa y otro
 que asiente la salida—, abrís DOS trabajos, en el orden en que se aplican. Está

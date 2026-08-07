@@ -571,6 +571,16 @@ while [ "$corriendo" -eq 1 ]; do
     [ -z "$id" ] && continue
     (( cupo <= 0 )) && continue    # sin cupo: queda pendiente, lo toma el re-aviso
     ahora=$(date +%s)
+    # Ya se lo despertó recién por su evento de usuario (bloque 2): no otra vez.
+    # El `not exists` del query cubre el MISMO tick, pero en cuanto el watermark
+    # avanza deja de ver ese evento, y si el contable todavía no reclamó la fila
+    # —sigue en 'pendiente'— el tick siguiente la despierta de nuevo. Son dos
+    # sesiones sobre el mismo trabajo, cada una con su plan completo y ciega a
+    # la otra: el Caso #1 terminó con dos pares de pasos duplicados, uno como
+    # Journals y otro como BankCharges. Le pasa sobre todo a los CASOS, que
+    # nacen 'pendiente' Y con evento de usuario a la vez, así que disparan los
+    # dos caminos; una factura entra por uno solo.
+    (( ahora - ${despertado[$id]:-0} < 120 )) && continue
     clave="${id}:${upd}"
     antes=${avisado[$clave]:-0}
     if (( ahora - antes > 300 )); then
@@ -652,6 +662,10 @@ while [ "$corriendo" -eq 1 ]; do
     fi
     if poke "$tid" "accion_usuario"; then
       wm=$eid
+      # Queda anotado para que el bloque 1 no lo despierte otra vez en cuanto
+      # el watermark deje atrás este evento. Sin esto, un trabajo que todavía
+      # no fue reclamado se despierta dos veces y se analiza dos veces.
+      despertado[$tid]=$(date +%s)
     else
       break
     fi
