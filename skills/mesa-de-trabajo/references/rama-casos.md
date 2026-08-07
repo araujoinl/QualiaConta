@@ -34,17 +34,30 @@ mismo candado de siempre, y por la misma razón: si el poller te despertó dos
 veces por el mismo envío, que sólo una gane la fila.
 
 ```sql
-update qualia_trabajos set estado='analizando'
- where id='<caso_id>' and empresa_id='$QUALIA_EMPRESA_ID'
-   and estado='pendiente' returning id;
+with claim as (
+  update qualia_trabajos set estado='analizando'
+   where id='<caso_id>' and empresa_id='$QUALIA_EMPRESA_ID'
+     and estado='pendiente' returning id
+)
+insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
+select id, 'contable', 'progreso',
+       'Leí el caso — estoy verificando los movimientos y el tratamiento.'
+  from claim
+returning trabajo_id;
 ```
 
-**En el MISMO comando del claim** (un solo `psql`, dos statements) dejá un
-evento `progreso` de UNA línea diciendo qué vas a hacer («Leí el caso del
-depósito de Formax — estoy verificando el movimiento y el tratamiento»). Tu
-gente queda mirando una pantalla muda mientras trabajás: esa línea es lo que
-la web muestra mientras piensan — no cuesta un turno extra y sí cuesta
-confianza no ponerla. El análisis fino va después, en tu respuesta final.
+Un solo comando hace las dos cosas: el claim Y el evento `progreso` que tu
+gente ve en la web mientras trabajás (sin esa línea miran una pantalla muda
+los minutos que dura el análisis — poné en el contenido qué vas a hacer, en
+una línea). El CTE garantiza que el progreso solo se escribe si el claim
+GANÓ: el poller despierta dos turnos por el mismo envío con segundos de
+diferencia, y sin esta condición los dos escribían su progreso y los dos
+seguían analizando en paralelo (pasó el 2026-08-07: 21 + 43 llamadas por el
+mismo caso, el análisis entero pagado dos veces).
+
+**Si el comando no devuelve ninguna fila, el claim lo ganó otro turno: PARÁ
+en seco.** No escribas nada más, no analices, terminá el turno — la fila es
+del otro. Es la misma regla dura del claim de facturas, y acá vale igual.
 
 ### Por qué «Si está `pendiente`: analizalo» no aplica acá
 
