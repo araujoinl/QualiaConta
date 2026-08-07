@@ -90,6 +90,7 @@ select json_build_object(
                           'periodo', propuesta->>'periodo',
                           'llego', coalesce((propuesta->>'llego')::boolean, false),
                           'pagada', coalesce((propuesta->>'pagada')::boolean, false),
+                          'moneda', coalesce(propuesta->>'moneda', 'DOP'),
                           'aldia', (propuesta ? 'monto_tipico')))
                         from qualia_trabajos
                         where empresa_id = '${QUALIA_EMPRESA_ID}'
@@ -184,6 +185,11 @@ for line in open(f"{RAW}/vendor-bills-detalle.jsonl"):
     facturas[p].append({
         "fecha": d["DocDate"][:10],
         "monto": total,
+        # `TotalAmount` viene en la moneda del documento, no en pesos, y sin este
+        # campo la fila se pintaba con el default de la pantalla: la FP00001122
+        # de Account One son US$637,20 y la caja mostraba RD$637,20. Son 77
+        # facturas en dólares de 1.116.
+        "moneda": d.get("CurrencyID") or "DOP",
         "docid": d.get("DocID"),
         # El UUID es lo que abre el documento en ADM y lo que engancha sus
         # adjuntos en Storage (ahí el campo se llama `TransactionID`). El DocID
@@ -263,10 +269,20 @@ for prov, fs in facturas.items():
     dia_esperado = min(dia_habitual, ultimo_del_mes) if dia_habitual else ultimo_del_mes
     fecha_esperada = HOY.replace(day=dia_esperado).isoformat()
 
+    # En qué moneda factura: la de su última factura. De los 1.116 documentos
+    # sólo Banco Santa Cruz mezcla las dos (177 en pesos, 26 en dólares) y no es
+    # recurrente, así que no hay caso real que esto parta al medio. Convertir a
+    # pesos no es opción: el volcado no trae la tasa del día de cada factura.
+    moneda = fs[-1]["moneda"] if fs else "DOP"
+    sig = "US$" if moneda == "USD" else "RD$"
+
     # Lo que suele costar: mediana de los últimos seis, no promedio. Un mes
     # atípico —la nómina de diciembre en Humano— corre el promedio y deja el
     # aviso de desvío calibrado contra un número que no representa nada.
-    montos = sorted(f["monto"] for f in fs[-6:])
+    #
+    # Sólo los de SU moneda: una mediana entre 637 dólares y 19.000 pesos no es
+    # un monto típico de nada, y es contra ella que se mide el desvío.
+    montos = sorted([f["monto"] for f in fs if f["moneda"] == moneda][-6:])
     tipico = montos[len(montos) // 2] if montos else None
     propuesta = {
         "clase": "factura_faltante",
@@ -276,7 +292,7 @@ for prov, fs in facturas.items():
         "periodo": periodo,
         "fecha": fecha_esperada,
         "fecha_esperada": fecha_esperada,
-        "moneda": "DOP",
+        "moneda": moneda,
         "direccion": "cargo",
         "confianza": 0.7,
         "llego": llego,
@@ -311,10 +327,10 @@ for prov, fs in facturas.items():
             # mover en la pantalla sin re-emitir las filas ya escritas.
             "desvio": round((u["monto"] - tipico) / tipico, 4) if tipico else 0,
             "factura": {"docid": u["docid"], "uuid": u["uuid"], "fecha": u["fecha"],
-                        "monto": u["monto"], "pagada": u["pagada"]},
+                        "monto": u["monto"], "moneda": u["moneda"], "pagada": u["pagada"]},
             "detalle": (f"Ya facturó {periodo}: {u['docid']} del {u['fecha']} por "
-                        f"RD${u['monto']:,.2f} ({'pagada' if u['pagada'] else 'sin pagar'}). "
-                        f"Suele costar RD${tipico:,.2f}. Factura {len(meses)} de los últimos "
+                        f"{sig}{u['monto']:,.2f} ({'pagada' if u['pagada'] else 'sin pagar'}). "
+                        f"Suele costar {sig}{tipico:,.2f}. Factura {len(meses)} de los últimos "
                         f"meses, siempre alrededor del día {dia_habitual}."),
         })
         resumen = f"{nombre} facturó {periodo} ({u['docid']})"
@@ -322,7 +338,7 @@ for prov, fs in facturas.items():
         propuesta.update({
             "monto": tipico,
             "detalle": (f"Facturó {len(meses)} de los últimos meses, siempre alrededor del día "
-                        f"{dia_habitual}, por unos RD${tipico:,.2f}. De {periodo} no hay ninguna y "
+                        f"{dia_habitual}, por unos {sig}{tipico:,.2f}. De {periodo} no hay ninguna y "
                         f"hoy es {HOY.day}. Si no corresponde, rechazala con el motivo: no vuelvo "
                         "a avisar por este proveedor."),
         })
@@ -346,7 +362,7 @@ for prov, fs in facturas.items():
         propuesta.update({
             "monto": tipico,
             "detalle": (f"Factura {len(meses)} de los últimos meses, alrededor del día "
-                        f"{dia_habitual}, por unos RD${tipico:,.2f}. De {periodo} todavía no hay "
+                        f"{dia_habitual}, por unos {sig}{tipico:,.2f}. De {periodo} todavía no hay "
                         f"ninguna, pero hoy es {HOY.day}: está dentro de su fecha habitual."),
         })
         resumen = f"{nombre} todavía no facturó {periodo}"
@@ -357,6 +373,7 @@ for prov, fs in facturas.items():
                        f"{esc(resumen[:200])}, {esc(json.dumps(propuesta, ensure_ascii=False))}::jsonb)")
     elif (bool(ya.get("llego")) != llego
           or bool(ya.get("pagada")) != bool(propuesta.get("pagada"))
+          or ya.get("moneda") != moneda
           or not ya.get("aldia")):
         # Cuando el estado CAMBIÓ, o cuando la fila viene de la versión que sólo
         # emitía ausencias y no trae `vencido`: ésa se quedó además con la fecha
@@ -372,6 +389,10 @@ for prov, fs in facturas.items():
         # PP00000783 y la mesa la seguía mostrando impaga. `AppliedPayments` ya
         # llega fresco —`refrescar-recurrentes.sh` re-pide el detalle del mes en
         # curso cada hora—, así que lo único que faltaba era volver a escribirla.
+        #
+        # Y la MONEDA está acá para que las filas escritas cuando el script la
+        # clavaba en pesos se corrijan solas en la próxima corrida, sin ir a
+        # tocarlas a mano.
         updates.append(f"update qualia_trabajos set resumen = {esc(resumen[:200])}, "
                        f"propuesta = {esc(json.dumps(propuesta, ensure_ascii=False))}::jsonb "
                        f"where id = {esc(ya['id'])}::uuid;")
