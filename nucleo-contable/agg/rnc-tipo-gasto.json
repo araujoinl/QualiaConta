@@ -1,20 +1,20 @@
 {
  "_meta": {
-  "generado": "2026-08-04T05:21:36Z",
+  "generado": "2026-08-07T05:21:25Z",
   "alcance": "GENERAL (DGII) — vale para cualquier empresa; el tipo de gasto 606 no depende de quién compra. La cuenta contable NO se comparte: vive en cada empresa.",
   "n_empresas_aportantes": 1,
-  "n_suplidores": 163,
-  "n_facturas": 1103,
-  "n_sin_rnc": 26,
-  "n_sin_tipo_gasto": 20,
-  "n_con_dominante": 40
+  "n_suplidores": 164,
+  "n_facturas": 1118,
+  "n_sin_rnc": 27,
+  "n_sin_tipo_gasto": 21,
+  "n_con_dominante": 39
  },
  "catalogo": [
   {
    "codigo": "02",
    "nombre": "Gastos por Trabajos, Suministros y Servicios",
-   "usos": 684,
-   "n_suplidores": 103
+   "usos": 697,
+   "n_suplidores": 106
   },
   {
    "codigo": "07",
@@ -107,13 +107,13 @@
   {
    "rnc": "132942248",
    "nombre": "Tupaq Cargo & Courier Srl",
-   "facturas": 126,
+   "facturas": 128,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 125,
+     "usos": 127,
      "pct": 99.2
     },
     {
@@ -127,13 +127,13 @@
   {
    "rnc": "101008172",
    "nombre": "Isla Dominicana De Petroleo Corporation",
-   "facturas": 97,
+   "facturas": 98,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 97,
+     "usos": 98,
      "pct": 100.0
     }
    ]
@@ -209,13 +209,27 @@
   {
    "rnc": "133169045",
    "nombre": "Account One Dcm2rp, Srl",
-   "facturas": 21,
+   "facturas": 22,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 21,
+     "usos": 22,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101001577",
+   "nombre": "Compania Dominicana De Telefonos S A",
+   "facturas": 22,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 22,
      "pct": 100.0
     }
    ]
@@ -249,20 +263,6 @@
      "nombre": "Gastos de Seguros",
      "usos": 1,
      "pct": 4.8
-    }
-   ]
-  },
-  {
-   "rnc": "101001577",
-   "nombre": "Compania Dominicana De Telefonos S A",
-   "facturas": 19,
-   "dominante": "02",
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 19,
-     "pct": 100.0
     }
    ]
   },
@@ -463,6 +463,52 @@
    ]
   },
   {
+   "rnc": "130547386",
+   "nombre": "Pier 17 Group Dominicana Srl",
+   "facturas": 6,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "09",
+     "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
+     "usos": 4,
+     "pct": 66.7
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 33.3
+    }
+   ]
+  },
+  {
+   "rnc": "101805404",
+   "nombre": "Suena Electronica Srl",
+   "facturas": 6,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "04",
+     "nombre": "Gastos de Activo Fijo",
+     "usos": 3,
+     "pct": 50.0
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 33.3
+    },
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
+     "usos": 1,
+     "pct": 16.7
+    }
+   ]
+  },
+  {
    "rnc": "130161453",
    "nombre": "M C Logistics Srl",
    "facturas": 6,
@@ -517,8 +563,8 @@
    ]
   },
   {
-   "rnc": "130547386",
-   "nombre": "Pier 17 Group Dominicana Srl",
+   "rnc": "130870081",
+   "nombre": "Global Storage Srl",
    "facturas": 5,
    "dominante": "09",
    "tipos": [
@@ -565,32 +611,6 @@
     {
      "codigo": "05",
      "nombre": "Gastos de Representación",
-     "usos": 1,
-     "pct": 20.0
-    }
-   ]
-  },
-  {
-   "rnc": "101805404",
-   "nombre": "Suena Electronica Srl",
-   "facturas": 5,
-   "dominante": null,
-   "tipos": [
-    {
-     "codigo": "04",
-     "nombre": "Gastos de Activo Fijo",
-     "usos": 3,
-     "pct": 60.0
-    },
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 1,
-     "pct": 20.0
-    },
-    {
-     "codigo": "10",
-     "nombre": "Adquisición de Activos",
      "usos": 1,
      "pct": 20.0
     }
@@ -665,6 +685,32 @@
    ]
   },
   {
+   "rnc": "131925375",
+   "nombre": "Sabores Del Desierto Srl",
+   "facturas": 4,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 2,
+     "pct": 50.0
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 25.0
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 25.0
+    }
+   ]
+  },
+  {
    "rnc": "122009452",
    "nombre": "Lucami Srl",
    "facturas": 4,
@@ -687,20 +733,6 @@
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 4,
-     "pct": 100.0
-    }
-   ]
-  },
-  {
-   "rnc": "130870081",
-   "nombre": "Global Storage Srl",
-   "facturas": 4,
-   "dominante": "09",
-   "tipos": [
-    {
-     "codigo": "09",
-     "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
      "usos": 4,
      "pct": 100.0
     }
@@ -813,26 +845,6 @@
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 3,
      "pct": 100.0
-    }
-   ]
-  },
-  {
-   "rnc": "131925375",
-   "nombre": "Sabores Del Desierto Srl",
-   "facturas": 3,
-   "dominante": null,
-   "tipos": [
-    {
-     "codigo": "01",
-     "nombre": "Gastos de Personal",
-     "usos": 2,
-     "pct": 66.7
-    },
-    {
-     "codigo": "05",
-     "nombre": "Gastos de Representación",
-     "usos": 1,
-     "pct": 33.3
     }
    ]
   },
@@ -1245,6 +1257,20 @@
     {
      "codigo": "01",
      "nombre": "Gastos de Personal",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "132068793",
+   "nombre": "EL RAMERO SOLITARIO SRL",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
      "pct": 100.0
     }
@@ -2413,20 +2439,6 @@
    ]
   },
   {
-   "rnc": "132068793",
-   "nombre": "EL RAMERO SOLITARIO SRL",
-   "facturas": 1,
-   "dominante": null,
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 1,
-     "pct": 100.0
-    }
-   ]
-  },
-  {
    "rnc": "131399231",
    "nombre": "FC GESTION EMPRESARIAL Y ALIMENTICIAS SRL",
    "facturas": 1,
@@ -2541,6 +2553,20 @@
   {
    "rnc": "131351697",
    "nombre": "GRUPO LAS CANAS SRL",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "101802456",
+   "nombre": "COMPANIA DOMINICANA DE HIPERMERCADOS CDH S A S",
    "facturas": 1,
    "dominante": null,
    "tipos": [
