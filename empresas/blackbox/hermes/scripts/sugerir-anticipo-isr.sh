@@ -111,16 +111,29 @@ if not pagos:
 pagos.sort(key=lambda p: p["fecha"])
 ultimo = pagos[-1]
 
+# Pagos del periodo nuevo (desde la provision anual): de ahi sale la cuota
+# VIGENTE. Mientras no haya ninguno, la cuota se estima de la provision / 12
+# (es la doceava que fijo la DGII al abrir el ano fiscal).
+pagos_periodo = [p for p in pagos if p["fecha"] >= provision["fecha"]]
+
 # 3) ¿Ya pago este mes calendario? Si hay un pago DGII ISR con DocDate del mes
 #    actual, no se sugiere: ya esta.
 if any(p["fecha"][:7] == periodo for p in pagos):
     sys.exit(0)
 
-# 4) Cuota, banco y cuentas — salen del ultimo pago, no hardcodeadas.
-cuota = ultimo["monto"]
-banco_id = ultimo.get("banco_id")
+# 4) Cuota vigente + banco + cuentas. Si ya hay pagos del periodo nuevo, salen
+#    del ultimo de ellos; si no, la cuota se estima (provision / 12) y el banco
+#    y las cuentas del pago mas reciente conocido (el banco impuestos no cambia).
+ref = pagos_periodo[-1] if pagos_periodo else ultimo
+cuota = ref["monto"]
+cuota_estimada = False
+if not pagos_periodo:
+    cuota = round(provision["total"] / 12.0, 2)
+    cuota_estimada = True
+banco_id = ref.get("banco_id") or ultimo.get("banco_id")
 cuenta_isr = cuenta_banco = None
-for ln in ultimo.get("accounts", []):
+cuenta_isr_nom = cuenta_banco_nom = ""
+for ln in ref.get("accounts", []):
     if float(ln.get("Debit") or 0) > 0:
         cuenta_isr = str(ln.get("AccountCode") or "")
         cuenta_isr_nom = str(ln.get("AccountName") or "")
@@ -130,8 +143,7 @@ for ln in ultimo.get("accounts", []):
 if not (cuenta_isr and cuenta_banco and banco_id):
     sys.exit(0)  # el pago historico no exponia las lineas; no adivinamos
 
-# 5) Deuda actual de 210.11: provision menos los pagos desde la provision.
-pagos_periodo = [p for p in pagos if p["fecha"] >= provision["fecha"]]
+# 5) Deuda actual de 210.11: provision menos los pagos del periodo nuevo.
 pagado = sum(p["monto"] for p in pagos_periodo)
 deuda = round(provision["total"] - pagado, 2)
 

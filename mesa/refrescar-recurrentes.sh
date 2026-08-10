@@ -105,14 +105,10 @@ else
     exit 1
 fi
 
-# Anticipo mensual del ISR: mismo patrón (idempotente, silencioso si no hay
-# nada). Lee el espejo de account-payments/journals, que se refresca a diario;
-# para un impuesto mensual el desfase horario es irrelevante.
-if resultado=$(docker exec "$CONTENEDOR" /opt/data/scripts/sugerir-anticipo-isr.sh 2>&1); then
-    [ -n "$resultado" ] && registrar "$resultado"
-else
-    registrar "ERROR en sugerir-anticipo-isr:"
-    echo "$resultado" | sed "s/^/  /" >>"$LOG"
-fi
+# Anticipo ISR: NO se sugiere por acá. El flujo vive en la banda de impuestos
+# de Labs_Inv (calendarioFiscal clave 'anticipo'), con el gesto doble de subir
+# volante+comprobante. El script `sugerir-anticipo-isr.sh` queda en el repo como
+# respaldo, pero crear sugerencias acá duplicaría la ficha de la banda.
+# Si algún día el anticipo sale de la banda, se vuelve a cablear acá.
 
 exit 0
