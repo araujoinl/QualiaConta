@@ -105,4 +105,14 @@ else
     exit 1
 fi
 
+# Anticipo mensual del ISR: mismo patrón (idempotente, silencioso si no hay
+# nada). Lee el espejo de account-payments/journals, que se refresca a diario;
+# para un impuesto mensual el desfase horario es irrelevante.
+if resultado=$(docker exec "$CONTENEDOR" /opt/data/scripts/sugerir-anticipo-isr.sh 2>&1); then
+    [ -n "$resultado" ] && registrar "$resultado"
+else
+    registrar "ERROR en sugerir-anticipo-isr:"
+    echo "$resultado" | sed "s/^/  /" >>"$LOG"
+fi
+
 exit 0

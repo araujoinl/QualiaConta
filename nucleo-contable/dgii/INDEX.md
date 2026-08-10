@@ -9,6 +9,7 @@ tiene que decir que no sabe.
 | Tema | Archivo | Cubre | Revisado |
 |---|---|---|---|
 | Retenciones de ISR | [normas/retenciones-isr.md](normas/retenciones-isr.md) | Quién retiene, tabla general, servicios profesionales (10%) y técnicos (2%), asalariados | 2026-07-30 |
+| Anticipo del ISR | [normas/anticipo-isr.md](normas/anticipo-isr.md) | Pago a cuenta mensual del ISR; naturaleza activo, cuota fija anual, compensación al cierre | 2026-08-10 |
 | Retenciones de ITBIS | [normas/retenciones-itbis.md](normas/retenciones-itbis.md) | 100% a Persona Física, 30% entre sociedades, comprobante de compras, RST, pago a cuenta | 2026-07-30 |
 | ITBIS — tasas | [normas/itbis-tasas.md](normas/itbis-tasas.md) | 18% general, 16% reducida, dónde viven las exenciones | 2026-07-30 |
 | Comprobantes fiscales | [normas/comprobantes-fiscales.md](normas/comprobantes-fiscales.md) | Tipos 31 a 47, formato e-CF, calendario de migración | 2026-07-30 |
@@ -32,6 +33,7 @@ vista.
 | Clasificación de e-CF de cada empresa | El plazo de migración depende del tamaño del contribuyente. El de pequeñas, micro y no clasificadas vence el **15-nov-2026** | comprobantes-fiscales.md |
 | Lista de exenciones de ITBIS | Es larga, tiene matices por grado de procesamiento y se modifica por ley. Acá está el criterio, no el catálogo | itbis-tasas.md |
 | Estructura de columnas del 606 y 607 | Falta contrastar contra el instructivo oficial vigente | remision-606-607.md |
+| Cita exacta del artículo y mecánica de pago del anticipo de ISR | El régimen comparte capítulo con retenciones en el Código y la DGII cambió la mecánica; naturaleza y tratamiento sí están fijos | anticipo-isr.md |
 
 ## Cómo se mantiene
 
