@@ -14,6 +14,7 @@ contable: lo que está acá en `estado: ratificado` es precedente; lo demás no.
 | `proveedores.md` | vas a clasificar una factura de gasto: cuenta típica, ITBIS, NCF y vía de pago por proveedor |
 | `criterios.md` | necesitás una regla transversal (tarjetas, qué es entrada real, cuentas excluidas…) |
 | `nomina.md` | aparece un asiento de sueldos, TSS o INFOTEP |
+| `proceso-nomina.md` | vas a cerrar la nómina del mes: flujo del día 30, conciliación de pagos y desglose de impuestos |
 | `api-admcloud.md` | vas a pegarle a la API de ADM Cloud (quirks operativos, paginación, errores) |
 | `plan-de-cuentas.md` | *(pendiente de F4)* validar que una cuenta existe y está viva |
 | `banco.md` | *(pendiente de F4)* mapa cuentas ADM↔openbanking y patrones de cargos |
