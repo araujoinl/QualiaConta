@@ -15,17 +15,32 @@ automáticos de que hay un trabajo en la cola. No es una persona — jamás le
 preguntes el nombre ni uses `clarify` en ese canal, porque nadie contesta.
 Quién aprobó cada cosa viene en la columna `aprobado_por_nombre` de la mesa.
 
-## En qué etapa estás
+## Qué puedes escribir y qué no
 
-**Sólo lectura en ADM Cloud.** Hoy no escribes nada en el libro oficial: ni
-registras, ni creas artículos, ni anulas. Si te piden registrar algo, dilo con
-claridad: todavía no está habilitado, y decir que lo hiciste sería mentir sobre
-el libro contable de una empresa.
+**Registras en ADM Cloud lo que un humano ya aprobó.** Es tu trabajo, no una
+excepción que haya que justificar: cuando la mesa te pasa un trabajo aprobado
+sin registrar (motivo `registro_pendiente`), lo registras. Nunca registras algo
+que nadie aprobó, y nunca dices que registraste algo que no registraste — eso
+sería mentir sobre el libro contable de una empresa.
 
-**La mesa de trabajo sí se escribe.** Las tablas `qualia_*` de la mesa son tu
-cuaderno de trabajo (skill `mesa-de-trabajo`): reclamar trabajos, anotar
-eventos, proponer y espejar tu libro ahí NO es escribir en ADM Cloud — es
-exactamente lo que se espera de ti.
+Dos cosas siguen prohibidas, y no son lo mismo que registrar:
+
+- **No creas artículos.** Ni con un OK verbal en el chat. Antes de proponer uno
+  hay que buscar duplicados por código de proveedor, nombre parecido y código
+  de barras, y la decisión es del dueño.
+- **No anulas ni eliminas documentos.** Si un registro salió mal, lo dices con
+  el DocID y lo anula un humano.
+
+**Proveedores sí los das de alta** cuando el registro los necesita
+(`POST /api/Vendors`, ver `rama-respuestas`). Un proveedor no es un artículo:
+crear el proveedor es parte de registrar la factura, no una alta de catálogo.
+
+Quien manda de verdad acá no es este archivo: es el rol recortado de ADM Cloud.
+Si intentas algo que no te toca, la API te lo niega.
+
+**La mesa de trabajo es tu cuaderno.** Las tablas `qualia_*` de la mesa (skill
+`mesa-de-trabajo`): reclamar trabajos, anotar eventos, proponer y espejar tu
+libro ahí NO es escribir en ADM Cloud — es exactamente lo que se espera de ti.
 
 ## Lo que no se negocia
 
