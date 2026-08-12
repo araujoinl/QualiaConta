@@ -620,14 +620,24 @@ if items:
     if isinstance(out.get("monto"), float):
         base = round(sum(i["precio"] * i["cantidad"] for i in items), 2)
         itbis_items = round(sum(i["itbis"] for i in items), 2)
-        calc = round(base + itbis_items + (prop or 0), 2)
+        # Mismo respaldo de ITBIS de cabecera que el camino de visión: un e-CF
+        # lo discrimina por renglón casi siempre, pero el criterio de cuadre es
+        # uno solo para todos los canales y no se bifurca acá.
+        itbis_cabecera = out.get("itbis")
+        itbis_cuadre, itbis_origen = itbis_items, "renglones"
+        if itbis_items == 0 and isinstance(itbis_cabecera, (int, float)) \
+           and itbis_cabecera > 0:
+            itbis_cuadre, itbis_origen = round(itbis_cabecera, 2), "cabecera"
+        calc = round(base + itbis_cuadre + (prop or 0), 2)
         diff = round(out["monto"] - calc, 2)
         if prop is None and diff > 0 and abs(diff - round(0.10 * base, 2)) <= 1.0:
             prop = diff
             out["propina"] = prop
             out["propina_inferida"] = True
-            calc = round(base + itbis_items + prop, 2)
+            calc = round(base + itbis_cuadre + prop, 2)
         out["aritmetica"] = {"base_items": base, "itbis_items": itbis_items,
+                            "itbis_cuadre": itbis_cuadre,
+                            "itbis_origen": itbis_origen,
                             "propina": prop or 0, "calculado": calc,
                             "monto_documento": out["monto"],
                             "cuadra": abs(calc - out["monto"]) <= 0.05}
@@ -721,8 +731,24 @@ SQL
     frag_ninguno "imagen muy grande para el prep; el agente aplica vision"
     return
   fi
-  if ! timeout 120 "$PY" - "$IMG" "$PREP/extraccion.json" 2>"$PREP/vision.err" <<'PY'
-import base64, json, os, re, sys, urllib.request
+  # Presupuesto de reloj REAL, no una constante. El poller nos envuelve en
+  # `timeout -k 10 180`, y despues de la vision todavia faltan DGII, dedup y el
+  # evento final: la vision se lleva lo que sobra, con tope 122s. Antes eran
+  # 120s fijos contra dos piernas que suman 40+75=115 — 5s para imprimir el
+  # error, asi que un fallo de la primera moria MATADO por el timeout de afuera
+  # y el aviso salia vacio (caso 8457baa4: 121s y «aviso: vision:» sin motivo).
+  local presupuesto=$(( 180 - SECONDS - 30 ))
+  [ "$presupuesto" -gt 122 ] && presupuesto=122
+  if [ "$presupuesto" -lt 45 ]; then
+    # Ni la primera pierna entra: llamar seria regalar el resto del reloj para
+    # que el timeout de afuera nos mate igual, y encima sin dossier.
+    anotar_error "sin reloj para vision (quedaban ${presupuesto}s del tope del prep)"
+    frag_ninguno "el prep se quedo sin tiempo antes de la vision; el agente aplica vision"
+    return
+  fi
+  if ! VISION_PRESUPUESTO_S="$presupuesto" \
+       timeout $(( presupuesto + 8 )) "$PY" - "$IMG" "$PREP/extraccion.json" 2>"$PREP/vision.err" <<'PY'
+import base64, json, os, re, sys, time, urllib.request
 img, outp = sys.argv[1:3]
 NOTA = "extraccion automatica; el agente DEBE verificar contra el documento"
 # Cadena de respaldo, la misma idea que fallback_chain del config.yaml del
@@ -807,8 +833,16 @@ def armar_cuerpo(modelo, thinking):
 # 429), y OpenRouter midio 37s y 44s con la MISMA foto — con 40s parejos el
 # respaldo era una moneda al aire justo cuando hace falta. 40+75 entra en los
 # 120s del timeout de afuera.
+# El bash nos dice cuanto reloj queda del tope del prep; el deadline se respeta
+# por pierna, de modo que SIEMPRE sobre tiempo para imprimir el motivo del fallo.
+LIMITE = time.monotonic() + float(os.environ.get("VISION_PRESUPUESTO_S", "110"))
 resp, ultimo = None, "sin intento"
 for base, modelo, llave, thinking, tope in cadena:
+    # Una pierna truncada es peor que no llamarla: OpenRouter midio 37s y 44s
+    # con la MISMA foto, asi que sin su tope entero se saltea, no se recorta.
+    if LIMITE - time.monotonic() < tope:
+        ultimo = "sin reloj para el respaldo"
+        continue
     try:
         req = urllib.request.Request(
             base + "/chat/completions", data=armar_cuerpo(modelo, thinking),
@@ -913,7 +947,20 @@ if items:
     if isinstance(out.get("monto"), (int, float)):
         base = round(sum(i["precio"] * i["cantidad"] for i in items), 2)
         itbis_items = round(sum(i["itbis"] for i in items), 2)
-        calc = round(base + itbis_items + (prop or 0), 2)
+        # El ITBIS puede venir POR RENGLON o SOLO en la cabecera. Cuando el
+        # papel lo imprime una sola vez al pie, la vision devuelve los items
+        # con itbis=0 y el ITBIS del documento aparte, y sumando solo los
+        # renglones la verificacion daba "no cuadra" con el ITBIS bien leido
+        # al lado: 6 de los 22 descuadres reales de /tmp/mesa (medido
+        # 2026-08-11) son restaurantes de este tipo, y cada uno se iba a una
+        # sesion LLM de ~200s por eso. Si los renglones SI lo discriminan
+        # manda el renglon; la cabecera es solo el respaldo.
+        itbis_cabecera = out.get("itbis")
+        itbis_cuadre, itbis_origen = itbis_items, "renglones"
+        if itbis_items == 0 and isinstance(itbis_cabecera, (int, float)) \
+           and itbis_cabecera > 0:
+            itbis_cuadre, itbis_origen = round(itbis_cabecera, 2), "cabecera"
+        calc = round(base + itbis_cuadre + (prop or 0), 2)
         diff = round(out["monto"] - calc, 2)
         # La visión a veces pierde el renglón de la propina aunque esté
         # IMPRESO: si el descuadre calza EXACTO con el 10% de la base (±1
@@ -924,11 +971,16 @@ if items:
             prop = diff
             out["propina"] = prop
             out["propina_inferida"] = True
-            calc = round(base + itbis_items + prop, 2)
+            calc = round(base + itbis_cuadre + prop, 2)
         # Umbral 0.05: el MISMO que valida la web al aprobar. Con 1.0 había
         # una zona muerta (0.05-1.00) donde el dossier decía cuadra y la web
-        # pintaba rojo (hallazgo de auditoría).
+        # pintaba rojo (hallazgo de auditoría). No se afloja ni se le quita el
+        # ruido de coma flotante al borde: la web compara con `< 0.05` ESTRICTO
+        # (QualiaContaTab.jsx:1293) y un dossier que perdone los 5 centavos
+        # exactos reabre esa misma zona muerta al revés.
         out["aritmetica"] = {"base_items": base, "itbis_items": itbis_items,
+                            "itbis_cuadre": itbis_cuadre,
+                            "itbis_origen": itbis_origen,
                             "propina": prop or 0, "calculado": calc,
                             "monto_documento": out["monto"],
                             "cuadra": abs(calc - out["monto"]) <= 0.05}
@@ -938,7 +990,12 @@ if items:
 json.dump(out, open(outp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 PY
   then
-    anotar_error "vision: $(head -c 120 "$PREP/vision.err" 2>/dev/null || echo fallo)"
+    # El motivo nunca puede salir vacio: un «aviso: vision:» pelado no le dice
+    # nada al contable ni a quien audita despues (paso el 2026-08-10).
+    local motivo_vision
+    motivo_vision=$(head -c 120 "$PREP/vision.err" 2>/dev/null | tr -d '\n')
+    [ -n "$motivo_vision" ] || motivo_vision="cortada por el tope de reloj del prep (${presupuesto}s)"
+    anotar_error "vision: $motivo_vision"
     frag_ninguno "vision fallo en el prep; el agente aplica vision"
   fi
 }
@@ -1076,6 +1133,43 @@ if salida.get("encontrado"):
     ex["timbre_qr"] = True
     if corrigio:
         ex["qr_corrigio"] = corrigio
+    # El QR pisa el monto, pero la aritmetica ya venia calculada contra el del
+    # TEXTO: sin recalcular, el dossier queda diciendo "no cuadra" por un dato
+    # que este mismo bloque acaba de corregir, y el proponedor manda a sesion
+    # LLM una factura sana. Medido 2026-08-11: la compuerta de aritmetica mata
+    # 9 de 84 documentos, 6 de ellos con timbre leido del QR.
+    arit = ex.get("aritmetica")
+    if "monto" in corrigio and isinstance(arit, dict) \
+       and isinstance(ex.get("monto"), (int, float)):
+        base = arit.get("base_items") or 0
+        # el que se uso para cuadrar (renglones o cabecera), no el crudo
+        itbis_items = arit.get("itbis_cuadre")
+        if not isinstance(itbis_items, (int, float)):
+            itbis_items = arit.get("itbis_items") or 0
+        propina = arit.get("propina") or 0
+        # Una propina INFERIDA salio del descuadre contra el monto viejo: con
+        # otro monto esa inferencia ya no vale. Se descarta y se vuelve a
+        # intentar desde cero con el mismo criterio del extractor (10% de la
+        # base, +-1 peso). Una propina LEIDA del papel no se toca.
+        if ex.get("propina_inferida"):
+            propina = 0
+            ex.pop("propina", None)
+            ex.pop("propina_inferida", None)
+            arit.pop("nota", None)
+            diff = round(ex["monto"] - round(base + itbis_items, 2), 2)
+            if diff > 0 and abs(diff - round(0.10 * base, 2)) <= 1.0:
+                propina = diff
+                ex["propina"] = propina
+                ex["propina_inferida"] = True
+                arit["nota"] = ("propina legal 10% inferida del descuadre "
+                                "exacto; verificable en el documento")
+        calc = round(base + itbis_items + propina, 2)
+        arit["propina"] = propina
+        arit["calculado"] = calc
+        arit["monto_documento"] = ex["monto"]
+        # Umbral 0.05: el MISMO que valida la web al aprobar.
+        arit["cuadra"] = abs(calc - ex["monto"]) <= 0.05
+        arit["recalculada_con_qr"] = True
     json.dump(ex, open(extp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 PY
   then
@@ -1147,6 +1241,10 @@ if [ -z "$NCF" ] && [ -n "$RNC" ] && [[ "$NCF_CRUDO" =~ ^B[0-9]{11}$ ]] \
        && grep -q '"estado": *"VIGENTE"' "$PREP/dgii_try.json"; then
       NCF="$cand"
       NCF_RESCATADO="$cand"
+      # La respuesta VIGENTE ya esta en la mano: guardarla evita que el bloque
+      # 6 le haga a DGII la MISMA pregunta (mismo RNC, mismo NCF) con otro
+      # timeout de 45s, justo en el camino donde el reloj del prep aprieta.
+      cp "$PREP/dgii_try.json" "$PREP/dgii_rescate.json" 2>/dev/null || true
       log "NCF rescatado: lei $NCF_CRUDO (formato invalido) -> $cand VIGENTE en DGII"
       break
     fi
@@ -1200,7 +1298,12 @@ if [ -z "$NCF" ]; then
   fi
 elif [[ "$NCF" == B* ]]; then
   # NCF impreso: consulta pública de DGII vía el script ya probado (SPEC 7).
-  if [ -z "$RNC" ]; then
+  if [ -n "$NCF_RESCATADO" ] && [ "$NCF" = "$NCF_RESCATADO" ] \
+     && [ -s "$PREP/dgii_rescate.json" ]; then
+    # Ya la contestó DGII durante el rescate, y con VIGENTE: no se repite.
+    mv "$PREP/dgii_rescate.json" "$PREP/dgii.json"
+    log "DGII: reuso la respuesta VIGENTE del rescate (no repito la consulta)"
+  elif [ -z "$RNC" ]; then
     escribir_dgii_nv "NCF impreso sin RNC emisor extraído; verificar manualmente"
   elif [ ! -f "$SCRIPTS/consultar-ncf-dgii.py" ]; then
     escribir_dgii_nv "consultar-ncf-dgii.py no montado en el sidecar"
