@@ -90,11 +90,13 @@ Un proveedor cuyo gasto se reparte ~50/50 entre dos cuentas se marca
 
 - RNC: 133124981
 - Cuenta(s) de gasto típica(s): 130.02 Compras en Tránsito (83.3%), 511.04 Fletes (16.7%)
-- ITBIS / retenciones observados: 14 docs con ITBIS 18%, 11 sin ITBIS. 1 doc con retención (monto DOP 21,780.00).
+- ITBIS / retenciones observados: 14 docs con ITBIS 18%, 11 sin ITBIS.
+- **Retención: 100% de ITBIS, en 13 de 13 pagos** (`TaxRetention1Name` = «Retención 100% ITBIS», `TaxRetentionID1` = `b8bc849c-…`). Medido el 2026-08-14 sobre `bill-payments-detalle.jsonl`. Ver C-004.
 - NCF típico: B01 (24 docs)
 - Vía de pago: Transferencia (16 pagos). Cuenta banco no identificada en agregado.
 - Plazo medio de pago: 2 días
-- Tratamiento típico: Logística/flete de importación. La mercancía en tránsito va a 130.02, el flete como costo va a 511.04. Único proveedor del lote con retención observada — probablemente retención de ITBIS 30% por ser servicio de transporte de carga. Evidencia: 25 docs, DocIDs FP00000996, FP00000981.
+- Tratamiento típico: Logística/flete de importación. La mercancía en tránsito va a 130.02, el flete como costo va a 511.04. Evidencia: 25 docs, DocIDs FP00000996, FP00000981.
+- **Corregido el 2026-08-14:** este bloque decía «1 doc con retención» y «probablemente retención de ITBIS 30% por ser servicio de transporte de carga». Las dos partes eran falsas: son 13 pagos, no 1, y la tasa es 100%, no 30%. La retención NO vive en la factura sino en el pago (`BillPayments.Documents[].TaxRetention*`), y el agregado la leía de la cabecera de la factura, donde no está.
 
 ---
 
@@ -102,11 +104,13 @@ Un proveedor cuyo gasto se reparte ~50/50 entre dos cuentas se marca
 
 - RNC: 133169045
 - Cuenta(s) de gasto típica(s): 621.01 Servicios Contables (100%)
-- ITBIS / retenciones observados: 20 docs con ITBIS 18%. Retención registrada (monto USD 567.27) pero 0 docs marcados con retención — posible inconsistencia o retención ISR 2% Proveedores aplicada al pago.
+- ITBIS / retenciones observados: 20 docs con ITBIS 18%.
+- **Retención: 30% de ITBIS, en 20 de 20 pagos** (`TaxRetention1Name` = «Retención 30% ITBIS», `TaxRetentionID1` = `b196ec3e-…`). Es la Norma 02-05: sociedad que le retiene a otra sociedad por servicios profesionales liberales, y la contaduría está en la enumeración de la DGII. Casilla 43 del IT-1. Medido el 2026-08-14. Ver C-004.
 - NCF típico: E31 (15), B01 (5)
 - Vía de pago: Transferencia (20 pagos, todos en USD). Cuenta banco no identificada en agregado.
 - Plazo medio de pago: 10 días
-- Tratamiento típico: Servicios contables facturados en USD, 100% a 621.01 con ITBIS 18%. Verificar la retención de USD 567.27 no documentada en los agregados. Evidencia: 20 docs, DocIDs FP00001030, FP00001006.
+- Tratamiento típico: Servicios contables facturados en USD, 100% a 621.01 con ITBIS 18%. Evidencia: 20 docs, DocIDs FP00001030, FP00001006.
+- **Corregido el 2026-08-14:** decía «0 docs marcados con retención — posible inconsistencia o retención ISR 2% Proveedores». Falso en las dos puntas: los 20 pagos traen retención, y es 30% de ITBIS, no 2% de ISR. La afirmación nació de buscar la retención en la cabecera de la factura, que es donde NO está: vive en el pago. Un dato inventado con firma de autoridad es peor que un hueco, porque se cita.
 
 ---
 

@@ -155,3 +155,64 @@ su depreciación. **No cubre** la compra de un activo nuevo pagado desde el banc
 sin factura del vendedor: ese caso no tiene precedente en el histórico y va por
 evento `pregunta`. Si aparece un activo que no encaja en las cinco filas del
 mapa, se agrega la fila antes de asentar — no se recicla la más parecida.
+
+---
+
+## C-004 — La retención de ITBIS vive en el PAGO, no en la factura [BORRADOR]
+
+**Enunciado:** la retención de ITBIS de un proveedor **no está en la factura**:
+está en el pago, en `BillPayments.Documents[].TaxRetention1Name`,
+`TaxRetentionID1` y `TaxRetentionAmount_BasedTax`. Buscarla en la cabecera de la
+`VendorBills` devuelve vacío siempre, y de ahí salieron las dos afirmaciones
+falsas que este criterio deroga.
+
+Los dos identificadores vivos en esta instancia de ADM:
+
+| `TaxRetentionID1` | Nombre en ADM | Norma | Casilla IT-1 |
+|---|---|---|---|
+| `b196ec3e-207e-46d3-a9fa-3b0a511d2c11` | Retención 30% ITBIS | Norma 02-05 — sociedad a sociedad por servicios profesionales liberales o alquiler de bienes muebles | 43 |
+| `b8bc849c-c0d9-4f93-be54-0c586fa99fec` | Retención 100% ITBIS | Ley 11-92 y concordantes — ver la tabla de `nucleo-contable/dgii/normas/retenciones-itbis.md` | sección A |
+
+**El mapa vivo: seis proveedores, 40 pagos con retención.**
+
+| Proveedor | Retención | Pagos | Encaja en la norma |
+|---|---|---|---|
+| Account One Dcm2rp, Srl | 30% ITBIS | 20 de 20 | sí — servicios contables, liberal por enumeración de la DGII |
+| Logistichause International R&M Srl | 100% ITBIS | 13 | **no se deduce del dato** |
+| Acomsa | 30% ITBIS | 3 | probable — verificar el servicio |
+| Apr Creators Srl | 100% ITBIS | 2 | **no se deduce del dato** |
+| Emprendia Consulting Srl | 30% ITBIS | 1 | sí — consultoría |
+| The Money Coach | 100% ITBIS | 1 | probable — persona física |
+
+**El hueco honesto:** el 100% de la tabla de la norma es para **persona física**
+que presta servicio gravado a persona jurídica. `Logistichause International R&M
+Srl` y `Apr Creators Srl` son SRL, así que ese motivo no las explica. Puede ser
+un Comprobante de Compras tipo 41 (Norma 05-19, proveedor no registrado) o una
+decisión del contador externo. **No se inventa el motivo**: se registra la tasa
+observada y, antes de aplicarla a un pago nuevo de esos dos, se pregunta.
+
+**Consecuencia operativa:** hoy no hay riesgo de pagar de más — a estos seis se
+les paga por transferencia y `BillPayments` sólo entra a la mesa por la caja de
+pagos con tarjeta. Pero el día que la mesa registre un pago a cualquiera de
+ellos, **la retención tiene que viajar en el documento del pago**: sin ella el
+pago sale por el bruto, la retención no se declara en el IT-1 y el proveedor
+queda cobrado de más.
+
+**Evidencia:** `bill-payments-detalle.jsonl` del espejo, recorrido completo el
+2026-08-14. Los campos de retención presentes en el shape son ocho
+(`TaxRetentionID1/2`, `TaxRetention1/2Name`, `TaxRetentionAmount_BasedTax`,
+`TaxRetentionAmount_BasedTotal`, `TaxRetentionBaseAmountBasedTax`,
+`TaxRetentionBaseAmountBasedTotal`); el que trae el monto efectivo en los 40
+casos es `TaxRetentionAmount_BasedTax`. Norma citada:
+`nucleo-contable/dgii/normas/retenciones-itbis.md`.
+
+**Alcance propuesto:** Blackbox SRL. Habilita a leer la retención de un
+proveedor conocido desde el pago; **no** habilita a inventarla para un proveedor
+que no esté en la tabla, ni a aplicar el 100% a los dos casos sin explicación.
+El mapa se regenera cuando el destilado aprenda a leerlo del pago — hoy se
+mantiene a mano.
+
+**Deroga:** en `proveedores.md`, «Account One — posible inconsistencia o
+retención ISR 2% Proveedores» (son 20 de 20 con 30% de ITBIS) y «Logistichause —
+1 doc con retención, probablemente 30% por transporte de carga» (son 13 pagos
+con 100%).
