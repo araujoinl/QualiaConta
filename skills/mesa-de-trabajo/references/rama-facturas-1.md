@@ -242,10 +242,28 @@ Preguntá en este orden; la primera que dé SÍ, gana:
    El candado se puso porque la regla escrita de arriba no se cumplía sola: de
    los **8 `Journals` que pasaron por esta mesa, los 8 tocan una cuenta de caja**
    y ninguno era de nómina. Siete los rechazó el usuario y el octavo es el
-   ED00000183. Cero aciertos en ocho intentos. Y **citar precedente no salva**:
-   seis de esos siete citaban ED00000096 / ED00000097 / ED00000127 — existen en
-   ADM y de todos modos no sirven, porque la conciliación no lee
-   `/api/Journals`. Lo que decide es el tipo de documento contra la cuenta.
+   ED00000183. Cero aciertos en ocho intentos. Lo que decide es el tipo de
+   documento contra la cuenta.
+
+   **Y acá hay que ser preciso, porque «la conciliación» son DOS y esta doctrina
+   las confundió hasta el 2026-08-14.** La de la mesa —la edge function
+   `admcloud-conciliacion-entradas` de Labs_Inv— lee `CashInvoices`,
+   `CashReceipts` y `BankBankTransfers` del lado entrada y `BillPayments`,
+   `Expenses`, `AccountPayments` y `BankCharges` del lado salida: ahí un asiento
+   no entra, y por eso el movimiento aparece «Sin registro en ADM». **La de ADM
+   sí lee asientos**: su módulo `BankReconciliations` los cruza con
+   `DocType: "JOURNAL"` apuntando con `TransAccountRowID` a la línea exacta que
+   toca la cuenta de banco. Verificado el 2026-08-14 sobre 25 conciliaciones: 32
+   filas `JOURNAL` conciliadas, entre ellas el ED00000169 de RD$2.497.600
+   («Desembolso de préstamo») y el ED00000148 de RD$4.000.000.
+
+   Corolario que corrige lo que decía antes esta misma sección: los precedentes
+   ED00000096 / ED00000097 / ED00000127 **sí sirven** —el 127 está conciliado en
+   la CCB00000079— y citarlos no es el error. El error es que el hecho nació en
+   el estado de cuenta y la pregunta 1 ya lo había ganado. Lo que un asiento
+   contra caja rompe hoy es **la pantalla de conciliación de la mesa**, no los
+   libros de ADM, y ésa sigue siendo razón suficiente para no proponerlo: pará y
+   preguntá.
 
 **«Es del Estado» no es criterio, y la evidencia lo prueba en las dos
 direcciones**: la liquidación de aduanas va como factura de proveedor (10 de 10)

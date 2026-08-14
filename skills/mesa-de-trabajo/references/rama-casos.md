@@ -194,7 +194,13 @@ entonces no abras ninguno todavía.
 cierre válido: el que aprueba decide con el botón de cada paso, no registra a
 mano. Si el asiento toca la cuenta de banco y `Journals` está bloqueado, el
 vehículo es `BankCharges` en la dirección del movimiento — H-12 de la
-doctrina: el rol SIEMPRE tiene documento para lo que nace en el banco. Solo si
+doctrina: el rol SIEMPRE tiene documento para lo que nace en el banco.
+**Pero H-12 vale sólo cuando la contraparte es el banco**, y eso lo decide la
+pregunta 1 de `rama-facturas-1.md`, no el candado: plata que ENTRA de un
+tercero no es un crédito bancario, y disfrazarla de `BankCharges` es
+exactamente lo que produjo el CB00000258 (depósito de un inquilino asentado
+como cargo bancario). Un candado que te frena nunca dice «buscá otro tipo que
+pase». Solo si
 un tratamiento de verdad no tiene vía (ni con H-12) la salida es la de
 siempre: pregunta citando el hecho, y el hueco queda como pendiente del INDEX
 — nunca un dictamen que le reparte trabajo manual al que aprueba. (Pasó el

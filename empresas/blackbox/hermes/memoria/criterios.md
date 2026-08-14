@@ -92,3 +92,66 @@ contable: H-06/H-07 del núcleo (`nucleo-contable/doctrina/conciliacion-hechos.m
 cobrado por adelantado. Si «Adelanto de Clientes» recibe código propio en ADM,
 este criterio se revisa para separar anticipo de garantía (no se parchea en
 silencio).
+
+---
+
+## C-003 — Activos fijos: qué cuenta y qué documento [BORRADOR]
+
+**Enunciado:** un activo fijo de Blackbox vive en una cuenta `160.xx`, se
+deprecia contra el par `650.xx → 170.xx`, y **el documento lo decide cómo
+entró, no que sea un activo**. Las tres formas que el histórico prueba:
+
+- **Compra con factura del vendedor** → `VendorBills` debitando la `160.xx`,
+  y después su pago por el camino normal. Es como entró la nave industrial
+  (160.03: aparece en `vendor-bills` y en `account-payments`). Sirve con NCF o
+  sin él, y el vendedor puede ser una persona física.
+- **Depreciación mensual** → `Journals` el último día del mes. **No toca caja,
+  así que el candado no aplica** y no hay nada que preguntar.
+- **Reclasificaciones y ajustes de valor** (separar terreno de edificación,
+  capitalizar gastos de traspaso) → `Journals`. Tampoco tocan caja.
+
+**El mapa de cuentas vivo** (216 cuentas, verificado 2026-08-14):
+
+| Activo | Cuenta | Gasto de depreciación | Depreciación acumulada |
+|---|---|---|---|
+| Terrenos | 160.01 (sin movimientos; **los terrenos no se deprecian**) | — | — |
+| Edificios — Apartamento San Gerónimo | 160.02 | 650.01 | 170.02 |
+| Edificaciones / Naves industriales | 160.03 | 650.01 | 170.02 |
+| Equipos de Transporte Liviano | 160.04 | 650.03 | 170.04 |
+| Mobiliarios y Equipos de Oficina | 160.06 | 650.04 | 170.06 |
+| Otros activos | — | 650.02 | 170.07 |
+
+**Dos trampas de este plan, y las dos muerden:**
+
+1. **Los pares no se corresponden por número.** 650.03 va contra 170.04, y
+   650.02 contra 170.07. Emparejar por el sufijo manda la depreciación del
+   transporte a la cuenta de los edificios.
+2. **650.01 y 170.02 se llaman IGUAL** («Depreciación Acumulada Edificios») y
+   son cosas opuestas: la 650.01 es el **gasto** del mes (va al débito) y la
+   170.02 es la **acumulada** que resta del activo (va al crédito). Elegir por
+   nombre invierte el asiento.
+
+**El apartamento San Gerónimo, en concreto.** No se compró por la mesa: entró
+por **carga inicial** el 2024-12-27 (documento `00000001`, débito 160.02 por
+RD$6.000.000 contra 305 Carga Inicial), financiado con **230.01 Préstamo
+Hipotecario (San Gerónimo)**, y el ED00000038 del 2024-12-31 lo ajustó. Su
+cuota mensual **no sale del banco de la empresa**: se asienta débito 230.01
+(capital) + débito 802.01 (intereses) contra crédito **801.02 Gastos personales
+no deducibles** — o sea que la paga el dueño. Por eso ese asiento nunca tocó
+101.xx y el candado jamás lo frenó. Si algún día la cuota empieza a salir de
+una cuenta de la empresa, deja de ser este asiento y hay que preguntar.
+
+**Evidencia:** espejo local del histórico al 2026-08-14. Depreciación: 14
+asientos idénticos, uno por mes, último día del mes, siempre los mismos cuatro
+débitos y cuatro créditos por los mismos montos (RD$18.928,08 transporte +
+RD$8.750,00 edificios + RD$2.201,98 otros + RD$364,67 mobiliario = RD$30.244,73
+mensuales) — ED00000115 (2025-12-31), ED00000146 (2026-01-31) y sus gemelos.
+Hipoteca: ED00000034, ED00000035, ED00000036 y la FP00000199. Apartamento:
+documento `00000001` y ED00000038. Ninguno de estos asientos toca una cuenta
+101.xx / 102.xx / 203.10 / 203.11.
+
+**Alcance propuesto:** Blackbox SRL, todo activo fijo de las cuentas 160.xx y
+su depreciación. **No cubre** la compra de un activo nuevo pagado desde el banco
+sin factura del vendedor: ese caso no tiene precedente en el histórico y va por
+evento `pregunta`. Si aparece un activo que no encaja en las cinco filas del
+mapa, se agrega la fila antes de asentar — no se recicla la más parecida.

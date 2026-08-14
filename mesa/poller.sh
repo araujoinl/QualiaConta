@@ -312,6 +312,14 @@ script_de_registro() {
     # «Pagos con tarjeta de credito detectados» de la mesa, que ya trae la
     # factura elegida por un humano: aca no hay nada que analizar.
     BillPayments)      echo "registrar-pago-factura.py" ;;
+    # El pago que NO cancela una factura: con este Blackbox le paga a la DGII
+    # —anticipo de ISR, ITBIS, IR-3, retenciones— y tambien la TSS y el INFOTEP
+    # (PC00000335 y PC00000336 de julio). El script existia desde antes y nunca
+    # se engancho, asi que cada uno de estos pagos despertaba al contable para
+    # copiar datos ya decididos. Su dedup es por `Reference` y no por
+    # monto+fecha —la leccion del CB00000169—, y relee el documento antes de
+    # marcar la fila: tiene la misma barrera que los otros dos de esta lista.
+    AccountPayments)   echo "registrar-pago-cuenta.py" ;;
     # El asiento de diario. Estuvo SIN script hasta el 2026-08-07 porque un
     # asiento no tiene forma fija y ahí el juicio hace falta — pero ese juicio
     # ya se gastó río arriba: cuando la fila llega acá, las líneas están
