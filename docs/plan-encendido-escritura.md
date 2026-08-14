@@ -167,7 +167,9 @@ Hoy `registrada` es un estado sin evidencia. Cambios mínimos:
    Consecuencias que hay que tener presentes al revertir: si el documento ya está conciliado (`Conciliated` en las líneas) o el mes ya fue remitido a la contable externa (606/607), coordinar con ella ANTES — y con más razón ahora, porque después del borrado no queda evidencia de qué se fue.
    **Antes de tocar nada, guardar el documento completo**: `GET` del documento y volcar la respuesta al libro de acción. Es la única copia que va a existir.
 4. **Verificar** que ya no está (`GET` por UUID → `data:null`, y ausencia en el listado del período) y re-registrar corregido como documento nuevo vía nueva propuesta en la mesa.
-   El agente no puede hacer nada de esto: su rol niega `DELETE` y `Journals/Void` (verificado 2026-08-02, responden `Unauthorized`). La reversa es siempre humana.
+   La reversa es siempre humana — pero **por decisión, no por permiso**. La afirmación «su rol niega `DELETE` y `Journals/Void` (verificado 2026-08-02)» quedó **desactualizada**: re-sondeado el 2026-08-14, `VendorBills/Void`, `BankCharges/Void` y `Journals/Void` responden «Este documento no existe», o sea que el permiso pasa. Sólo `BillPayments/Void` y `AccountPayments/Void` siguen dando `Unauthorized`.
+
+   **Y la causa es más de fondo que un permiso suelto: el rol recortado de §1.1 nunca se creó.** `ADMCLOUD_ROLE` y `ADMCLOUD_REG_ROLE` apuntan los DOS al mismo rol, `Contabilidad Digital` — no existe ningún `QualiaConta-Registro`. Así que el «límite duro del servidor» que este plan da por puesto hoy no está, y lo único que sostiene la regla es la instrucción escrita. Eso contradice de frente la regla 5 del CLAUDE.md («los límites viven en los permisos de ADM Cloud, no en el prompt»). Cerrarlo pide a Carlos en la pantalla de roles; hasta entonces, la prohibición de anular es de doctrina y se declara como tal.
 5. **Aprender**: entrada del libro de acción con causa, regla corregida, `Aprobó:` y `Alcance:`; actualizar `memoria/` si el precedente estaba mal escrito.
 6. **Regresar la graduación** del tipo afectado según §3.3 y, revisado todo, desactivar el kill-switch.
 

@@ -80,7 +80,24 @@ eso re-etiquetaba— y se dio por ratificada porque la propuesta se aprobó en l
 mesa. **Aprobar una propuesta no ratifica el razonamiento que la armó.** El
 resultado fue el **CB00000258**: un depósito en garantía de RD$180,000 asentado
 en «Bancos → Cargos Bancarios». Su corrección en ADM la decide Carlos (anular y
-re-registrar es humano; el rol del agente niega Void).
+re-registrar es humano — ver abajo por qué, que no es lo que decía acá).
+
+**Corrección del 2026-08-14 sobre el motivo, no sobre la regla.** Esta línea
+decía «el rol del agente niega Void». **Es falso**: sondeado hoy contra un GUID
+inexistente, `VendorBills/Void`, `BankCharges/Void` y `Journals/Void` responden
+«Este documento no existe», que es la señal de que el permiso pasó (el control
+contra un endpoint inventado da 404 con otra forma). Sólo `BillPayments/Void` y
+`AccountPayments/Void` contestan `Unauthorized`.
+
+**La regla sigue en pie y es más fuerte dicha así: PODÉS anular y NO DEBÉS.**
+Decisión de C.Araujo, 2026-08-14. Una prohibición que se apoya en «no tenés
+permiso» se derrumba el día que el agente descubre que sí lo tiene, y ahí no
+queda regla — queda un agente que se siente autorizado. Es el mismo mecanismo
+del CB00000258: el candado frenó, y en vez de parar se buscó otra vía.
+
+Anular toca el libro fiscal oficial y no es reversible: el documento queda con
+lápida y su número no se reutiliza. Esa decisión es de un humano aunque la API
+la deje pasar.
 
 **Evidencia:** caso Formax 2026-08-07 (RD$180,000, anticipo de 2 meses de
 renta de nave industrial, impuestos incluidos). Plan vivo verificado ese día:
