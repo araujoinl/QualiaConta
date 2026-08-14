@@ -53,6 +53,45 @@ Se usa **`glm-5.2`**, el más capaz. Cuando el contable empiece a resolver casos
 por precedente, las tareas mecánicas pueden bajar a `glm-5-turbo` — eso es parte
 de la meta de bajar el gasto, no una optimización prematura.
 
+## Quién elige el modelo principal (desde 2026-08-14)
+
+Se elige desde el **panel de AI Engines de Labs_Inv**, en la función «Contable
+(Qualia Conta) · modelo principal», y no editando ningún script. El camino
+completo, que es el mismo que ya usaba la conmutación por cuota:
+
+```
+panel AI Engines  →  ai_feature_config (feature_key='qualia_contable')
+                  →  seguir-cuota.sh, cada 2 min por cron en el server
+                  →  configurar-modelo.sh <empresa> <modo> <modelo>
+                  →  config.yaml  →  el gateway crea un agente fresco
+```
+
+Cinco cosas que no se deducen del diagrama:
+
+1. **Sólo el principal.** Visión (`glm-4.6v`), el liviano (`glm-4.7`) y el
+   respaldo (`glm-5-turbo`) siguen clavados en `configurar-modelo.sh`. Bajar
+   visión rompe la lectura de facturas escaneadas, y ésa no es una decisión de
+   menú.
+2. **Sólo modelos de z.AI.** La red de seguridad del contable son los mismos
+   pesos servidos por OpenRouter como `z-ai/<modelo>`; con un modelo de otro
+   proveedor quedaría sin red justo cuando z.AI topa. Por eso la feature
+   declara `providers: ['zai']`.
+3. **Dos guardias, y el segundo no se ve desde la web.** El panel hace un probe
+   real contra z.AI antes de dejar guardar; el server exige además que el
+   gemelo exista en OpenRouter. Si falta el gemelo, el cambio **no se aplica** y
+   queda anotado en `~/qualiaconta-cuota.log` — la pantalla sigue mostrando lo
+   que pediste. Es la limitación conocida de no tener eco del estado real.
+4. **Un modelo rechazado no bloquea la conmutación de cuota.** `seguir-cuota.sh`
+   reintenta el cambio de modo con el modelo que ya estaba corriendo, y anota el
+   rechazado en `~/.qualiaconta-modelo-fallido` para no reintentarlo cada 2
+   minutos. Ese bloqueo caduca a la hora.
+5. **Es uno para todas las empresas.** La clave de `ai_feature_config` es la
+   feature, no la empresa. Con la segunda empresa hay que repensarlo — igual que
+   el semáforo global de la mesa.
+
+Sin fila en la tabla, el contable sigue con lo que tenga el `config.yaml`: la
+ausencia significa «nadie tocó el selector», nunca «volvé al default».
+
 ## Visión (leer fotos de facturas)
 
 Verificado empíricamente el 2026-08-02, no contra la documentación:

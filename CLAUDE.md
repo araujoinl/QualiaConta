@@ -17,7 +17,10 @@ configura.
 - **Agente:** Hermes Agent (Nous Research, MIT). Python 3.11 + Node, config y
   skills en `~/.hermes/`.
 - **Modelo:** GLM de z.AI, endpoint compatible con OpenAI en
-  `https://api.z.ai/api/paas/v4/`. Se cambia con `hermes model`, sin tocar código.
+  `https://api.z.ai/api/coding/paas/v4` (el del Coding Plan; el general no
+  atiende con este plan — ver [docs/modelo-zai.md](docs/modelo-zai.md)). El
+  principal se elige desde el panel de AI Engines de Labs_Inv, no con
+  `hermes model` ni editando scripts.
 - **Superficie:** mesa de trabajo web en Labs_Inv (módulo ADM Cloud) para el
   trabajo diario; Telegram vía `hermes gateway` para consultas y avisos.
 - **Libro oficial:** ADM Cloud. Lectura por SQL de sólo lectura, escritura por

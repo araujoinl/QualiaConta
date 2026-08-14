@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Aplica la configuración de modelos del contable. Idempotente.
 #
-#   ./configurar-modelo.sh                      -> blackbox, modo normal
+#   ./configurar-modelo.sh                              -> blackbox, modo normal
 #   ./configurar-modelo.sh otra-empresa
-#   ./configurar-modelo.sh blackbox respaldo    -> primario por OpenRouter
+#   ./configurar-modelo.sh blackbox respaldo            -> primario por OpenRouter
+#   ./configurar-modelo.sh blackbox normal glm-5.1      -> con otro principal
 #
 # El MODO decide quién atiende primero:
 #
@@ -65,15 +66,29 @@ CONF="${RAIZ}/empresas/${EMPRESA}/hermes/config.yaml"
 ENV_EMPRESA="${RAIZ}/empresas/${EMPRESA}/.env"
 CONTENEDOR="qualiaconta-${EMPRESA}"
 
-PRINCIPAL='glm-5.2'
+# El principal es lo ÚNICO elegible desde afuera, y se elige desde el panel de
+# AI Engines de Labs_Inv (feature `qualia_contable`); quien traduce esa fila a
+# este parámetro es seguir-cuota.sh. Las otras tres ranuras quedan clavadas a
+# propósito: bajar $VISION rompe la lectura de facturas escaneadas, y ni el
+# liviano ni el respaldo son decisiones que alguien deba tomar desde un menú.
+# El default sigue siendo el de siempre, así que una corrida a mano sin tercer
+# argumento se comporta igual que antes.
+PRINCIPAL="${3:-${MESA_MODELO_PRINCIPAL:-glm-5.2}}"
 RESPALDO='glm-5-turbo'
 LIVIANO='glm-4.7'
 VISION='glm-4.6v'
 
+# Se valida la FORMA acá, antes de que el nombre viaje a un curl y a un YAML.
+# Viene de la base, y lo que entra de afuera se valida contra un esquema
+# explícito aunque el camino parezca corto.
+case "$PRINCIPAL" in
+  ''|*[!a-zA-Z0-9._-]*) echo "Modelo principal '$PRINCIPAL' tiene caracteres que no van en un id de modelo"; exit 1 ;;
+esac
+
 # Los mismos pesos, servidos por OpenRouter, que tiene saldo aparte. Los nombres
 # van con el prefijo de la organización: allá el modelo se llama 'z-ai/glm-5.2',
 # no 'glm-5.2'.
-OR_PRINCIPAL='z-ai/glm-5.2'
+OR_PRINCIPAL="z-ai/${PRINCIPAL}"
 OR_LIVIANO='z-ai/glm-4.7'
 OR_VISION='z-ai/glm-4.6v'
 
@@ -210,7 +225,7 @@ OR_DISPONIBLES=$(curl -s --max-time 30 -H "Authorization: Bearer ${OPENROUTER_AP
 for M in "$OR_PRINCIPAL" "$OR_LIVIANO" "$OR_VISION"; do
   case " $OR_DISPONIBLES " in
     *" $M "*) ;;
-    *) echo "El modelo '$M' no existe en OpenRouter"; exit 1 ;;
+    *) echo "El modelo '$M' no existe en OpenRouter — no lo aplico: dejaría al contable sin red para cuando z.AI tope"; exit 1 ;;
   esac
 done
 
@@ -219,9 +234,9 @@ SALDO=$(curl -s --max-time 20 -H "Authorization: Bearer ${OPENROUTER_API_KEY}" \
   | python3 -c 'import json,sys; d=json.load(sys.stdin)["data"]; print(round(d["total_credits"]-d["total_usage"],2))' 2>/dev/null)
 echo "Saldo de la red de seguridad (OpenRouter): US\$${SALDO:-desconocido}"
 if [ "$MODO" = respaldo ]; then
-  echo "Modo respaldo: atiende OpenRouter, z.AI queda de reserva"
+  echo "Modo respaldo: atiende OpenRouter, z.AI queda de reserva — principal ${PRINCIPAL}"
 else
-  echo "Modo normal: atiende z.AI, OpenRouter queda de reserva"
+  echo "Modo normal: atiende z.AI, OpenRouter queda de reserva — principal ${PRINCIPAL}"
 fi
 
 # --------------------------------------------------------------------------
