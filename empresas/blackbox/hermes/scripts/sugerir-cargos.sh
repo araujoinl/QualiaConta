@@ -305,6 +305,26 @@ candidatos as (
              or q.propuesta->'banco_tx_ids' @> to_jsonb(t.id::text)
              or q.propuesta->'movimientos' @> to_jsonb(t.id::text) )
      )
+     -- Y tampoco se vuelve a proponer lo que YA se rechazó una vez. Un rechazo
+     -- no deja `registro_adm`, así que el filtro de arriba no lo ve y el
+     -- movimiento volvía a la cola en la corrida siguiente: uno volvió CINCO
+     -- veces en trece horas. Proponer de nuevo lo mismo que un humano acaba de
+     -- descartar no es insistencia, es ruido — y enseña a aprobar sin mirar.
+     --
+     -- El movimiento NO se pierde: sigue apareciendo en Sugerencias como salida
+     -- sin documento, porque esa lista son los movimientos crudos menos los que
+     -- algún trabajo VIVO reclamó, y un rechazado no reclama nada. Lo que se
+     -- apaga es la re-proposición automática, no la visibilidad.
+     and not exists (
+       select 1 from qualia_trabajos q
+        where q.empresa_id = '{empresa_id}'
+          and q.estado = 'rechazada'
+          and ( q.propuesta->>'banco_tx_id' = t.id::text
+             or q.propuesta->'origen'->>'banco_tx_id' = t.id::text
+             or q.propuesta->'destino'->>'banco_tx_id' = t.id::text
+             or q.propuesta->'banco_tx_ids' @> to_jsonb(t.id::text)
+             or q.propuesta->'movimientos' @> to_jsonb(t.id::text) )
+     )
    order by t.fecha_posteo
    limit 40
 ),

@@ -203,10 +203,17 @@ registrar. Tres razones posibles, y conviene saber cuál antes de actuar:
    cargo bancario: hay un gemelo en ADM que nadie reclama y el script se niega a
    adivinar. Eso NO se resuelve reintentando — se resuelve preguntando (ver la
    regla dura del gemelo sin NCF en `references/rama-respuestas.md`).
-2. **El `documento_adm` no tiene registro automático.** Hoy sólo lo tienen
-   `VendorBills` y `BankCharges`; una transferencia o un `Journals` caen acá y
-   los registrás vos, con todos los cuidados de la rama `aprobada` de
+2. **El `documento_adm` no tiene registro automático.** La lista viva es el
+   `case` de `script_de_registro()` en `mesa/poller.sh` — **leela ahí, no acá**:
+   al 2026-08-14 son siete (`VendorBills`, `VendorCreditNotes`, `BankCharges`,
+   `BankBankTransfers`, `BillPayments`, `AccountPayments`, `Journals`), y lo que
+   caiga fuera lo registrás vos con todos los cuidados de la rama `aprobada` de
    `references/rama-respuestas.md`.
+   Esta línea decía «sólo `VendorBills` y `BankCharges`» hasta hoy, tres tipos
+   atrás de la realidad: es la tercera vez que esta lista se desincroniza del
+   router. Por eso ahora nombra la fuente en vez de copiarla. La misma lista
+   existe además en el `ENDPOINTS` de `verificar-registros.py`: **un tipo nuevo
+   se agrega en los dos lugares o nace sin circuito de vuelta.**
 3. **El registro se cayó sin dejar rastro** y lo agarró el barrido de los 10
    minutos. Pasó el 2026-08-03 con cuatro facturas: z.AI devolvió 429 durante
    una ráfaga de aprobaciones, los turnos se cayeron sin escribir nada, y las

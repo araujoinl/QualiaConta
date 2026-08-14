@@ -22,12 +22,6 @@ LOG=/home/codebox/qualia-precedentes.log
 TOPE_LOG=$((2 * 1024 * 1024))
 AQUI=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-exec 9>/tmp/refrescar-precedentes.lock
-if ! flock -n 9; then
-    echo "$(date -u +%FT%TZ) ya hay una corrida en curso, salgo" >>"$LOG"
-    exit 0
-fi
-
 # El log es de por vida: si crece, se conserva la mitad reciente.
 if [ -f "$LOG" ] && [ "$(stat -c %s "$LOG")" -gt "$TOPE_LOG" ]; then
     tail -c $((TOPE_LOG / 2)) "$LOG" >"$LOG.tmp" && mv "$LOG.tmp" "$LOG"
@@ -44,6 +38,31 @@ registrar() { echo "$(date -u +%FT%TZ) $*" | tee -a "$CORRIDA" >>"$LOG"; }
 volcar()    { sed "s/^/  /" | tee -a "$CORRIDA" >>"$LOG"; }
 
 registrar "=== inicio ==="
+
+# COMPARTE EL CANDADO con refrescar-recurrentes.sh, a propósito: los dos
+# escriben el mismo volcado y pisarse deja el archivo a medias.
+#
+# Pero ESPERA en vez de rendirse, y ésa es la corrección del 2026-08-14. Con
+# `flock -n` el diario perdía siempre: corre una vez por día contra las 288
+# corridas del otro, así que la probabilidad de encontrarlo tomado no es
+# despreciable, es lo normal. Perdió SIETE noches seguidas y en cada una escribió
+# «ya hay una corrida en curso, salgo» y devolvió éxito, así que la libreta de
+# precedentes —de donde sale la mayoría de los aciertos del contable— dejó de
+# actualizarse una semana sin que nadie se enterara.
+#
+# El otro conserva su `-n`: es barato, corre cada 5 minutos y saltear una vuelta
+# no cuesta nada. El caro es éste.
+#
+# 600s es holgado: la corrida del otro son segundos. Si de verdad no se consigue
+# en diez minutos, algo está trabado y eso SÍ hay que verlo — por eso no sale
+# más con exit 0, sale por el mismo camino que cualquier otra falla y queda en
+# la bitácora que se lee desde la web.
+exec 9>/tmp/refrescar-precedentes.lock
+if ! flock -w 600 9; then
+    registrar "ERROR: no pude tomar el candado en 600s — el refresh de recurrentes quedó trabado"
+    "$AQUI/registrar-corrida.sh" precedentes "$INICIO" "$(date -u +%FT%TZ)" false 1 '{}' "$CORRIDA"
+    exit 1
+fi
 
 if ! docker ps --format '{{.Names}}' | grep -qx "$CONTENEDOR"; then
     registrar "ERROR: el contenedor $CONTENEDOR no esta corriendo, no refresco nada"
@@ -73,7 +92,13 @@ fallas=0
 # ahi si hay trabajo. Sus espejos estaban CONGELADOS en el volcado inicial
 # (2026-08-02), o sea que el cruce habria dicho "no registrado" para todo lo
 # posterior a esa fecha: la misma trampa que ya habia mordido a bank-transfers.
-for recurso in vendor-bills vendors bank-transfers bill-payments account-payments; do
+# `accounts` entra el 2026-08-14, también por auditoría. El espejo del plan de
+# cuentas era lo ÚNICO que nadie refrescaba: quedó congelado en el volcado
+# inicial del 2026-08-02 y le faltaba la 220.06 — justo la cuenta que sostiene
+# el C-002, el criterio vivo. Un contable que clasifica contra un catálogo de
+# hace doce días no puede proponer una cuenta creada ayer, y el síntoma es el
+# peor de todos: no falla, elige la más parecida.
+for recurso in vendor-bills vendors bank-transfers bill-payments account-payments accounts; do
     registrar "bajando $recurso (delta)"
     if salida=$(docker exec "$CONTENEDOR" python3 "$SCRIPTS/extraer-adm.py" \
                     --solo "$recurso" --desde "$DESDE" 2>&1); then

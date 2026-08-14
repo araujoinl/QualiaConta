@@ -68,8 +68,18 @@ BASE = "https://api.admcloud.net"
 # nota de credito, al lado. Sondeado el 2026-08-07: el readback por UUID se
 # comporta igual que el de los otros —devuelve el documento, con `Void`— y los
 # 34 estan vigentes, asi que sumarlo no marca ninguno.
+# `AccountPayments` es el TERCERO al que le pasa lo mismo, y entro el 2026-08-14
+# por auditoria: el poller lo enruta desde el mismo dia y este set no lo tenia,
+# asi que todo pago a la DGII, la TSS o el INFOTEP que la mesa registrara
+# quedaba sin circuito de vuelta. Que ya sea el tercero es el dato: este set y
+# el `case` de `script_de_registro` en mesa/poller.sh son la MISMA lista escrita
+# dos veces, y se desincronizan solos. Al agregar un tipo alla, se agrega aca.
+# Sondeado el 2026-08-14 contra el PC00000339: el readback por UUID devuelve el
+# documento con su `Void`, y un GUID inexistente contesta `data:null`, que es
+# exactamente la senal que este script lee como lapida.
 ENDPOINTS = {"VendorBills", "VendorCreditNotes", "BankCharges",
-             "BankBankTransfers", "BillPayments", "Journals"}
+             "BankBankTransfers", "BillPayments", "AccountPayments",
+             "Journals"}
 
 
 def env(n):

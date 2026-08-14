@@ -89,9 +89,13 @@ mundo van al INDEX como pendientes, nunca acá.
   entró la plata; eso no lo vuelve un hecho bancario: un cobro de un tercero
   jamás toca las cuentas de cargos o ingresos bancarios (640.x, 700.01), aunque
   haya llegado por transferencia y sin papel previo — esas cuentas son para lo
-  que el banco te cobra o te devuelve a vos. El DOCUMENTO con que se asienta
-  desde el banco es otra decisión, y la dicta H-12: `BankCharges` como
-  vehículo, con las cuentas de ESTE tratamiento.
+  que el banco te cobra o te devuelve a vos.
+- **El DOCUMENTO es otra decisión, y para este hecho HOY NO HAY.** Lo dictaba
+  H-12 (`BankCharges` en crédito), y esa parte quedó **derogada el 2026-08-14**:
+  la contraparte es el cliente, así que no es un hecho bancario tampoco para
+  elegir el documento. Mientras el rol de ADM no habilite un documento de
+  entrada de tercero, esto lo registra un humano y el contable abre un evento
+  `pregunta` con el movimiento y el tratamiento. Ver H-12 corregida.
 
 ## H-07 — Depósito recibido en garantía (alquiler, contratos)
 
@@ -106,9 +110,14 @@ mundo van al INDEX como pendientes, nunca acá.
   anticipo se consume como ingreso al devengarse (H-06). Si el texto del
   cliente no deja claro cuál es, se pregunta citando ambos.
 - **Tampoco es un hecho bancario**, por la misma razón que H-06: quien depositó
-  es el inquilino. Vale acá entera la regla de contraparte de H-06, y el
-  vehículo documental de H-12 para asentarlo desde el banco (precedente:
-  CB00000258, Caso #1 Formax).
+  es el inquilino. Vale acá entera la regla de contraparte de H-06, y también su
+  consecuencia documental: hoy no hay documento y se abre un evento `pregunta`.
+- **El CB00000258 (Caso #1 Formax) es el CONTRAEJEMPLO, no el precedente.**
+  Hasta el 2026-08-14 esta entrada lo citaba como precedente y era exactamente
+  al revés: es un depósito de un inquilino asentado como cargo bancario. Sus
+  CUENTAS están bien (Dr 101.04 / Cr 220.06); lo que está mal es el tipo de
+  documento. Citarlo para justificar un `BankCharges` de entrada de tercero es
+  el error que esta corrección viene a cerrar.
 
 ## H-08 — Ingreso por tarjeta (adquirente «Servicios Digita»)
 
@@ -147,23 +156,46 @@ mundo van al INDEX como pendientes, nunca acá.
 ## H-12 — Vehículo documental cuando el asiento toca la cuenta de banco
 
 - **Rango:** política de empresa (dictada por C.Araujo, 2026-08-07, a raíz del
-  Caso #2 Mtk Designs; precedente CB00000258, Caso #1 Formax) · **Vigencia:**
-  desde 2026-08-07
+  Caso #2 Mtk Designs) · **Vigencia:** desde 2026-08-07 · **Corregida el
+  2026-08-14** en su alcance y en su fundamento, por auditoría verificada contra
+  ADM
 - El tratamiento (H-06, H-07 o el que aplique) elige las CUENTAS; esta entrada
-  elige el DOCUMENTO. Cuando el asiento correcto debita o acredita una cuenta
-  de caja/banco y el documento natural sería `Journals`, el vehículo es
+  elige el DOCUMENTO. Cuando el asiento correcto debita o acredita una cuenta de
+  caja/banco y el documento natural sería `Journals`, el vehículo es
   `BankCharges` en la dirección del movimiento — crédito si la plata entró,
-  cargo si salió — porque la conciliación de ADM sólo cruza documentos de
-  banco: un `Journals` sobre caja queda sin conciliar para siempre, y por eso
-  el sistema lo bloquea.
+  cargo si salió.
+- **ALCANCE, y es la corrección que más importa: sólo vale si la contraparte es
+  el BANCO.** Para plata que entra de un tercero —un cliente, un inquilino— el
+  documento correcto NO es `BankCharges`, porque el hecho no es bancario (H-06,
+  H-07). Ahí hoy no hay documento: se abre un evento `pregunta` y lo registra un
+  humano. Un candado que te frena está diciendo «el tipo está mal elegido» o
+  «esto no lo registrás vos» — nunca «buscá otro tipo que pase». El CB00000258
+  es el contraejemplo de esto, no su precedente.
+- **FUNDAMENTO, corregido: «la conciliación» son DOS y esta entrada las
+  confundía.** Decía que un `Journals` sobre caja «queda sin conciliar para
+  siempre». Es falso para ADM y cierto para la mesa:
+  - **ADM sí concilia asientos.** Verificado el 2026-08-14 sobre el espejo del
+    histórico: de los 75 `Journals` que tocan una cuenta de caja, **74 figuran
+    con `Accounts[].Conciliated`**. El módulo `BankReconciliations` los cruza
+    apuntando con `TransAccountRowID` al renglón exacto que toca el banco.
+  - **La conciliación de la mesa no.** La edge function
+    `admcloud-conciliacion-entradas` (repo Labs_Inv) lee `CashInvoices`,
+    `CashReceipts` y `BankBankTransfers` del lado entrada, y `BillPayments`,
+    `Expenses`, `AccountPayments` y `BankCharges` del lado salida. Ahí un asiento
+    no entra, y el movimiento aparece «Sin registro en ADM».
+  - Por eso el vehículo `BankCharges` **sigue siendo la elección correcta** para
+    lo que nace en el estado de cuenta con el banco de contraparte: no porque
+    ADM no sepa conciliar un asiento, sino para que el movimiento cruce en la
+    pantalla que se usa todos los días. Y por eso el candado
+    `qualia_trabajos_journal_no_toca_caja` sigue puesto.
 - El vehículo NO cambia el asiento: las cuentas siguen siendo las del
   tratamiento (banco contra el pasivo que corresponda, etc.). Las cuentas de
   cargos/ingresos bancarios (640.x, 700.01) quedan reservadas para los hechos
   que SÍ son del banco (H-01, H-02, H-09).
-- Consecuencia operativa: el rol del contable SÍ tiene documento para asentar
-  entradas y salidas de terceros nacidas en el banco. «Mi rol no tiene
-  documento para esto» dejó de ser una conclusión válida para estos hechos: el
-  dictamen se propone como pasos aprobables, jamás se le manda al humano a
-  asentarlo a mano.
+- Consecuencia operativa, ya acotada por el alcance: para los hechos con el
+  banco de contraparte el rol SÍ tiene documento, y el dictamen se propone como
+  pasos aprobables en vez de mandarle trabajo manual al humano. Para los hechos
+  con un tercero de contraparte, «mi rol no tiene documento para esto» es la
+  conclusión CORRECTA y termina en un evento `pregunta`.
 - `Reference` = `banco_tx_id`, como en todo documento nacido de un movimiento
   del banco.

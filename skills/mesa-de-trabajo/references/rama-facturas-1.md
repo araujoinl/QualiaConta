@@ -195,6 +195,22 @@ Preguntá en este orden; la primera que dé SÍ, gana:
    con saldo abierto)? → **`BillPayments`** (prefijo `PP`, módulo BANCO, no
    Compras). No crea gasto: debita Cuentas por Pagar y acredita la caja. El
    saldo lo dice SOLO `/api/AP`.
+   **Y si la respuesta es «sale plata pero NO hay factura registrada que
+   cancelar», no bajes a la 4: es la 3-bis.** → **`AccountPayments`** (prefijo
+   `PC`, módulo BANCO). Es con lo que Blackbox le paga a la **DGII** —anticipo
+   de ISR, ITBIS, IR-3, retenciones— y también a la **TSS** y al **INFOTEP**
+   (PC00000335 y PC00000336 de julio). No cancela ninguna factura: no lleva
+   `Documents[]`, lleva las dos patas del asiento en `Accounts[]` —crédito al
+   banco, débito a la cuenta del impuesto— y el `Items[]` con la contrapartida.
+   Doctrina: `nucleo-contable/doctrina/pagos-a-cuenta.md`.
+
+   **Por qué esta pregunta existe desde el 2026-08-14 y no antes:** no estaba, y
+   sin ella el anticipo de ISR —un hecho mensual, previsible y con doctrina
+   ratificada— salió propuesto de cuatro formas con tres tipos de documento
+   distintos en seis días. Y ojo con la trampa que hace caer en la pregunta 1:
+   el pago de un impuesto SALE del estado de cuenta, pero **la contraparte es la
+   DGII, no el banco**, así que la 1 no lo gana. El banco es el caño.
+
 4. **¿Un tercero te entregó algo, o te liquidó una obligación, y de eso hay un
    documento que recibiste?** → **`VendorBills`**, tenga NCF o no lo tenga, y
    sea quien sea el tercero. **Que sea el Estado no cambia nada: la DGA es un
@@ -287,6 +303,7 @@ propio `detalle` y preguntate qué cuenta se acredita.
 | `VendorBills` | Cuentas por Pagar — la pone ADM sola, NO la escribas | ítems |
 | `VendorCreditNotes` | los gastos y el ITBIS que corrige; Cuentas por Pagar va al DÉBITO, y la pone ADM sola | ítems, precios POSITIVOS |
 | `BillPayments` | la cuenta de caja que pagó | partida doble |
+| `AccountPayments` | la cuenta de caja que pagó, contra la cuenta del impuesto al débito — **sin `Documents[]`**: si hay una factura que cancelar, era `BillPayments` | partida doble + `Items[]` |
 | `BankCharges` | en `cargo`: la cuenta de caja o la tarjeta. En `credito`: el ingreso del banco o la cuenta del cargo que se revierte — **jamás un pasivo con un tercero** | partida doble + `direccion` |
 | `BankBankTransfers` | las dos cuentas de caja | partida doble |
 | `Journals` | lo que declaren tus líneas | partida doble |

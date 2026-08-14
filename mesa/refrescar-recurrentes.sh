@@ -18,9 +18,13 @@
 # tráfico contra ADM sin que nadie lo aproveche.
 #
 # COMPARTE EL CANDADO con el refresh diario, a propósito: los dos escriben el
-# mismo volcado y a las 5:20 se cruzarían. Con `flock -n`, la corrida horaria de
-# esa hora se saltea en silencio — el refresh diario ya bajó lo mismo y va a
-# dejar el archivo mejor de lo que lo dejaría ésta.
+# mismo volcado y a las 5:20 se cruzarían. Ésta se saltea en silencio — el
+# refresh diario ya bajó lo mismo y va a dejar el archivo mejor que ésta.
+#
+# El `-n` es de ÉSTA y sólo de ésta. El diario espera con `-w 600`, porque la
+# asimetría manda: éste tiene 288 oportunidades por día y el otro una sola. Con
+# los dos en `-n` el que perdía era siempre el diario, y perdió siete noches
+# seguidas antes de que alguien lo notara (ver el comentario del candado allá).
 #
 # Solo GET contra ADM. Corre en el host (necesita docker); el trabajo pasa dentro
 # del contenedor, que es donde viven las credenciales y las rutas.

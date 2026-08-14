@@ -1469,8 +1469,15 @@ SQL
   # no sirve para esto (listado con NCF:null y `search` que no filtra — ver el
   # encabezado); el detalle jsonl SÍ trae el NCF y se refresca con el pipeline
   # de preentrenamiento. Se reportan los DocID coincidentes.
+  # `bank-charges*.jsonl` entra el 2026-08-14: un NCF no vive sólo en una
+  # factura de proveedor. El `E340000187146` —la nota de crédito con la que el
+  # banco devuelve el 2x1000 que él mismo cobró— es un `BankCharges`, y mirando
+  # sólo vendor-bills el mismo papel se podía cargar dos veces por dos caminos.
+  # Hay 1 duplicado histórico así, RD$23,6 mil. El shape del jsonl es el mismo
+  # (`NCF` y `DocID` en la raíz), así que el parseo de abajo los cubre igual.
   if [ -d "$PRE_DIR/raw" ]; then
-    if ! grep -hsF -- "\"$NCF\"" "$PRE_DIR"/raw/vendor-bills*.jsonl 2>/dev/null \
+    if ! grep -hsF -- "\"$NCF\"" "$PRE_DIR"/raw/vendor-bills*.jsonl \
+                                 "$PRE_DIR"/raw/bank-charges*.jsonl 2>/dev/null \
       | "$PY" -c '
 import json, sys
 ncf = sys.argv[1]
