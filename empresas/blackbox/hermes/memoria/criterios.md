@@ -216,3 +216,97 @@ mantiene a mano.
 retención ISR 2% Proveedores» (son 20 de 20 con 30% de ITBIS) y «Logistichause —
 1 doc con retención, probablemente 30% por transporte de carga» (son 13 pagos
 con 100%).
+
+---
+
+## C-005 — «Nota De Debito» de Santa Cruz no describe nada [BORRADOR]
+
+**Enunciado:** Banco Santa Cruz escribe literalmente `Nota De Debito` y **nada
+más** en toda salida que no sabe describir: sin beneficiario, sin referencia,
+sin concepto. Las 13 del histórico tienen el texto IDÉNTICO, así que
+**clasificarlas leyendo la descripción es imposible por construcción** — no es
+que sea difícil, es que no hay información ahí.
+
+**Se clasifican cruzando monto + fecha contra ADM, nunca por el texto.** Y el
+monto solo no alcanza: cruzando así, los RD$1.000.000 del 30/06 pegaron con una
+transferencia de cinco semanas después, y los RD$3.225 con un asiento de
+DEVENGO, que no es un pago. **Un match en `Journals` casi nunca es el pago: es
+la provisión.** La fecha tiene que coincidir, y el tipo de documento tiene que
+ser de caja.
+
+**Los tres patrones que sí identifican** (medidos el 2026-08-14 sobre las 13):
+
+| Patrón | Qué es | Documento |
+|---|---|---|
+| Día ~1 y día ~30, cuenta 4964, **de a pares** | TSS e INFOTEP del mes | `AccountPayments` — los de julio son PC00000335 y PC00000336 |
+| Día ~20, cuenta 4964 | el IT-1 (ITBIS) | `AccountPayments` — ver C-006 |
+| **Monto fijo que se repite mes a mes** | cuota de préstamo o línea de crédito | sin precedente: `pregunta` |
+
+El de la cuota es el más fácil de reconocer y el que más se pasa por alto:
+RD$96.892,24 exactos el 06/07 y el 07/08. Dos meses seguidos con el mismo monto
+al centavo en la misma cuenta no es casualidad, es una amortización.
+
+**Antes de proponer NADA sobre una nota de débito, se busca en el espejo por
+monto y fecha.** Dos de las diez que estaban en la mesa al 2026-08-14 ya estaban
+registradas y nadie lo había notado: el trabajo era cerrarlas, no registrarlas.
+
+**Evidencia:** las 13 notas de débito de jun–ago 2026 (RD$1,6 M), cruzadas una
+por una contra `account-payments`, `bill-payments`, `bank-charges`,
+`bank-transfers` y `journals` del espejo. **Cero de 13 tenían documento** al
+momento de medir — no hay precedente en el libro que copiar, y por eso esta
+regla se escribe desde el dato y no desde la costumbre.
+
+**Alcance propuesto:** Blackbox SRL, cuentas de Banco Santa Cruz. Los otros
+bancos del colector sí describen sus movimientos y no necesitan esto. Si Santa
+Cruz empieza a mandar descripción, el criterio se revisa en vez de arrastrarse.
+
+---
+
+## C-006 — El pago del IT-1 va como `AccountPayments`, no como asiento
+
+**Enunciado:** el pago mensual del ITBIS —el IT-1, que vence el día 20— se
+registra con un **`AccountPayments`** que debita `210.01 Itbis Operativo` y
+`210.03 Retención 30% Itbis` contra la cuenta de banco que pagó. **No como
+`Journals`**, que es como se hizo hasta diciembre de 2025.
+
+**Por qué cambia:** la forma vieja era un asiento que acredita una cuenta de
+caja, y eso es exactamente lo que rechaza el trigger
+`qualia_trabajos_journal_no_toca_caja` desde el 2026-08-07. O sea que el
+contable no podía proponer el pago del ITBIS de la forma en que la empresa
+siempre lo hizo — el candado y la costumbre se contradecían, y la nota de débito
+de RD$166.418,03 del 2026-07-20 quedó parada por eso.
+
+Entre las dos salidas —abrirle una excepción al candado o migrar el documento—
+se eligió migrar, por tres razones: la TSS y el INFOTEP **ya hicieron ese
+camino** en julio de 2026 (PC00000335, PC00000336) y funcionó; un
+`AccountPayments` sí lo cruza la conciliación de la mesa y un asiento no; y una
+excepción con nombre dentro del candado lo vuelve discutible caso por caso,
+que es como se erosiona un límite.
+
+**Evidencia de la forma vieja**, para que quede el rastro de qué se está
+cambiando: ED00000037 (16/04/25), ED00000049, ED00000066, ED00000078,
+ED00000094 y ED00000120 (20/12/25) — todos alrededor del día 20, todos con la
+misma forma. El ED00000120 es el ejemplar limpio:
+
+```
+D 210.01 Itbis Operativo        293.951,63
+D 210.03 Retencion 30% Itbis      5.778,93
+C 101.05 Banco Impuestos 964    299.730,56
+```
+
+**Evidencia de que la cuenta admite el documento nuevo:** `210.03` ya se paga
+con `AccountPayments` (5 veces, p.ej. PC00000312 del 17/03/26). La `210.01`
+nunca se pagó así — este criterio es el primero.
+
+**Los asientos históricos NO se tocan.** Son la contabilidad de 2025, están
+correctos en su momento y anular para re-registrar no es lo que este cambio
+viene a hacer. La forma nueva rige de acá en adelante.
+
+**Alcance:** Blackbox SRL, el pago del IT-1 de cada período. Si aparece una
+retención que no sea la 210.03 dentro del mismo pago, se agrega al asiento del
+`AccountPayments` — no se abre un documento aparte.
+
+**Aprobó:** C.Araujo, por chat el 2026-08-14.
+
+**Deroga:** la forma `Journals` para el pago del IT-1, vigente hasta
+2025-12-20.

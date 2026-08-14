@@ -160,6 +160,14 @@ Preguntá en este orden; la primera que dé SÍ, gana:
    quién cobra al final, es que el hecho nació en la cuenta y no hubo papel que
    recibieras y decidieras pagar.
 
+   **Y antes de contestar esta pregunta: ¿la descripción dice algo?** En Banco
+   Santa Cruz, `Nota De Debito` a secas no es un concepto — es lo que el banco
+   escribe cuando no describe nada, y las 13 del histórico tienen el texto
+   idéntico. Con eso no se clasifica: se busca el monto y la fecha en el espejo
+   antes de proponer, porque dos de las diez que estaban en la mesa al
+   2026-08-14 ya estaban registradas. **Con esa descripción, empezá por C-005 de
+   `criterios.md`, no por esta pregunta.**
+
    **Las dos condiciones son necesarias, y la segunda es la que se olvida.** Un
    `BankCharges` es lo que el BANCO le hace a tu cuenta: él cobra, él devuelve,
    él acredita. Si del otro lado hay un cliente, un inquilino o cualquier
