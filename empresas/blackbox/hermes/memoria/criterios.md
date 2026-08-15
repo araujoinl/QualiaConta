@@ -116,16 +116,28 @@ silencio).
 
 **Enunciado:** un activo fijo de Blackbox vive en una cuenta `160.xx`, se
 deprecia contra el par `650.xx → 170.xx`, y **el documento lo decide cómo
-entró, no que sea un activo**. Las tres formas que el histórico prueba:
+entró, no que sea un activo**. Las formas:
 
 - **Compra con factura del vendedor** → `VendorBills` debitando la `160.xx`,
   y después su pago por el camino normal. Es como entró la nave industrial
-  (160.03: aparece en `vendor-bills` y en `account-payments`). Sirve con NCF o
-  sin él, y el vendedor puede ser una persona física.
+  (160.03, FP00000838).
+- **Compra de un INMUEBLE, o de cualquier bien que se transfiere por acto
+  notarial y matrícula** (locales, terrenos, apartamentos, y el vehículo cuya
+  transferencia se hace ante notario sin factura) → **`Journals`**: débito la
+  `160.xx`, crédito `201` Cuentas por Pagar DOP. **Nunca `VendorBills`** — ver
+  el enunciado propio abajo, es el error del Caso #4.
 - **Depreciación mensual** → `Journals` el último día del mes. **No toca caja,
   así que el candado no aplica** y no hay nada que preguntar.
 - **Reclasificaciones y ajustes de valor** (separar terreno de edificación,
   capitalizar gastos de traspaso) → `Journals`. Tampoco tocan caja.
+
+**Lo que este criterio decía y era falso (corregido 2026-08-15).** Decía que la
+compra con factura «sirve con NCF o sin él, y el vendedor puede ser una persona
+física», apoyándose en la nave industrial. Se fue a mirar el precedente:
+**FP00000838 es del `Banco Multiple Santa Cruz S A`, RNC 102012921** —un
+contribuyente con RNC, no una persona física— por RD$180.020,00 del 2026-01-23.
+El precedente nunca dijo lo que la regla afirmaba, y de esa extrapolación
+salieron las dos facturas del Caso #4.
 
 **El mapa de cuentas vivo** (216 cuentas, verificado 2026-08-14):
 
@@ -327,3 +339,50 @@ retención que no sea la 210.03 dentro del mismo pago, se agrega al asiento del
 
 **Deroga:** la forma `Journals` para el pago del IT-1, vigente hasta
 2025-12-20.
+
+---
+
+## C-007 — Comprar un inmueble va por asiento, y NO entra al 606
+
+**Enunciado:** la adquisición de un inmueble —local, terreno, apartamento,
+nave— se registra con un **`Journals`**: débito la `160.xx` del inmueble,
+crédito `201` Cuentas por Pagar DOP. Los pagos que la saldan van como
+**`AccountPayments`**, que debitan esa misma `201` contra el banco. **Nunca
+`VendorBills`, y nunca lleva tipo de gasto 606.**
+
+**Por qué.** El 606 declara compras de bienes y servicios sustentadas en
+comprobante fiscal. Comprar un inmueble no es una compra de bienes y servicios:
+es un cambio de forma del patrimonio —sale efectivo, entra un activo— que se
+documenta con **acto de venta notarial** y paga el **3% de Impuesto a la
+Transferencia Inmobiliaria** al traspasar. No hay NCF que informar, no hay ITBIS
+que adelantar y no hay crédito fiscal que tomar. Toda `VendorBills` con RNC
+entra al 606 por construcción: elegir ese documento mete la operación en un
+reporte donde no existe fila válida para ella.
+
+**El asiento no toca caja**, así que el trigger
+`qualia_trabajos_journal_no_toca_caja` no lo frena: `Journals` está disponible y
+es el vehículo correcto, no un rodeo.
+
+**Evidencia — el Caso #4 (2026-08-15).** La compra de los locales J-11 y J-12 de
+Plaza Paraíso del Mar a Nercido Melanio Vargas, RD$1.725.000,00 cada uno, se
+registró como FP00001152 y FP00001153 con tipo de gasto 606 «10 Adquisición de
+Activos». Además de ser el documento equivocado, el proveedor quedó en ADM con
+`FiscalID: null` y las dos facturas con `NCF: null`: al 606 iban a salir
+RD$3.450.000,00 sin RNC y sin comprobante. Lo dictaminaron los contables de la
+empresa; se anularon los cuatro documentos (las dos FP y sus pagos PP00000813 y
+PP00000814) y se re-registró por esta forma.
+
+**El impuesto de transferencia se capitaliza**, no es gasto: débito la misma
+`160.xx` del inmueble. Eso ya estaba ratificado en K-01 y no cambia.
+
+**Alcance:** Blackbox SRL, toda adquisición de inmuebles y de cualquier bien
+cuya transferencia se perfecciona ante notario sin factura del vendedor. Si el
+vendedor ES un contribuyente que emite NCF por la operación —una constructora
+vendiendo del inventario, por ejemplo— vuelve a ser una `VendorBills` normal:
+lo que decide es si hay comprobante fiscal, no que el bien sea un inmueble.
+
+**Aprobó:** C.Araujo, por chat el 2026-08-15, sobre dictamen de los contables de
+la empresa.
+
+**Deroga:** el bullet de C-003 que extendía `VendorBills` a la compra de activos
+sin NCF a personas físicas.

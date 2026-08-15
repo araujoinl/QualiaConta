@@ -226,6 +226,28 @@ Preguntá en este orden; la primera que dé SÍ, gana:
    el banco también lo es: es el proveedor #1 de esta empresa con 203 facturas.
    «Banco» y «proveedor» NO son excluyentes.
 
+   **4-bis · Lo único que SACA un hecho de esta pregunta: el bien que se
+   transfiere ante notario.** Si lo que entró es un **inmueble** —local,
+   terreno, apartamento, nave— o cualquier bien cuya propiedad se pasa por
+   **acto de venta notarial y matrícula** en vez de por factura, no es una
+   `VendorBills`: es un **`Journals`** que debita la `160.xx` y acredita `201`
+   Cuentas por Pagar DOP, y los pagos que lo saldan van por `AccountPayments`
+   (la 3-bis). **No lleva tipo de gasto 606.** Doctrina: **C-007** de
+   `criterios.md`.
+   Y ojo con el orden: esto **no** es «no tiene NCF, entonces no es factura» —
+   la REGLA DURA sigue en pie y la DGA sin NCF sigue siendo `VendorBills`. Lo
+   que decide acá es que **la operación no se documenta con comprobante
+   fiscal en ninguna de las dos puntas**: no hay NCF que informar, no hay ITBIS
+   que adelantar, y el 606 no tiene fila donde ponerla. Si el vendedor SÍ emite
+   NCF por el inmueble —una constructora vendiendo de su inventario— vuelve a
+   ganar la 4 y es una factura normal.
+   **Toda `VendorBills` con RNC entra al 606 por construcción**: elegir ese
+   documento acá no es un detalle de archivo, es meter la operación en un
+   reporte a la DGII donde no existe. Pasó el 2026-08-15 con el Caso #4 —los
+   locales J-11 y J-12, RD$1.725.000,00 cada uno, FP00001152 y FP00001153, con
+   el vendedor sin RNC en ADM y las dos facturas sin NCF—; los contables de la
+   empresa lo dictaminaron mal y los cuatro documentos se anularon.
+
    **Y acá adentro, la única sub-pregunta que mira el NCF: ¿ese documento
    CORRIGE una factura anterior** (e-NCF `E34`, NCF tipo 04)**?** →
    **`VendorCreditNotes`** (prefijo `NCP`, módulo Compras), con los precios

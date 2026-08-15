@@ -100,6 +100,11 @@ Se pregunta en este orden; la primera que dé SÍ, gana:
    10); el banco también (203 facturas, proveedor #1).
    → Sub‑pregunta, la única que mira el NCF: **¿corrige una factura anterior**
    (e‑NCF `E34`, NCF `04`)**?** → `VendorCreditNotes`.
+   → **Excepción, y es la única (C‑007, 2026‑08‑15): ¿lo que entró es un inmueble,
+   o un bien que se transfiere por acto notarial y no por factura?** → `Journals`
+   débito `160.xx` / crédito `201`, y sus pagos por `AccountPayments`. **Sin tipo
+   de gasto 606**: la operación no se sustenta en comprobante fiscal, así que no
+   hay fila del 606 donde ponerla. Ver K‑01.
 5. **¿Devengo puro sin caja?** (nómina, TSS, INFOTEP, ISR de empleados) → `Journals`.
    Último recurso, no cajón de sastre.
 
@@ -811,22 +816,47 @@ Interés ─────► 802.01 Intereses de Préstamos    (BankCharges, dire
 
 ## 12. FAMILIA K — Activos fijos y bienes raíces (caso solicitado)
 
-### K‑01 · Compra de nave industrial / edificación
+### K‑01 · Compra de un inmueble
 
 ```
-Paso 1 · Compra del inmueble ─────► 160.03 Edificaciones / Naves industriales  180,020.00
-         Cr Cuentas por Pagar Proveedores DOP
-                                     (VendorBills · 606 = 10 Adquisición de Activos)
+Paso 1 · Compra del inmueble ─────► 160.0x el inmueble
+         Cr 201 Cuentas por Pagar DOP
+                                     (Journals · ED · SIN tipo de gasto 606)
 
-Paso 2 · Impuesto de transferencia inmobiliaria pagado a la DGII
-         Dr 160.03 Edificaciones / Naves industriales   15,020.00   ← SE CAPITALIZA
+Paso 2 · Pago al vendedor
+         Dr 201 Cuentas por Pagar DOP
+         Cr 101.0x el banco que pagó
+                                     (AccountPayments · beneficiario el vendedor)
+
+Paso 3 · Impuesto de transferencia inmobiliaria pagado a la DGII
+         Dr 160.0x el mismo inmueble                    ← SE CAPITALIZA
          Cr 101.06 Banco Operaciones 874
                                      (AccountPayments · beneficiario DGII)
 ```
 
-✔ FP00000838 (2026‑01‑23) + PC00000302 (2026‑02‑25). **El criterio clave:** el impuesto
-de transferencia **no es gasto** — se capitaliza al costo del inmueble. `160.03` acumula
-10 usos.
+**Dos criterios, y los dos son duros:**
+
+1. **No es una `VendorBills`, y por lo tanto no va al 606** (C‑007, 2026‑08‑15).
+   Comprar un inmueble no es una compra de bienes y servicios: es un cambio de forma
+   del patrimonio, documentado con acto de venta notarial, que paga el **3% de
+   transferencia inmobiliaria** y no genera NCF ni ITBIS adelantado. Toda factura de
+   proveedor con RNC entra al 606 por construcción — meter la compra ahí genera una
+   fila que la DGII no puede cuadrar contra ningún comprobante.
+2. El impuesto de transferencia **no es gasto**: se capitaliza al costo del inmueble.
+
+✔ PC00000302 (2026‑02‑25) para el paso 3. `160.03` acumula 10 usos.
+
+> **Corrección del 2026‑08‑15 — qué decía esta sección y por qué era falso.** Decía
+> `VendorBills · 606 = 10 Adquisición de Activos`, citando FP00000838 (RD$180.020,00,
+> 2026‑01‑23) como precedente de «compra del inmueble». Al verificarla contra ADM,
+> esa factura es del **`Banco Multiple Santa Cruz S A`, RNC 102012921** — un
+> contribuyente con RNC, no la persona física a la que después se le extendió el
+> criterio. Sobre esa extrapolación se registraron las FP00001152 y FP00001153 del
+> Caso #4 (locales J‑11 y J‑12, RD$1.725.000,00 cada uno), con el vendedor sin RNC
+> en ADM y las dos sin NCF: RD$3.450.000,00 encaminados al 606 sin comprobante. Los
+> contables de la empresa lo dictaminaron, los cuatro documentos —las dos facturas y
+> sus pagos PP00000813 y PP00000814— se anularon, y la operación se re‑registró por
+> la forma de arriba.
 
 ### K‑02 · Otras compras de bienes raíces
 
@@ -835,6 +865,7 @@ de transferencia **no es gasto** — se capitaliza al costo del inmueble. `160.0
 | Terreno | ─────► | `160.01` Terrenos | ○ sin precedente |
 | Apartamento / edificio | ─────► | `160.02` Edificios (Apartamento San Gerónimo) | ✔ 2 usos (carga inicial: Dr 6,000,000 / Cr 1,500,000) |
 | Nave industrial | ─────► | `160.03` | ✔ 10 usos |
+| Local comercial J‑11 / J‑12 (Plaza Paraíso del Mar) | ─────► | `160.10` / `160.11` | ✔ Caso #4, por asiento (K‑01) |
 | Gastos legales, tasación y notariales de la compra | ─────► | **se capitalizan al mismo `160.0x`** | ○ criterio a ratificar |
 
 > **Nota para el auditor:** un terreno **no se deprecia**; una edificación sí. Si un solo
