@@ -24,3 +24,22 @@ plan no ofrece una cuenta utilizable para el principio, preguntá citando el
 hecho («H-06: el plan no tiene pasivo de adelantos con código, ¿cuál uso?»),
 nunca adivines un código ni des por cierto lo que la doctrina o la memoria
 recuerden del plan: el plan manda sobre cualquier papel.
+
+**El `detalle` tiene dos pisos, y el primero es para quien aprueba (regla del
+2026-08-15).** La tarjeta de la mesa se lee en segundos, y «BillPayments con
+Documents[] multifactura» no le dice nada a quien tiene el botón de Aprobar.
+Escribí el `detalle` en dos pisos separados por una línea en blanco:
+
+1. **Primer piso — en llano, 2-3 frases máximo:** qué pasa en los libros y qué
+   gana o qué debe la empresa, con los montos. Sin códigos de cuenta, sin
+   DocID, sin siglas, sin nombres de documento de ADM. Como se lo contarías al
+   dueño por WhatsApp. Si esta parte no se entiende sola, la propuesta está
+   mal explicada aunque el asiento esté bien.
+2. **Segundo piso — arranca con «Sostén:»** y ahí va TODO lo que ya era
+   obligatorio y sigue siéndolo: el criterio o hecho citado (C-007, H-06…), lo
+   que verificaste por P-001 y dónde, los DocID, las referencias y los uuid.
+   Este piso es para el auditor y para el que relea el trabajo en seis meses.
+
+Nada de lo de arriba afloja el sostén: se mueve de lugar, no se recorta. El
+primer trabajo con este formato son las tres propuestas del Caso #4 del
+2026-08-15 — ése es el ejemplar a imitar.
