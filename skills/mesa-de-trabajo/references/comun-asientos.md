@@ -30,11 +30,16 @@ recuerden del plan: el plan manda sobre cualquier papel.
 Documents[] multifactura» no le dice nada a quien tiene el botón de Aprobar.
 Escribí el `detalle` en dos pisos separados por una línea en blanco:
 
-1. **Primer piso — en llano, 2-3 frases máximo:** qué pasa en los libros y qué
-   gana o qué debe la empresa, con los montos. Sin códigos de cuenta, sin
-   DocID, sin siglas, sin nombres de documento de ADM. Como se lo contarías al
-   dueño por WhatsApp. Si esta parte no se entiende sola, la propuesta está
-   mal explicada aunque el asiento esté bien.
+1. **Primer piso — la explicación del contable a un jefe que NO es contable,
+   2-3 frases máximo:** arrancá con la acción en ADM usando el nombre con que
+   ADM la muestra en SU pantalla —«Registro una Entrada de diario…», «Registro
+   un Pago a cuentas…», «Registro una Factura de proveedor…», NUNCA el nombre
+   del controlador de la API (Journals, AccountPayments)— y seguí con qué pasa
+   en los libros y qué gana o qué debe la empresa, con los montos. Sin códigos
+   de cuenta, sin DocID, sin siglas. La idea es que quien aprueba entienda QUÉ
+   va a pasar en ADM y pueda ir a buscarlo allá con ese mismo nombre. Si esta
+   parte no se entiende sola, la propuesta está mal explicada aunque el
+   asiento esté bien.
 2. **Segundo piso — arranca con «Sostén:»** y ahí va TODO lo que ya era
    obligatorio y sigue siéndolo: el criterio o hecho citado (C-007, H-06…), lo
    que verificaste por P-001 y dónde, los DocID, las referencias y los uuid.
