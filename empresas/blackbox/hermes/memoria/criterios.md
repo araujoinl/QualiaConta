@@ -112,7 +112,7 @@ silencio).
 
 ---
 
-## C-003 — Activos fijos: qué cuenta y qué documento [BORRADOR]
+## C-003 — Activos fijos: qué cuenta y qué documento
 
 **Enunciado:** un activo fijo de Blackbox vive en una cuenta `160.xx`, se
 deprecia contra el par `650.xx → 170.xx`, y **el documento lo decide cómo
@@ -139,7 +139,8 @@ contribuyente con RNC, no una persona física— por RD$180.020,00 del 2026-01-2
 El precedente nunca dijo lo que la regla afirmaba, y de esa extrapolación
 salieron las dos facturas del Caso #4.
 
-**El mapa de cuentas vivo** (216 cuentas, verificado 2026-08-14):
+**El mapa de cuentas vivo** (218 cuentas, verificado 2026-08-15 — las dos
+nuevas son los locales del Caso #4):
 
 | Activo | Cuenta | Gasto de depreciación | Depreciación acumulada |
 |---|---|---|---|
@@ -148,7 +149,15 @@ salieron las dos facturas del Caso #4.
 | Edificaciones / Naves industriales | 160.03 | 650.01 | 170.02 |
 | Equipos de Transporte Liviano | 160.04 | 650.03 | 170.04 |
 | Mobiliarios y Equipos de Oficina | 160.06 | 650.04 | 170.06 |
+| Local Comercial J-11 (Plaza Paraíso del Mar) | 160.10 | 650.01 | 170.02 |
+| Local Comercial J-12 (Plaza Paraíso del Mar) | 160.11 | 650.01 | 170.02 |
 | Otros activos | — | 650.02 | 170.07 |
+
+Los locales J-11 y J-12 son edificaciones, así que van al par de los edificios
+(650.01 → 170.02). **Su depreciación todavía no arrancó** — no entran a la
+corrida mensual hasta que el contador externo confirme la tasa y la fecha de
+inicio, porque además su costo sigue abierto: falta capitalizar el 3% de
+transferencia inmobiliaria (K-01 paso 3).
 
 **Dos trampas de este plan, y las dos muerden:**
 
@@ -179,15 +188,22 @@ Hipoteca: ED00000034, ED00000035, ED00000036 y la FP00000199. Apartamento:
 documento `00000001` y ED00000038. Ninguno de estos asientos toca una cuenta
 101.xx / 102.xx / 203.10 / 203.11.
 
-**Alcance propuesto:** Blackbox SRL, todo activo fijo de las cuentas 160.xx y
-su depreciación. **No cubre** la compra de un activo nuevo pagado desde el banco
-sin factura del vendedor: ese caso no tiene precedente en el histórico y va por
-evento `pregunta`. Si aparece un activo que no encaja en las cinco filas del
-mapa, se agrega la fila antes de asentar — no se recicla la más parecida.
+**Alcance:** Blackbox SRL, todo activo fijo de las cuentas 160.xx y su
+depreciación. La compra de un inmueble o de un bien que se transfiere ante
+notario ya no es hueco de este criterio: la cubre **C-007**. Lo que sigue
+yendo por evento `pregunta` es el activo pagado desde el banco **sin factura y
+sin acto notarial** — ahí no hay documento que pruebe qué se compró. Si aparece
+un activo que no encaja en las filas del mapa, se agrega la fila antes de
+asentar — no se recicla la más parecida.
+
+**Aprobó:** C.Araujo, por chat el 2026-08-15 («quiero 0 en borrador»), tras
+auditoría del mismo día: precedente FP00000838 verificado contra ADM (la
+corrección de arriba), mapa de cuentas re-contado (218) y los locales del
+Caso #4 agregados al mapa.
 
 ---
 
-## C-004 — La retención de ITBIS vive en el PAGO, no en la factura [BORRADOR]
+## C-004 — La retención de ITBIS vive en el PAGO, no en la factura
 
 **Enunciado:** la retención de ITBIS de un proveedor **no está en la factura**:
 está en el pago, en `BillPayments.Documents[].TaxRetention1Name`,
@@ -235,11 +251,15 @@ queda cobrado de más.
 casos es `TaxRetentionAmount_BasedTax`. Norma citada:
 `nucleo-contable/dgii/normas/retenciones-itbis.md`.
 
-**Alcance propuesto:** Blackbox SRL. Habilita a leer la retención de un
+**Alcance:** Blackbox SRL. Habilita a leer la retención de un
 proveedor conocido desde el pago; **no** habilita a inventarla para un proveedor
 que no esté en la tabla, ni a aplicar el 100% a los dos casos sin explicación.
 El mapa se regenera cuando el destilado aprenda a leerlo del pago — hoy se
 mantiene a mano.
+
+**Aprobó:** C.Araujo, por chat el 2026-08-15 («quiero 0 en borrador»). El hueco
+de las dos SRL con 100% queda ratificado COMO hueco: la regla ordena preguntar
+ahí, no adivinar — se cierra el día que el contador externo explique el motivo.
 
 **Deroga:** en `proveedores.md`, «Account One — posible inconsistencia o
 retención ISR 2% Proveedores» (son 20 de 20 con 30% de ITBIS) y «Logistichause —
@@ -248,7 +268,7 @@ con 100%).
 
 ---
 
-## C-005 — «Nota De Debito» de Santa Cruz no describe nada [BORRADOR]
+## C-005 — «Nota De Debito» de Santa Cruz no describe nada
 
 **Enunciado:** Banco Santa Cruz escribe literalmente `Nota De Debito` y **nada
 más** en toda salida que no sabe describir: sin beneficiario, sin referencia,
@@ -285,9 +305,13 @@ por una contra `account-payments`, `bill-payments`, `bank-charges`,
 momento de medir — no hay precedente en el libro que copiar, y por eso esta
 regla se escribe desde el dato y no desde la costumbre.
 
-**Alcance propuesto:** Blackbox SRL, cuentas de Banco Santa Cruz. Los otros
+**Alcance:** Blackbox SRL, cuentas de Banco Santa Cruz. Los otros
 bancos del colector sí describen sus movimientos y no necesitan esto. Si Santa
 Cruz empieza a mandar descripción, el criterio se revisa en vez de arrastrarse.
+
+**Aprobó:** C.Araujo, por chat el 2026-08-15 («quiero 0 en borrador»). Ratificar
+el método no cierra las 13 notas: cada una se resuelve con su cruce, y las que
+no peguen contra nada siguen siendo `pregunta`.
 
 ---
 
