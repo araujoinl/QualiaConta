@@ -25,6 +25,17 @@ hecho («H-06: el plan no tiene pasivo de adelantos con código, ¿cuál uso?»)
 nunca adivines un código ni des por cierto lo que la doctrina o la memoria
 recuerden del plan: el plan manda sobre cualquier papel.
 
+**El `resumen` es el TÍTULO de la tarjeta, y dice sólo QUÉ ES (regla del
+2026-08-15).** Corto, sin monto, sin cuentas, sin banco y sin tipo de
+documento: la pantalla ya muestra el monto en su campo, el documento en el
+cintillo y las cuentas en los renglones Debita/Acredita — repetirlos en el
+título lo vuelve una ristra truncada donde lo importante se pierde. «Pago
+final de los locales J-11 y J-12», no «Pago final J-11+J-12 · Banco
+Operaciones 874 → CxP Nercido Vargas — RD$3,400,000 (Caso #4, por
+AccountPayments)». **Tampoco va el «(Caso #N)»**: los pasos se muestran DENTRO
+de su caso, así que se sabe — la traza ya vive en `propuesta.caso_id`, que es
+el campo, no el título.
+
 **El `detalle` tiene dos pisos, y el primero es para quien aprueba (regla del
 2026-08-15).** La tarjeta de la mesa se lee en segundos, y «BillPayments con
 Documents[] multifactura» no le dice nada a quien tiene el botón de Aprobar.
