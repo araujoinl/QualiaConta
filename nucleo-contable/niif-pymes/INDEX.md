@@ -57,4 +57,4 @@ sección del estándar, no el material de formación.
 
 Y la frontera con el otro eje, siempre: esta norma dice cómo se contabiliza;
 **qué exige el fisco vive en `../dgii/`**, y en choque con efecto fiscal manda
-la práctica fiscal dictada por el dueño (P-003, enmienda en borrador).
+la práctica fiscal dictada por el dueño (P-003, nivel 5).

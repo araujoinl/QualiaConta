@@ -8,12 +8,13 @@ ambos la fija P-003: **la DGII nunca decide una cuenta ni un asiento.**
 
 Ratificados el 2026-08-07 por C.Araujo (por chat: «ponla que las lea» — los
 principios y tratamientos describen sus propias correcciones y el uso real).
-En borrador — y un borrador no se cita: la semántica de cuentas, y la enmienda
-de P-003 que suma el núcleo NIIF-PYMES como nivel 5 (propuesta 2026-08-15).
+La enmienda de P-003 que suma el núcleo NIIF-PYMES como nivel 5 se ratificó el
+2026-08-15 («firma las que ya están»). Solo la semántica de cuentas sigue en
+borrador, y un borrador no se cita.
 
 | Qué | Archivo | Cubre | Estado |
 |---|---|---|---|
-| Principios de asiento | [principios-de-asiento.md](principios-de-asiento.md) | P-001 lo asentado manda · P-002 reversos contra su original · P-003 jerarquía de fuentes · P-004 naturaleza sobre emisor · P-005 probar que no existe antes de crear | **ratificado** (enmienda NIIF de P-003 en borrador) |
+| Principios de asiento | [principios-de-asiento.md](principios-de-asiento.md) | P-001 lo asentado manda · P-002 reversos contra su original · P-003 jerarquía de fuentes · P-004 naturaleza sobre emisor · P-005 probar que no existe antes de crear | **ratificado** (incluye la enmienda NIIF de P-003, 2026-08-15) |
 | Conciliación: hecho→asiento | [conciliacion-hechos.md](conciliacion-hechos.md) | H-01..H-12: cargos, reversos, pagos, transferencias, anticipos, garantías, cashback, nómina, tránsito, vehículo documental (BankCharges cuando el asiento toca banco y Journals está bloqueado). Cada entrada es fija de por vida: principio + tipo de cuenta; la cuenta concreta SIEMPRE se resuelve contra el plan vivo, y si el plan no la ofrece se PREGUNTA citando el hecho | **ratificado** |
 | Cuentas en uso | [cuentas-en-uso.md](cuentas-en-uso.md) | Las 48 cuentas del histórico real con evidencia; la semántica (qué es / qué NO va acá) se dicta en ratificación y el generador la preserva | borrador (evidencia = espejo del agg, citable como agg) |
 | Pagos a cuenta del ISR | [pagos-a-cuenta.md](pagos-a-cuenta.md) | Ciclo completo del anticipo de ISR: provisión anual (Dr.150.02/Cr.210.11), pago mensual (Pago a Cuentas Dr.210.11/Cr.101.05), liquidación al cierre (Dr.900.01/Cr.210.10 + compensación 150.02) | ratificado (imputación Dr.210.11 confirmada por C.Araujo, 2026-08-10) |

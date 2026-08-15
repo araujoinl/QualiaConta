@@ -22,6 +22,7 @@ auditar**.
 
 ```
   LA LEY            normas DGII          «qué exige el fisco»
+                    normas NIIF-PYMES    «qué dice la norma contable» (entra último, nivel 5)
     │
   EL MÉTODO         P-001 … P-005        «cómo se decide cualquier asiento»
     │
@@ -49,6 +50,16 @@ archivo lleva **rango** (norma / interpretación / criterio propio) y
 **vigencia** — sin eso no entra, porque una regla fiscal sin fuente ni fecha no
 se puede defender ante un auditor. Es compartida entre todas las empresas y el
 contable la monta **solo-lectura**: ninguna empresa la puede tocar.
+
+### Las normas NIIF-PYMES — `nucleo-contable/niif-pymes/secciones/`
+
+La norma contable internacional (NIIF para las PYMES, edición 2015) destilada
+a los seis temas que la mesa usa: materialidad, activos fijos, inventarios,
+ingresos y anticipos, préstamos, provisiones. Entra al **final** de la
+jerarquía (nivel 5 de P-003, ratificado 2026-08-15): sólo cuando la doctrina,
+los criterios y el precedente callan, y da el **sostén** de la propuesta —
+nunca convierte un ABIERTO en permiso, y en choque con efecto fiscal manda lo
+fiscal. Misma mecánica que el núcleo DGII: sólo lectura, rango y vigencia.
 
 ### Los Principios — P-001 … P-005 en `nucleo-contable/doctrina/principios-de-asiento.md`
 
@@ -205,7 +216,8 @@ conciliación concretos que tu gente arma en la web.
 ## 7. Qué está ratificado y qué sigue abierto (al 2026-08-15)
 
 - **Ratificado**: P-001…P-005, H-01…H-12, C-001…C-007 (los últimos tres el
-  2026-08-15, «quiero 0 en borrador»), pagos a cuenta del ISR.
+  2026-08-15, «quiero 0 en borrador»), pagos a cuenta del ISR, y la enmienda
+  NIIF de P-003 (nivel 5, 2026-08-15, «firma las que ya están»).
 - **Abierto en la doctrina**: la semántica de las 48 cuentas de
   `cuentas-en-uso.md` (borrador del núcleo — cada cuenta necesita su «qué es /
   qué NO va acá» dictado); «Adelanto de Clientes» sin código en ADM; las tablas
