@@ -81,7 +81,7 @@ Una fila por documento arrastrado o sugerencia del contable.
 | `aprobada → esperando_respuesta` | contable, cuando el registro en ADM se traba y necesita al humano (el `AMBIGUO` de un cargo bancario, p. ej.). Habilitada el 2026-08-07: antes el `update` guardaba `and estado='analizando'` y desde `registro_pendiente` matcheaba CERO filas sin fallar — el evento quedaba escrito, la fila seguía `aprobada` y el poller la reintentaba dos horas |
 | `esperando_respuesta → analizando` | contable, al llegar la respuesta |
 | `propuesta`/`pendiente`/`error` `→ analizando` | contable, cuando el usuario corrige una propuesta suya. **`esperando_respuesta` NO es el único origen de una respuesta**: sólo lo es cuando el contable preguntó. El caso común es que el humano corrija por su cuenta y la fila siga en `propuesta` |
-| `propuesta → aprobada` / `rechazada` | usuario en la web. NUNCA el contable |
+| `propuesta → aprobada` / `rechazada` | usuario en la web. NUNCA el contable. Una sola excepción automática (2026-08-15): el cron de conciliación cierra en `rechazada` la sugerencia suelta de un cargo cuando un comprobante fiscal VIVO ya lo ampara — firma `aprobado_por_nombre='Cron conciliación'` y deja `motivo_rechazo`/`superada_por_ncf` dentro de `propuesta`; no es una decisión humana y el contable no le responde |
 | `aprobada → registrada` | contable, al registrar en ADM Cloud — **todavía no habilitado** (Entrega 2); mientras tanto los trabajos quedan en `aprobada` y eso es correcto |
 | `* → error` | contable, con `error_detalle` |
 

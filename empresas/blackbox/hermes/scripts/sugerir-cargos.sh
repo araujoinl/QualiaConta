@@ -44,6 +44,12 @@
 set -euo pipefail
 : "${QUALIA_DSN:?falta QUALIA_DSN}"
 : "${QUALIA_EMPRESA_ID:?falta QUALIA_EMPRESA_ID}"
+# El python de abajo valida el UUID sobre una copia .strip()eada, pero el
+# heredoc del CIERRE interpola el valor crudo: un \n o espacio colgando (un
+# `export X=$(cat archivo)` alcanza) pasaba la validación y rompía el UPDATE
+# con "invalid input syntax for type uuid" — en silencio, por el `|| true`.
+# Se recorta acá una vez y los dos consumidores ven lo mismo.
+QUALIA_EMPRESA_ID="$(printf '%s' "$QUALIA_EMPRESA_ID" | tr -d '[:space:]')"
 MAPA="${QUALIA_MAPA_CUENTAS:-/mapa-cuentas.yaml}"
 
 # El SQL lo arma python: interpola el mapa como CTEs VALUES con literales
@@ -511,46 +517,66 @@ PY
 # tabla no tiene columna para eso, y `aprobado_por` queda null: así se
 # distingue el cierre automático del rechazo de un humano.
 #
-# Mismo criterio de comprobante VIVO que los `not exists` del SQL principal:
-# sin anulado_en/eliminado_en, sin mirar estado. Idempotente: al pasar a
-# 'rechazada' la fila sale del WHERE y la corrida siguiente no la ve.
+# El criterio de comprobante VIVO es MÁS estricto que el de los `not exists`
+# del SQL principal: además de sin anulado_en/eliminado_en, acá se exige
+# estado <> 'rechazada'. La diferencia importa porque aquellos filtros solo
+# SUPRIMEN una re-proposición y éste DESTRUYE una decisión pendiente: si el
+# humano rechazó el comprobante ("ese NCF no ampara ese cargo"), la suelta es
+# el único camino vivo que le queda al cargo, y cerrarla citando un comprobante
+# rechazado lo sacaba de la cola para siempre (el filtro anti-re-proposición
+# trata 'rechazada' como definitivo).
+#
+# Los dos lados van scopeados a documento_adm='BankCharges': otros detectores
+# (notas de débito, asignación de pagos, gastos de tarjeta) también siembran
+# sueltas con banco_tx_id, y el matching difuso del carril A (descripción igual
+# + ventana de 4 días) puede arrastrar uno de esos movimientos adentro de un
+# comprobante. Cerrarle la fila a otro carril con un motivo que no le aplica
+# no es de este script.
+#
+# aprobado_por_nombre lleva la firma del cron y aprobado_en la hora: son las
+# columnas que la web y los docs ya usan para "quién decidió" (SPEC decisión
+# 19), así el cierre automático se distingue del rechazo humano en todas las
+# superficies, no solo para quien sepa buscar las llaves en el jsonb.
+# min(ncf) elige determinístico cuando dos comprobantes vivos reclaman el
+# mismo movimiento. Idempotente: al pasar a 'rechazada' la fila sale del
+# WHERE y la corrida siguiente no la ve.
 #
 # Tocar `propuesta` dispara el trigger de amparo (qualia_trabajos_amparo_
-# movimientos), pero para una suelta sin registro_adm vivo es un no-op
-# verificado: no reclama ni suelta ningún movimiento.
+# movimientos, en la Supabase de Labs), pero para una suelta sin registro_adm
+# vivo es un no-op verificado: no reclama ni suelta ningún movimiento.
 #
 # Es una sentencia aparte y no un CTE del INSERT porque un CTE no ve las filas
 # que sus hermanos insertan en la misma sentencia: el comprobante que llega en
 # ESTA corrida no podría cerrar su suelta hasta la corrida siguiente.
 SQL_CIERRE=$(cat <<EOF
 with superadas as (
-  select s.id,
-         (select q.propuesta->>'ncf'
-            from qualia_trabajos q
-           where q.empresa_id = s.empresa_id
-             and q.id <> s.id
-             and q.propuesta->>'documento_adm' = 'BankCharges'
-             and q.propuesta->>'ncf' is not null
-             and q.propuesta->'registro_adm'->>'anulado_en' is null
-             and q.propuesta->'registro_adm'->>'eliminado_en' is null
-             and jsonb_typeof(q.propuesta->'movimientos') = 'array'
-             and q.propuesta->'movimientos' @> to_jsonb(s.propuesta->>'banco_tx_id')
-           order by q.propuesta->>'ncf'
-           limit 1) as ncf
+  select s.id, min(q.propuesta->>'ncf') as ncf
     from qualia_trabajos s
+    join qualia_trabajos q
+      on q.empresa_id = s.empresa_id
+     and q.estado <> 'rechazada'
+     and q.propuesta->>'documento_adm' = 'BankCharges'
+     and q.propuesta->>'ncf' is not null
+     and q.propuesta->'registro_adm'->>'anulado_en' is null
+     and q.propuesta->'registro_adm'->>'eliminado_en' is null
+     and jsonb_typeof(q.propuesta->'movimientos') = 'array'
+     and q.propuesta->'movimientos' @> to_jsonb(s.propuesta->>'banco_tx_id')
    where s.empresa_id = '${QUALIA_EMPRESA_ID}'
      and s.tipo = 'sugerencia'
      and s.estado = 'propuesta'
+     and s.propuesta->>'documento_adm' = 'BankCharges'
      and coalesce(s.propuesta->>'banco_tx_id', '') <> ''
+   group by s.id
 )
 update qualia_trabajos t
    set estado = 'rechazada',
+       aprobado_por_nombre = 'Cron conciliación',
+       aprobado_en = now(),
        propuesta = t.propuesta || jsonb_build_object(
          'motivo_rechazo', 'superada por comprobante ' || u.ncf,
          'superada_por_ncf', u.ncf)
   from superadas u
  where t.id = u.id
-   and u.ncf is not null
 returning t.resumen;
 EOF
 )
@@ -566,8 +592,11 @@ if [ "${QUALIA_DRY_RUN:-0}" = "1" ]; then
   # Los dos INSERT ya devuelven `resumen`, así que el ensayo corre el MISMO SQL
   # que la corrida real: antes había que reescribir el RETURNING al vuelo y eso
   # dejaba al ensayo probando una sentencia que no era la de producción. El
-  # cierre va en la misma transacción: adentro SÍ ve lo que el INSERT acaba de
-  # sembrar, igual que en la corrida real.
+  # cierre va acá en la MISMA transacción (así ve lo que el INSERT acaba de
+  # sembrar); la corrida real lo corre en una conexión aparte, y esa diferencia
+  # es aceptable a propósito: si el cierre falla con el INSERT ya commiteado,
+  # la suelta queda en 'propuesta' y la corrida siguiente la cierra — el paso
+  # es idempotente, no hay medio-estado que dure más de un tick.
   PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -q -c "begin; $SQL $SQL_CIERRE rollback;"
   exit 0
 fi

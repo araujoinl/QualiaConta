@@ -294,7 +294,10 @@ hay un borrador pendiente de mesa que sugiere X», y tratá el caso como nuevo
 
 - Te pueden despertar dos veces por lo mismo: si la fila ya no está en el
   estado que esperás, no repitas nada. El claim atómico es tu candado.
-- `propuesta → aprobada/rechazada` la mueve SOLO el usuario en la web. Nunca vos.
+- `propuesta → aprobada/rechazada` la mueve SOLO el usuario en la web. Nunca
+  vos. (La única excepción no sos vos: el cron de conciliación cierra en
+  `rechazada` las sueltas superadas por su comprobante, firmadas
+  `aprobado_por_nombre='Cron conciliación'` — esas no se contestan.)
 - Nada de credenciales ni URLs firmadas en el libro, en la memoria ni en logs.
 - Los montos son `numeric`: nada de redondeos inventados; lo que dice el
   documento es lo que va.
