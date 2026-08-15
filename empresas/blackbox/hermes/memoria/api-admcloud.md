@@ -49,3 +49,21 @@ incluido `POST /api/CustomReports/Execute` aunque "solo lea".**
 - **Los cuerpos de error reflejan el GUID de `company`.** NUNCA volcar un error
   crudo a logs ni archivos; loggear solo código HTTP y tipo de excepción.
 - Throttle ~1 req/s. Backoff solo ante 5xx. **Jamás reintentar un 4xx en loop.**
+
+## Autorización: qué documentos la exigen y cuáles no (medido 2026-08-15)
+
+- **`BillPayments` y `AccountPayments` nacen PENDIENTES y sin efecto**: la
+  factura sigue abierta / el asiento no existe hasta el `PUT /{recurso}/Authorize?id=`.
+  Los scripts de registro ya autorizan y releen; si un pago queda pendiente,
+  su plata NO se movió en los libros. El barrido es
+  `GET ?OnlyPendingAuthorize=true` (así aparecieron 21 pagos de Víctor por
+  RD$1,25M parados desde julio).
+- **`BankBankTransfers` NO tiene endpoint Authorize** (swagger BR: solo
+  get/put/post, UpdateCustomField, Void, delete) y su «pendiente de autorizar»
+  es COSMÉTICO: 216 de ~224 transferencias históricas están pendientes desde
+  siempre y el asiento postea igual (la TE00000167 pendiente tiene su plata
+  documentada moviéndose). No perseguir esa cola por API: no se puede y no
+  hace falta. El tilde solo existe en la pantalla.
+- **Sondear `{recurso}/Authorize` con GUID falso NO distingue**: ruta real e
+  inventada contestan igual («Object reference not set»). Para saber si existe,
+  el swagger del módulo — no la sonda.
