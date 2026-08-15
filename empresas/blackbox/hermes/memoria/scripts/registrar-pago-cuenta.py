@@ -117,12 +117,16 @@ def paginar(ruta):
 
 
 def mapa_cuentas():
-    mapa = {}
+    """Devuelve (por_codigo, info). info: UUID -> fila completa (GroupAccount)."""
+    mapa, info = {}, {}
     for c in paginar("Accounts"):
         cod = str(c.get("Code") or c.get("AccountCode") or "").strip()
-        if cod and c.get("ID"):
-            mapa.setdefault(cod, c["ID"])
-    return mapa
+        uid = c.get("ID")
+        if uid:
+            info[uid] = c
+            if cod:
+                mapa.setdefault(cod, uid)
+    return mapa, info
 
 
 def tipo_pago_transferencia():
@@ -185,19 +189,30 @@ def main():
     if not lineas:
         morir("no hay lineas en la propuesta")
 
-    cuentas = mapa_cuentas()
+    cuentas, info_cuentas = mapa_cuentas()
     accounts = []
     items = []
     sum_d = 0.0
     sum_c = 0.0
     for i, l in enumerate(lineas):
         cod = str(l.get("cuenta") or "").strip()
-        if not cod:
+        cuenta_id = str(l.get("cuenta_id") or "").strip()
+        if not cod and not cuenta_id:
             morir("la linea %d no tiene cuenta" % (i + 1))
-        uid = cuentas.get(cod)
-        if not uid:
-            morir("no encontre el UUID de la cuenta '%s' (linea %d) en ADM"
-                  % (cod, i + 1))
+        if cuenta_id and re.match(r"^[0-9a-f-]{36}$", cuenta_id):
+            uid = cuenta_id
+        else:
+            uid = cuentas.get(cod)
+            if not uid:
+                morir("no encontre el UUID de la cuenta '%s' (linea %d) en ADM"
+                      % (cod, i + 1))
+        # Guard de grupo (portado del hermano registrar-asiento-diario.py):
+        # ADM rechaza las cuentas agrupadoras; hay que usar su subcuenta hoja.
+        inf = info_cuentas.get(uid) or {}
+        if inf.get("GroupAccount"):
+            morir("la cuenta '%s' (%s, linea %d) es de GRUPO y ADM no la afecta "
+                  "directamente: usa su subcuenta hoja (pasa cuenta_id en la linea)"
+                  % (cod or uid, inf.get("Name"), i + 1))
         debito = float(l.get("debito") or 0)
         credito = float(l.get("credito") or 0)
         sum_d += debito
@@ -209,11 +224,30 @@ def main():
             "ExchangeRate": 1.0,
             "Notes": str(l.get("descripcion") or l.get("cuenta_nombre") or "")[:200],
         })
-        # La contrapartida (la cuenta que NO es el banco) va tambien en Items[]:
-        # es lo que ATA el pago a la cuenta. La linea del banco no (CashAccountID
-        # ya la lleva en el header). PC00000314 trae Items[] con un solo elemento.
+        # EL MONTO VIAJA EN Items[], NO EN Accounts[]. Medido el 2026-08-15 con
+        # el PC00000376: ADM ignora el Accounts[] que le mandes (mismo patron
+        # que BillPayments con Documents[]) y deriva el asiento de los Items —
+        # sin Price el documento se crea con Total 0 y VACIO. Cada contrapartida
+        # (toda cuenta que no es el banco) va como item con su monto en Price,
+        # Quantity 1 y ExchangeRate (Requerido en el schema: sin el, "la tasa
+        # de 0 no esta permitida"). RelationshipID = auxiliar_id de la linea,
+        # obligatorio para cuentas control con auxiliar (CxP): asi el PC0000037
+        # 7 quedo con "aux=Nercido Melanio Vargas" en el mayor del proveedor.
         if uid != banco_id:
-            items.append({"AccountID": uid, "RowType": 0})
+            item = {
+                "AccountID": uid,
+                "Price": debito if debito > 0 else credito,
+                "Quantity": 1.0,
+                "ExchangeRate": 1.0,
+                "RowType": 0,
+                "Notes": str(l.get("descripcion") or l.get("cuenta_nombre") or "")[:200],
+            }
+            aux = str(l.get("auxiliar_id") or "").strip()
+            if aux:
+                if not re.match(r"^[0-9a-f-]{36}$", aux):
+                    morir("auxiliar_id invalido en la linea %d" % (i + 1))
+                item["RelationshipID"] = aux
+            items.append(item)
 
     # Partida doble completa: debitos = creditos = monto que sale del banco.
     if abs(sum_d - sum_c) > 0.005:
@@ -268,6 +302,14 @@ def main():
         morir("ADM rechazo el pago a cuenta: %s" % sanear(d.get("message")))
 
     guid = d["data"]
+    # El pago nace PENDIENTE y sin asiento: las lineas contables las genera ADM
+    # recien al autorizar (verificado 2026-08-15: antes del Authorize el doc
+    # tiene Total y cero Accounts). Es PUT, igual que BillPayments/Authorize.
+    aut = llamar("PUT", "AccountPayments/Authorize", params={"id": guid})
+    if not aut.get("success"):
+        morir("el pago %s se creo pero NO se pudo autorizar: %s — autorizarlo "
+              "a mano en ADM antes de reintentar" % (guid, sanear(aut.get("message"))))
+
     # Readback: el success ya devolvio true sobre cosas que no hizo.
     doc = llamar("GET", "AccountPayments/%s" % guid).get("data") or {}
     if isinstance(doc, dict) and isinstance(doc.get("data"), dict):
@@ -276,6 +318,15 @@ def main():
     if str(doc.get("ID") or "").lower() != guid.lower():
         morir("el readback devolvio OTRO documento (%s). Buscar por fecha/monto."
               % docid)
+
+    # Cuadre post-autorizacion: ADM autoriza asientos descuadrados sin chistar
+    # (PC00000334), asi que el que escribe lo comprueba. Debitos = creditos =
+    # monto, sobre las lineas que ADM derivo de verdad.
+    adm_d = sum(float(a.get("Debit") or 0) for a in doc.get("Accounts") or [])
+    adm_c = sum(float(a.get("Credit") or 0) for a in doc.get("Accounts") or [])
+    if abs(adm_d - adm_c) > 0.01 or abs(adm_d - monto) > 0.01:
+        morir("REGISTRADO PERO DESCUADRADO: %s derivo D=%.2f C=%.2f contra monto %.2f. "
+              "Revisar en ADM antes de tocar nada." % (docid, adm_d, adm_c, monto))
 
     print("REGISTRADO: %s (uuid %s)" % (docid, guid))
     print("  paga a %s por %.2f desde %s"

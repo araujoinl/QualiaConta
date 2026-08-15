@@ -101,12 +101,16 @@ def paginar(ruta):
 
 
 def mapa_cuentas():
-    mapa = {}
+    """Devuelve (por_codigo, info). info: UUID -> fila completa (para ver GroupAccount)."""
+    mapa, info = {}, {}
     for c in paginar("Accounts"):
         cod = str(c.get("Code") or c.get("AccountCode") or "").strip()
-        if cod and c.get("ID"):
-            mapa.setdefault(cod, c["ID"])
-    return mapa
+        uid = c.get("ID")
+        if uid:
+            info[uid] = c
+            if cod:
+                mapa.setdefault(cod, uid)
+    return mapa, info
 
 
 def tasa_cambio(moneda):
@@ -199,7 +203,7 @@ def main():
     if not lineas:
         morir("no hay lineas en la propuesta")
 
-    cuentas = mapa_cuentas()
+    cuentas, info_cuentas = mapa_cuentas()
 
     # Build Accounts[] lines
     accounts = []
@@ -209,9 +213,20 @@ def main():
         cod = str(l.get("cuenta") or "").strip()
         if not cod:
             morir("la linea %d no tiene cuenta" % (i + 1))
-        uid = cuentas.get(cod)
+        uid = None
+        if re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-", cod):
+            uid = cod
+        elif l.get("cuenta_id"):
+            uid = str(l["cuenta_id"])
+        if not uid:
+            uid = cuentas.get(cod)
         if not uid:
             morir("no encontre el UUID de la cuenta '%s' (linea %d) en ADM" % (cod, i + 1))
+        inf = info_cuentas.get(uid) or {}
+        if inf.get("GroupAccount"):
+            morir("la cuenta '%s' (%s, linea %d) es de GRUPO y ADM no la afecta "
+                  "directamente: usa su subcuenta hoja (pasa cuenta_id en la linea)"
+                  % (cod, inf.get("Name"), i + 1))
         debito = float(l.get("debito") or 0)
         credito = float(l.get("credito") or 0)
         sum_d += debito

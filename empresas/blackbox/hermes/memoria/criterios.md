@@ -383,6 +383,13 @@ que adelantar y no hay crédito fiscal que tomar. Toda `VendorBills` con RNC
 entra al 606 por construcción: elegir ese documento mete la operación en un
 reporte donde no existe fila válida para ella.
 
+**La `201` es cuenta de GRUPO en el catálogo de ADM** (medido 2026-08-15: la API
+rechaza afectarla directa con «es una cuenta de grupo»). El crédito va a su
+subcuenta hoja **«Cuentas por Pagar Proveedores DOP»** (sin código, GUID
+`66ee942e-b217-44ca-adc1-08dd30bcedb8`) — y esa misma hoja es la que debitán
+los `AccountPayments` que salden la deuda. Regla general que salió de esto:
+ninguna línea de asiento apunta a una cuenta de grupo; se usa la hoja.
+
 **El asiento no toca caja**, así que el trigger
 `qualia_trabajos_journal_no_toca_caja` no lo frena: `Journals` está disponible y
 es el vehículo correcto, no un rodeo.

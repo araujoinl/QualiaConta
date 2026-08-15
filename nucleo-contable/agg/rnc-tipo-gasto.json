@@ -1,11 +1,11 @@
 {
  "_meta": {
-  "generado": "2026-08-07T05:21:25Z",
+  "generado": "2026-08-15T05:21:37Z",
   "alcance": "GENERAL (DGII) — vale para cualquier empresa; el tipo de gasto 606 no depende de quién compra. La cuenta contable NO se comparte: vive en cada empresa.",
   "n_empresas_aportantes": 1,
   "n_suplidores": 164,
-  "n_facturas": 1118,
-  "n_sin_rnc": 27,
+  "n_facturas": 1129,
+  "n_sin_rnc": 28,
   "n_sin_tipo_gasto": 21,
   "n_con_dominante": 39
  },
@@ -13,8 +13,8 @@
   {
    "codigo": "02",
    "nombre": "Gastos por Trabajos, Suministros y Servicios",
-   "usos": 697,
-   "n_suplidores": 106
+   "usos": 707,
+   "n_suplidores": 107
   },
   {
    "codigo": "07",
@@ -107,13 +107,13 @@
   {
    "rnc": "132942248",
    "nombre": "Tupaq Cargo & Courier Srl",
-   "facturas": 128,
+   "facturas": 131,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 127,
+     "usos": 130,
      "pct": 99.2
     },
     {
@@ -127,13 +127,13 @@
   {
    "rnc": "101008172",
    "nombre": "Isla Dominicana De Petroleo Corporation",
-   "facturas": 98,
+   "facturas": 99,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 98,
+     "usos": 99,
      "pct": 100.0
     }
    ]
@@ -175,13 +175,13 @@
   {
    "rnc": "101068744",
    "nombre": "Totalenergies Marketing Dominicana, Sa",
-   "facturas": 37,
+   "facturas": 40,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 37,
+     "usos": 40,
      "pct": 100.0
     }
    ]
@@ -563,6 +563,20 @@
    ]
   },
   {
+   "rnc": "122009452",
+   "nombre": "Lucami Srl",
+   "facturas": 5,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 5,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
    "rnc": "130870081",
    "nombre": "Global Storage Srl",
    "facturas": 5,
@@ -707,20 +721,6 @@
      "nombre": "Gastos de Representación",
      "usos": 1,
      "pct": 25.0
-    }
-   ]
-  },
-  {
-   "rnc": "122009452",
-   "nombre": "Lucami Srl",
-   "facturas": 4,
-   "dominante": "02",
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 4,
-     "pct": 100.0
     }
    ]
   },
@@ -965,8 +965,42 @@
    ]
   },
   {
+   "rnc": "130749531",
+   "nombre": "Bakerstreet Holdings Srl",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 50.0
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 50.0
+    }
+   ]
+  },
+  {
    "rnc": "101171111",
    "nombre": "Plaza Lama S A",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "131667351",
+   "nombre": "El Ferreton Srl",
    "facturas": 2,
    "dominante": null,
    "tipos": [
@@ -1319,20 +1353,6 @@
    ]
   },
   {
-   "rnc": "130749531",
-   "nombre": "Bakerstreet Holdings Srl",
-   "facturas": 1,
-   "dominante": null,
-   "tipos": [
-    {
-     "codigo": "05",
-     "nombre": "Gastos de Representación",
-     "usos": 1,
-     "pct": 100.0
-    }
-   ]
-  },
-  {
    "rnc": "101108665",
    "nombre": "Angel Veloz Millares Srl",
    "facturas": 1,
@@ -1369,20 +1389,6 @@
     {
      "codigo": "10",
      "nombre": "Adquisición de Activos",
-     "usos": 1,
-     "pct": 100.0
-    }
-   ]
-  },
-  {
-   "rnc": "131667351",
-   "nombre": "El Ferreton Srl",
-   "facturas": 1,
-   "dominante": null,
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
      "pct": 100.0
     }
