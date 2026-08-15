@@ -20,6 +20,11 @@
 # lograba que engordaran la cola de decisión sin que nadie pudiera decidirlas
 # (9 en julio por RD$479.564,07).
 #
+# Cuando el NCF llega DESPUÉS de que el carril B ya sembró el cargo suelto, el
+# paso final del script cierra esa suelta ('rechazada', con el motivo adentro
+# de la propuesta): el comprobante la superó y dejarla en 'propuesta' era cola
+# viva para cualquier consumidor que no fuera el frontend.
+#
 # Las regex de detección salen del vocabulario REAL de los estados de cuenta
 # (query sobre openbanking_transactions, 2026-08-02). Dedup por
 # propuesta->>'banco_tx_id': un movimiento se sugiere UNA sola vez.
@@ -488,6 +493,68 @@ select resumen from ins_movimientos;
 PY
 )
 
+# ============================================================================
+# CIERRE — retira las sueltas del carril B que su comprobante ya superó.
+#
+# El carril B siembra el cargo apenas aparece en el estado de cuenta; cuando el
+# banco emite el NCF, el carril A siembra el comprobante que lo ampara... y la
+# suelta quedaba en 'propuesta' para siempre (5 así al 2026-08-15). El frontend
+# las esconde con idsAmparadosPorComprobante, pero cualquier otro consumidor de
+# las filas 'propuesta' las ve como cola viva de decisión, y decidirlas sería
+# registrar dos veces el mismo cargo.
+#
+# Van a 'rechazada' y no a un estado propio porque el CHECK de la tabla sólo
+# admite los 8 estados existentes, y porque el filtro anti-re-proposición de
+# arriba ya trata 'rechazada' como cierre definitivo: el movimiento no vuelve a
+# la cola (lo reclama el comprobante) y sigue visible en Sugerencias. El motivo
+# viaja DENTRO de `propuesta` (motivo_rechazo / superada_por_ncf) porque la
+# tabla no tiene columna para eso, y `aprobado_por` queda null: así se
+# distingue el cierre automático del rechazo de un humano.
+#
+# Mismo criterio de comprobante VIVO que los `not exists` del SQL principal:
+# sin anulado_en/eliminado_en, sin mirar estado. Idempotente: al pasar a
+# 'rechazada' la fila sale del WHERE y la corrida siguiente no la ve.
+#
+# Tocar `propuesta` dispara el trigger de amparo (qualia_trabajos_amparo_
+# movimientos), pero para una suelta sin registro_adm vivo es un no-op
+# verificado: no reclama ni suelta ningún movimiento.
+#
+# Es una sentencia aparte y no un CTE del INSERT porque un CTE no ve las filas
+# que sus hermanos insertan en la misma sentencia: el comprobante que llega en
+# ESTA corrida no podría cerrar su suelta hasta la corrida siguiente.
+SQL_CIERRE=$(cat <<EOF
+with superadas as (
+  select s.id,
+         (select q.propuesta->>'ncf'
+            from qualia_trabajos q
+           where q.empresa_id = s.empresa_id
+             and q.id <> s.id
+             and q.propuesta->>'documento_adm' = 'BankCharges'
+             and q.propuesta->>'ncf' is not null
+             and q.propuesta->'registro_adm'->>'anulado_en' is null
+             and q.propuesta->'registro_adm'->>'eliminado_en' is null
+             and jsonb_typeof(q.propuesta->'movimientos') = 'array'
+             and q.propuesta->'movimientos' @> to_jsonb(s.propuesta->>'banco_tx_id')
+           order by q.propuesta->>'ncf'
+           limit 1) as ncf
+    from qualia_trabajos s
+   where s.empresa_id = '${QUALIA_EMPRESA_ID}'
+     and s.tipo = 'sugerencia'
+     and s.estado = 'propuesta'
+     and coalesce(s.propuesta->>'banco_tx_id', '') <> ''
+)
+update qualia_trabajos t
+   set estado = 'rechazada',
+       propuesta = t.propuesta || jsonb_build_object(
+         'motivo_rechazo', 'superada por comprobante ' || u.ncf,
+         'superada_por_ncf', u.ncf)
+  from superadas u
+ where t.id = u.id
+   and u.ncf is not null
+returning t.resumen;
+EOF
+)
+
 # Ensayo: corre el INSERT de verdad y lo deshace. Mismo mecanismo que
 # sugerir-transferencias.sh. Hace falta porque con --no-agent el cron entrega
 # el stdout y nada mas: una corrida sin salida queda registrada como "silent
@@ -498,13 +565,19 @@ if [ "${QUALIA_DRY_RUN:-0}" = "1" ]; then
   echo "=== ENSAYO (nada se guarda) ==="
   # Los dos INSERT ya devuelven `resumen`, así que el ensayo corre el MISMO SQL
   # que la corrida real: antes había que reescribir el RETURNING al vuelo y eso
-  # dejaba al ensayo probando una sentencia que no era la de producción.
-  PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -q -c "begin; $SQL rollback;"
+  # dejaba al ensayo probando una sentencia que no era la de producción. El
+  # cierre va en la misma transacción: adentro SÍ ve lo que el INSERT acaba de
+  # sembrar, igual que en la corrida real.
+  PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -q -c "begin; $SQL $SQL_CIERRE rollback;"
   exit 0
 fi
 
 nuevas=$(PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -t -A -q -c "$SQL" | grep -c . || true)
+cerradas=$(PGCONNECT_TIMEOUT=10 psql "$QUALIA_DSN" -t -A -q -c "$SQL_CIERRE" | grep -c . || true)
 
 if [ "${nuevas:-0}" -gt 0 ]; then
   echo "Mesa de trabajo: $nuevas sugerencia(s) nueva(s) — comprobantes fiscales del banco y los cargos que ninguno ampara, con su cuenta contable propuesta."
+fi
+if [ "${cerradas:-0}" -gt 0 ]; then
+  echo "Mesa de trabajo: $cerradas sugerencia(s) suelta(s) cerrada(s) — su cargo ya lo ampara un comprobante fiscal vivo."
 fi
