@@ -8,14 +8,24 @@ cargo de la tarjeta queda huerfano y Conciliacion lo lee como «sin registro en
 ADM» aunque el gasto este facturado y contabilizado. El documento que ata las
 dos puntas es este.
 
-  CashAccountID = la tarjeta (SI, una tarjeta es cuenta de caja en ADM aunque su
-                  codigo viva en el pasivo; es como se registro siempre)
+  CashAccountID = la tarjeta o la cuenta de banco de la que sale la plata (SI,
+                  una tarjeta es cuenta de caja en ADM aunque su codigo viva en
+                  el pasivo; es como se registro siempre)
   RelationshipID = el proveedor, leido de la FACTURA en ADM y no de la propuesta
-  Documents[]   = la factura que cancela, con su UUID y su monto
+  Documents[]   = las facturas que cancela, cada una con su UUID y su monto
 
 NO clasifica ningun gasto y no lleva `Accounts[]`: la cuenta de resultado ya la
 puso la factura cuando se registro. Este documento solo mueve el pasivo contra
 la caja, y ese asiento lo deriva ADM.
+
+Un pago puede cerrar VARIAS facturas y puede ABONAR sin cerrarlas, porque asi
+paga la empresa: la compra de los locales J-11 y J-12 (2026-08-15) fue una
+separacion de 50.000 contra una factura de 1.725.000 y despues una transferencia
+de 3.400.000 que salda el resto de esa y toda la otra. Lo que no se negocia es
+que la SUMA de los renglones sea exactamente lo que salio del banco — ese es el
+chequeo que protege la cuenta de caja, y el que antes hacia el «cierra al
+centavo». Ver `renglones()` para las tres reglas y por que un abono tiene que
+venir declarado.
 
 Es ARCHIVO por la misma razon que sus hermanos: el guardian de comandos marca
 `python3 -c` y cobra 15-30s por llamada.
@@ -51,6 +61,24 @@ TIMEOUT = 90
 TARJETAS = {
     "407537XXXXXX1877-DOP": "203.10",  # Visa 1877 - Tarjeta Corporativa 877
     "407537XXXXXX2414-DOP": "203.11",  # Visa 2414 - Tarjeta Corporativa 414
+}
+
+# Lo mismo para las cuentas de BANCO: numero -> (codigo contable, moneda).
+#
+# Espejo de `cuentas` en mapa-cuentas.yaml, y esta duplicado por la misma razon
+# que TARJETAS. Un pago a proveedor sale del banco mucho mas seguido que de una
+# tarjeta —la compra de los locales J-11/J-12 salio de Operaciones 874— y sin
+# esto el script moria en `cuenta_de_caja` aunque todo lo demas cerrara.
+#
+# La moneda va al lado del codigo A PROPOSITO: ADM tiene cuentas separadas en
+# pesos y en dolares, y pagar una factura en pesos desde la cuenta en USD no es
+# un pago, es una conversion. `cuenta_de_caja` lo frena.
+CUENTAS_BANCO = {
+    "11121000000801": ("101.04", "DOP"),  # Banco Ingresos 801
+    "11122010014964": ("101.05", "DOP"),  # Banco Impuestos 964
+    "11122010023874": ("101.06", "DOP"),  # Banco Operaciones 874
+    "21122020001404": ("102.01", "USD"),  # Banco Suplidores USD 404
+    "21122020002181": ("102.02", "USD"),  # Banco Ganancia USD 181
 }
 
 def morir(msg):
@@ -171,17 +199,25 @@ def tipo_de_pago(codigo_caja):
           "ADM rechaza el pago con «El tipo de pago es requerido»." % quiero)
 
 
-def cuenta_de_caja(p):
+def cuenta_de_caja(p, moneda):
     """El codigo contable de la cuenta de la que sale la plata."""
     numero = str(p.get("cuenta_numero") or "").strip()
     if numero in TARJETAS:
         return TARJETAS[numero]
+    if numero in CUENTAS_BANCO:
+        codigo, moneda_cuenta = CUENTAS_BANCO[numero]
+        if moneda_cuenta != moneda:
+            morir("el pago es en %s y sale de %s, que en ADM es la cuenta %s en "
+                  "%s. Pagar cruzando monedas no es un pago, es una conversion: "
+                  "lo decide un humano." % (moneda, p.get("cuenta_banco"),
+                                            codigo, moneda_cuenta))
+        return codigo
     morir("no se de que cuenta de ADM sale este pago. El movimiento vino de "
-          "'%s' (%s) y no esta en TARJETAS de este script. Si es una tarjeta "
-          "nueva, agregala aca y a `cuentas` en mapa-cuentas.yaml; si es una "
-          "cuenta en dolares, no tiene donde asentarse (ADM tiene una sola "
-          "cuenta por tarjeta y es en pesos) y lo decide un humano."
-          % (p.get("cuenta_banco"), numero))
+          "'%s' (%s) y no esta ni en TARJETAS ni en CUENTAS_BANCO de este "
+          "script. Si es una cuenta nueva, agregala aca y a `cuentas` en "
+          "mapa-cuentas.yaml; si es una tarjeta en dolares, no tiene donde "
+          "asentarse (ADM tiene una sola cuenta por tarjeta y es en pesos) y "
+          "lo decide un humano." % (p.get("cuenta_banco"), numero))
 
 
 def buscar_factura(docid, uuid_esperado):
@@ -210,8 +246,8 @@ def buscar_factura(docid, uuid_esperado):
           "que no existe." % docid)
 
 
-def saldo_pendiente(docid):
-    """Cuanto se le debe todavia a esa factura, segun /api/AP.
+def saldos_pendientes(docids):
+    """Cuanto se le debe todavia a cada factura, segun /api/AP.
 
     ES LA UNICA FUENTE QUE LO SABE, y costo descubrirlo. `Balance` viene NULL
     tanto en el listado de VendorBills como en el detalle, y los campos de
@@ -224,12 +260,105 @@ def saldo_pendiente(docid):
     facturas FP— con su saldo real: la FP00001027 aparece ahi con Balance 28.00
     sobre un total de 6.223,16, o sea lo que quedo despues del pago parcial.
 
-    Devuelve None si la factura NO esta en AP: no debe nada, ya se pago.
+    Devuelve un dict docid -> saldo. La factura que NO aparece en AP queda
+    FUERA del dict: no debe nada, ya se pago.
+
+    Se pagina AP UNA sola vez para todas las facturas del pago y no una por
+    cada una: son 237 partidas en 5 llamadas, y multiplicarlas por renglon es
+    el mismo gasto tonto que el barrido de BillPayments que este script ya
+    habia dejado de hacer.
     """
+    faltan = {str(d).strip() for d in docids}
+    saldos = {}
     for x in paginar("AP"):
-        if str(x.get("DocID") or "").strip() == docid:
-            return round(float(x.get("Balance") or 0), 2)
-    return None
+        docid = str(x.get("DocID") or "").strip()
+        if docid in faltan:
+            saldos[docid] = round(float(x.get("Balance") or 0), 2)
+    return saldos
+
+
+# Una diferencia MENOR a esto entre lo que se paga y lo que la factura debe no
+# es un abono: es la factura que nacio torcida. Ver `renglones()`.
+TOPE_REDONDEO = 1.00
+
+
+def renglones(elegidas, monto_pago):
+    """Que factura cierra este pago y con cuanto. Tres reglas, y ninguna es
+    cosmetica.
+
+    1. LA SUMA DE LOS RENGLONES ES EXACTAMENTE LO QUE SALIO DEL BANCO. Es el
+       unico chequeo que no se negocia, y es el que antes hacia el «cierra al
+       centavo» cuando el pago era de una sola factura: si la suma no da, el
+       asiento acredita la caja por algo distinto de lo que la caja movio y la
+       cuenta de banco queda descuadrada para siempre.
+
+    2. UN ABONO PARCIAL VIENE DECLARADO, con `"parcial": true` en el renglon.
+       No se deduce de que el monto sea menor al saldo, y la diferencia importa:
+       un abono de verdad es una decision (la separacion de 50.000 del local
+       J-11 contra su factura de 1.725.000), mientras que un monto que quedo
+       corto sin querer es un cruce mal hecho rio arriba. Los dos se ven igual
+       en el JSON; solo la bandera los distingue.
+
+    3. UNA DIFERENCIA MENOR A TOPE_REDONDEO NO ES UN ABONO, aunque venga
+       declarada. Es el caso FP00001102 —la tarjeta cobro RD$330,00 y la factura
+       en ADM decia RD$330,02— y sigue siendo un error: nadie abona dos centavos
+       a proposito. Dejarlo pasar deja la factura abierta para siempre por esa
+       diferencia, apareciendo como candidata de cualquier otro cargo del mismo
+       monto, y nadie la mira porque en la mesa figura «pagada». El arreglo esta
+       rio arriba, en que la factura no nazca torcida (ver cuadre.py).
+
+    Devuelve [{docid, uuid, monto, parcial}], ya validado contra el monto del
+    pago pero TODAVIA no contra los saldos de ADM: eso lo hace main(), que es
+    quien tiene AP a mano.
+    """
+    if not elegidas:
+        morir("la propuesta no dice que factura cierra este pago: "
+              "`asignacion.facturas` viene vacia. Un pago a proveedor sin "
+              "documento al que aplicarse queda como anticipo, que no es lo "
+              "que nadie quiso.")
+
+    salida, suma = [], 0.0
+    for i, e in enumerate(elegidas):
+        docid = str(e.get("docid") or "").strip()
+        if not docid:
+            morir("la factura #%d de la propuesta no trae docid" % (i + 1))
+        if e.get("monto") is None:
+            if len(elegidas) > 1:
+                # Repartir un monto entre varias facturas es una decision
+                # contable —cual se salda entera y cual queda abierta— y este
+                # script no la inventa. Con una sola factura no hay nada que
+                # repartir: se le aplica todo el movimiento.
+                morir("la propuesta trae %d facturas y la %s no dice cuanto le "
+                      "toca. Con varias facturas cada renglon lleva su `monto`: "
+                      "repartir el pago es una decision contable, no un `for`."
+                      % (len(elegidas), docid))
+            monto = round(float(monto_pago), 2)
+        else:
+            monto = round(float(e["monto"]), 2)
+        if monto <= 0:
+            morir("el renglon de %s paga %.2f: un pago de cero o negativo no "
+                  "es un pago" % (docid, monto))
+        salida.append({
+            "docid": docid,
+            "uuid": e.get("uuid"),
+            "monto": monto,
+            "parcial": bool(e.get("parcial")),
+        })
+        suma += monto
+
+    vistos = [r["docid"] for r in salida]
+    if len(set(vistos)) != len(vistos):
+        morir("la propuesta repite una factura en dos renglones (%s). ADM los "
+              "sumaria y el saldo quedaria mal: junta los montos en uno solo."
+              % ", ".join(sorted(vistos)))
+
+    if abs(round(suma, 2) - round(float(monto_pago), 2)) > 0.005:
+        morir("NO CIERRA: los renglones suman %.2f y del banco salieron %.2f "
+              "(diferencia de %.2f). La suma de lo que se aplica a las facturas "
+              "tiene que ser exactamente lo que movio la caja."
+              % (suma, monto_pago, suma - float(monto_pago)))
+
+    return salida
 
 
 def main():
@@ -259,26 +388,13 @@ def main():
         morir("este script solo registra BillPayments; la propuesta dice '%s'"
               % documento)
 
-    asignacion = p.get("asignacion") or {}
-    elegidas = asignacion.get("facturas") or []
-    if len(elegidas) != 1:
-        # Un pago puede cubrir varias facturas y el payload lo soporta, pero
-        # ninguna pantalla arma todavia ese caso. Antes de habilitarlo hay que
-        # decidir como se reparte el monto cuando no cierra exacto, y eso es una
-        # decision contable, no un `for`.
-        morir("la propuesta trae %d facturas y este script registra pagos de "
-              "UNA. El caso de varias existe en ADM (Documents[] es lista) pero "
-              "todavia no se decidio como repartir un monto que no cierra."
-              % len(elegidas))
-
-    elegida = elegidas[0]
-    docid_factura = str(elegida.get("docid") or "").strip()
-    if not docid_factura:
-        morir("la factura elegida no trae docid")
-
     monto = round(float(p.get("monto") or 0), 2)
     if monto <= 0:
         morir("el monto del pago tiene que ser mayor que cero")
+
+    asignacion = p.get("asignacion") or {}
+    aplica = renglones(asignacion.get("facturas") or [], monto)
+
     fecha = str(p.get("fecha") or "")[:10]
     if not re.match(r"^\d{4}-\d{2}-\d{2}$", fecha):
         morir("la propuesta no trae una fecha valida")
@@ -289,81 +405,88 @@ def main():
     # imposible distinguirlos despues.
     referencia = str(p.get("banco_tx_id") or args.trabajo)
 
-    factura = buscar_factura(docid_factura, elegida.get("uuid"))
-    if factura.get("Void"):
-        morir("la factura %s esta ANULADA en ADM. Un pago contra un documento "
-              "anulado queda colgado de nada." % docid_factura)
+    for r in aplica:
+        r["adm"] = buscar_factura(r["docid"], r["uuid"])
+        if r["adm"].get("Void"):
+            morir("la factura %s esta ANULADA en ADM. Un pago contra un "
+                  "documento anulado queda colgado de nada." % r["docid"])
 
-    # El saldo es TAMBIEN el chequeo de duplicado, y por eso reemplaza al
+    # Los saldos son TAMBIEN el chequeo de duplicado, y por eso reemplazan al
     # barrido de pagos que tenia antes: una factura que ya se pago no le debe
     # nada a nadie, este pago exista o no. Mirar los pagos era ademas inutil —
     # `Documents[]` viene VACIO en el listado de BillPayments y solo aparece en
     # el detalle, o sea 50+ llamadas para responder lo que AP contesta en una.
-    saldo = saldo_pendiente(docid_factura)
-    if saldo is None:
-        morir("la factura %s no tiene saldo abierto en ADM: ya esta pagada. Si "
-              "este movimiento no es el de ese pago, mirá primero cual lo cancelo "
-              "— pagarla de nuevo genera un anticipo que nadie pidio."
-              % docid_factura)
-    if saldo <= 0:
-        morir("la factura %s figura en AP con saldo %.2f: no hay nada que pagar"
-              % (docid_factura, saldo))
-    # EL PAGO TIENE QUE CERRAR LA FACTURA AL CENTAVO, en los dos sentidos.
-    #
-    # De mas: ADM no lo frena y deja un anticipo que nadie pidio.
-    #
-    # De menos: la factura queda abierta por la diferencia PARA SIEMPRE. Nunca
-    # sale de cuentas por pagar, sigue apareciendo como candidata de cualquier
-    # otro cargo del mismo monto, y nadie la mira porque en la mesa figura
-    # «pagada». Pasó con la FP00001102: la tarjeta cobro RD$330,00 y la factura
-    # en ADM es de RD$330,02 — dos centavos que habrian quedado colgados.
-    #
-    # Y el origen esta rio arriba: el cruce de la pantalla compara contra la
-    # copia que la mesa tiene de la factura (330,00, leida de la foto), no
-    # contra lo que ADM tiene (330,02). Cuando las dos se separan, el cruce
-    # empareja cosas que no cierran. Este chequeo es el que lo caza, porque es
-    # el unico punto que mira el saldo REAL.
-    #
-    # No se decide aca: un pago parcial es legitimo en general y puede que estos
-    # dos centavos haya que castigarlos contra diferencias. Pero es una decision
-    # contable, y este script no la inventa.
-    # La diferencia entre lo que salio de la tarjeta y lo que la factura debe.
-    # Positiva = la factura debe MAS de lo que se pago, que es el caso normal
-    # (ADM redondea el ITBIS hacia arriba). Ver TOPE_REDONDEO.
-    # EL PAGO TIENE QUE CERRAR AL CENTAVO. Sin excepciones, y no por purismo:
-    # ADM no deja meter la diferencia en ningun lado.
-    #
-    # Se intento (2026-08-05, PP00000754) mandarle un `Accounts[]` explicito con
-    # la linea de «Diferencias por Redondeo», que es como aparece en el
-    # PP00000683. ADM LO IGNORO: derivo su propio asiento desde
-    # `Documents[].Amount` y acredito la tarjeta por 330,02 cuando de la tarjeta
-    # habian salido 330,00. La factura cerro y la tarjeta quedo cargada de mas —
-    # exactamente lo que se queria evitar. Y el centavo del PP00000683 no lo
-    # puso nadie a mano: lo genero ADM solo, porque ese pago era en dolares y la
-    # diferencia venia de la conversion.
-    #
-    # Revisado ademas el historico: de los ultimos 150 pagos, NINGUNO salda una
-    # factura por menos de su monto, ni con `DiscountAmount` ni parcial. La via
-    # no existe.
-    #
-    # Asi que quedan dos caminos y los dos son malos: pagar el saldo descuadra
-    # la cuenta de banco, y pagar el movimiento deja la factura abierta para
-    # siempre. Cuando los dos son malos, la respuesta no es elegir uno callado.
-    # El arreglo de verdad esta rio arriba, en que la factura no nazca torcida
-    # (ver cuadre.py).
-    if abs(saldo - monto) > 0.005:
-        morir("NO CIERRA: el movimiento del banco es de %.2f y la factura %s "
-              "debe %.2f en ADM (diferencia de %.2f). ADM no deja asentar esa "
-              "diferencia en el pago —se probo y la ignora—, asi que o se "
-              "corrige la factura o lo decide un humano."
-              % (monto, docid_factura, saldo, monto - saldo))
+    saldos = saldos_pendientes([r["docid"] for r in aplica])
+    for r in aplica:
+        docid, paga = r["docid"], r["monto"]
+        if docid not in saldos:
+            morir("la factura %s no tiene saldo abierto en ADM: ya esta pagada. "
+                  "Si este movimiento no es el de ese pago, mirá primero cual la "
+                  "cancelo — pagarla de nuevo genera un anticipo que nadie pidio."
+                  % docid)
+        saldo = saldos[docid]
+        if saldo <= 0:
+            morir("la factura %s figura en AP con saldo %.2f: no hay nada que "
+                  "pagar" % (docid, saldo))
+        r["saldo"] = saldo
 
+        # DE MAS NUNCA. ADM no lo frena y deja un anticipo que nadie pidio.
+        if paga - saldo > 0.005:
+            morir("la factura %s debe %.2f en ADM y este pago le aplica %.2f "
+                  "(%.2f de mas). ADM no lo frena: acepta el excedente y lo deja "
+                  "como anticipo del proveedor, que no es lo que nadie quiso."
+                  % (docid, saldo, paga, paga - saldo))
+
+        # DE MENOS, SOLO SI VIENE DECLARADO. Ver `renglones()`: la bandera es lo
+        # unico que distingue el abono a proposito del cruce mal hecho.
+        falta = round(saldo - paga, 2)
+        if falta > 0.005:
+            if not r["parcial"]:
+                morir("NO CIERRA: la factura %s debe %.2f en ADM y este pago le "
+                      "aplica %.2f, o sea que quedaria abierta por %.2f. Si el "
+                      "abono es a proposito, el renglon de la propuesta lleva "
+                      "\"parcial\": true y lo dice; si no, el cruce esta mal "
+                      "hecho rio arriba o la factura nacio torcida."
+                      % (docid, saldo, paga, falta))
+            # Declarada o no, una diferencia de centavos no es un abono.
+            #
+            # Se intento (2026-08-05, PP00000754) mandarle a ADM un `Accounts[]`
+            # explicito con la linea de «Diferencias por Redondeo», que es como
+            # aparece en el PP00000683. ADM LO IGNORO: derivo su propio asiento
+            # desde `Documents[].Amount` y acredito la tarjeta por 330,02 cuando
+            # de la tarjeta habian salido 330,00. La factura cerro y la tarjeta
+            # quedo cargada de mas — exactamente lo que se queria evitar. Y el
+            # centavo del PP00000683 no lo puso nadie a mano: lo genero ADM solo,
+            # porque ese pago era en dolares y la diferencia venia de la
+            # conversion. La via para castigar la diferencia no existe.
+            if falta < TOPE_REDONDEO:
+                morir("la factura %s debe %.2f y el pago le aplica %.2f: %.2f de "
+                      "diferencia no es un abono, es la factura torcida (el caso "
+                      "FP00001102, RD$330,00 cobrados contra RD$330,02 "
+                      "facturados). ADM no deja asentar esa diferencia en el pago "
+                      "—se probo y la ignora—, asi que o se corrige la factura o "
+                      "lo decide un humano." % (docid, saldo, paga, falta))
+
+    # UN BillPayments TIENE UN SOLO RelationshipID. Si los renglones fueran de
+    # proveedores distintos, ADM emitiria el pago entero a nombre del primero y
+    # las cuentas por pagar de los otros quedarian saldadas contra un tercero.
+    proveedores = {str(r["adm"].get("RelationshipID") or "") for r in aplica}
+    if len(proveedores) > 1:
+        morir("las facturas de este pago son de proveedores distintos (%s) y un "
+              "pago a proveedor en ADM va a uno solo. Hay que partirlo en un "
+              "pago por proveedor."
+              % ", ".join(sorted(str(r["adm"].get("RelationshipName") or "?")
+                                 for r in aplica)))
+
+    factura = aplica[0]["adm"]
+    docid_factura = aplica[0]["docid"]
     proveedor_id = factura.get("RelationshipID")
     if not proveedor_id:
         morir("la factura %s no trae RelationshipID: sin proveedor el pago no "
               "se puede emitir" % docid_factura)
 
-    codigo_caja = cuenta_de_caja(p)
+    moneda = p.get("moneda") or "DOP"
+    codigo_caja = cuenta_de_caja(p, moneda)
     cuentas = mapa_cuentas()
     caja_uuid = cuentas.get(codigo_caja)
     if not caja_uuid:
@@ -372,7 +495,6 @@ def main():
 
     tipo_pago = tipo_de_pago(codigo_caja)
 
-    moneda = p.get("moneda") or "DOP"
     payload = {
         "DocDate": fecha,
         "CashAccountID": caja_uuid,
@@ -383,18 +505,20 @@ def main():
         "Reference": referencia,
         "Beneficiary": factura.get("RelationshipName") or asignacion.get("proveedor") or "",
         "Notes": ("Pago de %s con %s. %s"
-                  % (docid_factura, p.get("cuenta_banco") or "tarjeta",
+                  % (", ".join(r["docid"] for r in aplica),
+                     p.get("cuenta_banco") or "tarjeta",
                      p.get("descripcion") or "")).strip(),
         # Sin `Accounts[]`: el asiento lo deriva ADM de la cuenta de caja y de
         # la cuenta por pagar de la factura. Mandar lineas aca seria volver a
         # clasificar un gasto que ya esta clasificado.
         "Documents": [{
-            "DocumentID": factura.get("ID"),
-            "DocID": docid_factura,
-            # Lo que salio de la tarjeta, que a esta altura es igual al saldo:
-            # el chequeo de arriba ya frena cualquier diferencia.
-            "Amount": monto,
-            "TotalAmount": round(float(factura.get("TotalAmount") or monto), 2),
+            "DocumentID": r["adm"].get("ID"),
+            "DocID": r["docid"],
+            # Lo que se le aplica a ESTA factura: igual a su saldo cuando la
+            # cierra, menor cuando es un abono declarado. Los chequeos de arriba
+            # ya frenaron el de mas, el de menos sin declarar y el de centavos.
+            "Amount": r["monto"],
+            "TotalAmount": round(float(r["adm"].get("TotalAmount") or r["monto"]), 2),
             # La tasa del RENGLON, que ADM valida contra la de la factura y no
             # contra la de la cabecera: sin esto muere con «La tasa de cambio
             # indicada para el documento FP00001111 es invalida, debe ser igual
@@ -402,15 +526,20 @@ def main():
             # factura en vez de asumir 1.0 — en pesos es 1.0, pero una factura
             # en dolares trae la tasa del dia en que se registro, y esa es la
             # unica que ADM acepta.
-            "ExchangeRate": float(factura.get("ExchangeRate") or 1.0),
-        }],
+            "ExchangeRate": float(r["adm"].get("ExchangeRate") or 1.0),
+        } for r in aplica],
     }
 
     if args.simular:
         print(json.dumps(payload, ensure_ascii=False, indent=1))
         print()
-        print("factura      : %s (%s)" % (docid_factura, factura.get("RelationshipName")))
-        print("saldo en AP  : %.2f" % saldo)
+        for r in aplica:
+            print("factura      : %s (%s)"
+                  % (r["docid"], r["adm"].get("RelationshipName")))
+            print("  saldo en AP: %.2f" % r["saldo"])
+            print("  le aplica  : %.2f%s"
+                  % (r["monto"], "  ABONO PARCIAL, queda debiendo %.2f"
+                     % (r["saldo"] - r["monto"]) if r["parcial"] else ""))
         print("paga         : %.2f %s" % (monto, moneda))
         print("desde        : %s (%s)" % (codigo_caja, p.get("cuenta_banco")))
         print("referencia   : %s" % referencia)
@@ -444,8 +573,13 @@ def main():
         morir("el readback devolvio OTRO documento (%s)" % docid)
 
     print("REGISTRADO: %s (uuid %s)" % (docid, guid))
-    print("  paga %s a %s por %s" % (docid_factura, doc.get("Beneficiary"),
-                                     doc.get("TotalAmount")))
+    print("  paga %s a %s por %s"
+          % (", ".join(r["docid"] for r in aplica), doc.get("Beneficiary"),
+             doc.get("TotalAmount")))
+    for ren in aplica:
+        if ren["parcial"]:
+            print("  OJO: %s queda ABIERTA por %.2f — es un abono, no un cierre"
+                  % (ren["docid"], ren["saldo"] - ren["monto"]))
 
     # ¿Nacio pendiente de autorizacion?
     #
@@ -494,18 +628,27 @@ def main():
                       "la lista de pendientes. NO movio plata: revisalo a mano."
                       % (docid, r.get("message")))
             else:
-                print("  autorizado: la factura %s queda saldada" % docid_factura)
+                cerradas = [x["docid"] for x in aplica if not x["parcial"]]
+                print("  autorizado: %s"
+                      % ("quedan saldadas %s" % ", ".join(cerradas) if cerradas
+                         else "es un abono, ninguna factura queda saldada"))
 
+    # `factura` sigue siendo el DocID de la primera para no romper a quien ya lo
+    # leia; `facturas` es la lista completa con cuanto le toco a cada una, que
+    # es lo unico que deja reconstruir despues un pago que cerro dos.
+    detalle = json.dumps([{"docid": x["docid"], "monto": x["monto"],
+                           "parcial": x["parcial"]} for x in aplica],
+                         ensure_ascii=False)
     sql("update qualia_trabajos set estado = 'registrada', "
         "propuesta = propuesta || jsonb_build_object('registro_adm', "
         "jsonb_build_object('docid', :'doc', 'uuid', :'guid', "
         "'documento', 'BillPayments', 'fecha', :'fecha', "
         "'reference', :'ref', 'pendiente_autorizacion', :'pend'::boolean, "
-        "'factura', :'fact')) "
+        "'factura', :'fact', 'facturas', :'facts'::jsonb)) "
         "where id = :'id' and empresa_id = :'emp';",
         doc=docid, guid=guid, fecha=fecha, ref=referencia,
         pend="true" if pendiente else "false", fact=docid_factura,
-        id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
+        facts=detalle, id=args.trabajo, emp=env("QUALIA_EMPRESA_ID"))
     print("  mesa actualizada")
 
 
