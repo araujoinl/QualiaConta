@@ -2,6 +2,7 @@
 estado: ratificado
 aprobo: C.Araujo, por chat, 2026-08-07 («ponla que las lea» — los principios describen sus propias correcciones)
 evidencia: auditoría de 72 trabajos con feedback del usuario, mesa de Blackbox, corte 2026-08-07
+enmiendas: nivel 5 de P-003 (núcleo NIIF-PYMES) en BORRADOR desde 2026-08-15 — pendiente de ratificación, no se cita
 ---
 
 # Principios de asiento — doctrina contable del núcleo
@@ -67,6 +68,14 @@ En orden, y cada nivel manda sobre el siguiente:
 3. **El precedente ratificado** (libro de acción, agg del histórico).
 4. **El núcleo DGII — SOLO para el eje fiscal del documento** (¿el NCF vale?,
    ¿el ITBIS es aprovechable?, ¿lleva retención?, ¿qué tipo de gasto 606?).
+5. **[BORRADOR — propuesto 2026-08-15, pendiente de ratificación; no se cita]**
+   **El núcleo NIIF-PYMES — SOLO para el eje contable, y sólo cuando los
+   niveles 2 y 3 callan**: clasificación, reconocimiento y medición (¿se activa
+   o se gasta?, ¿es ingreso o pasivo?, ¿qué entra al costo?). Nunca manda sobre
+   lo asentado (P-001) ni convierte un ABIERTO en permiso: donde la doctrina
+   ordena preguntar, se pregunta — la norma da el **sostén** de la propuesta,
+   no la decisión. En choque con efecto fiscal manda la práctica fiscal dictada
+   por el dueño (fiscal-first), y la diferencia se reporta como hallazgo.
 
 **Evidencia:** el sesgo medido en la mesa — en las decisiones de conciliación
 falladas, el agente citaba normas fiscales o precedentes de DocID sueltos

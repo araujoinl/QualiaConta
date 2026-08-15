@@ -44,12 +44,24 @@ comprobantes fiscales, obligaciones de reporte.
 Es de sólo lectura para los contables y se actualiza en un solo lugar. Ninguna
 empresa escribe en el núcleo.
 
+## Núcleo NIIF-PYMES
+
+La memoria contable compartida — la contraparte del núcleo DGII en el otro
+eje. La norma internacional (NIIF para las PYMES, edición 2015) destilada por
+tema: qué se activa, qué es ingreso o pasivo, cómo se mide. Misma mecánica que
+el núcleo DGII: sólo lectura, rango y vigencia por regla, un solo lugar.
+
+No decide por encima de la doctrina ni de lo asentado: entra al final de la
+jerarquía de P-003, como base para cuando las capas de arriba callan. En
+choque con efecto fiscal, manda la práctica fiscal dictada por el dueño.
+
 ## Rango
 
 De dónde viene una pieza del núcleo y cuánto pesa. Tres valores:
 
-- **Norma** — texto oficial de la DGII (norma general, aviso, ley). Es la
-  autoridad.
+- **Norma** — texto oficial de la autoridad emisora: la DGII en lo fiscal
+  (norma general, aviso, ley), el IASB adoptado por el ICPARD en lo contable
+  (sección de la NIIF para las PYMES). Es la autoridad.
 - **Interpretación** — explicación de un tercero calificado (boletín de EY,
   Deloitte, PwC). Ayuda a entender, no manda.
 - **Criterio propio** — cómo decidimos aplicarlo nosotros. Vive en la memoria
