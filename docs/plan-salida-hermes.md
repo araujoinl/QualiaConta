@@ -683,6 +683,40 @@ registradas), y la cadena trigger→preparador→proponedor con su sello.
 Criterio de terminado de F2, corregido: **el backtest en verde sobre un lote de
 facturas variadas** (sin HEIC pendiente) reemplaza a los 7 días de calendario.
 
+## 5.ter Boletín del examen del corpus (2026-08-16) — el turno, medido
+
+18 de los 20 casos dorados corridos contra `qualia-contable` en modo examen
+(cero escrituras; el snapshot no lleva la respuesta). Resultado por rama:
+
+| Rama | Aprobados | Parcial | Reprobados | Ojo humano |
+|---|---|---|---|---|
+| facturas difíciles (5) | 4 | 1 | 0 | 0 |
+| criterios (5) | 3 | 0 | 1 | 1 |
+| correcciones (5) | 1 | 0 | 2 | 2 |
+| casos de conciliación (3 corridos) | 0 | 0 | 0 | 3 |
+
+**Lo que el examen dice, sin maquillaje:**
+
+- **El camino diario está listo.** En facturas difíciles el turno eligió la
+  misma cuenta, documento, tipo 606, monto y NCF que el contable real —
+  incluido un proveedor nuevo sin precedente, donde pidió el plan de cuentas
+  vivo y razonó por naturaleza del renglón.
+- **La rama de correcciones es la floja, y falla hacia el lado peligroso**: en
+  `nuevo-milenio` PROPUSO donde el contable real probó que faltaban datos y
+  había que preguntar; en `suena-inversor` cerró con `marcar_error` donde el
+  histórico pedía propuesta. Antes del cutover, esa rama necesita su vuelta de
+  tuerca (la tajada de respuestas es la que menos se re-tajó).
+- **`cashback` reprobó por agotar las 8 iteraciones sin cerrar.** N=8 y el tope
+  de 3 continuaciones eran "propuestas de diseño, no medidas" (contrato §4):
+  ésta es la medición que faltaba — hay que subir el tope para casos de varias
+  consultas.
+- **Los casos de conciliación no los puede calificar una máquina**: son juicio
+  multi-paso y el calificador lo dice honestamente (`requiere_ojo_humano`), que
+  era el diseño. Las transcripciones quedan para revisión humana.
+
+Criterio de cutover de F3, con esto medido: facturas y criterios en verde;
+**correcciones y el tope de iteraciones son trabajo pendiente**, no detalles.
+
 ## 6. Qué se reescribe del SPEC (en sesión de enmienda, no de pasada)
 
 | Decisión | Cambio | Por qué |
