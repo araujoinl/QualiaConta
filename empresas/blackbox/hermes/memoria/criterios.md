@@ -417,3 +417,30 @@ la empresa.
 
 **Deroga:** el bullet de C-003 que extendía `VendorBills` a la compra de activos
 sin NCF a personas físicas.
+
+
+## C-008 — Consumos en USD de la Visa 1877 se registran en DOP (caja 203.10)
+
+**Enunciado:** la cuenta 203.10 «Tarjeta Corporativa 877» en ADM está creada en
+DOP y **no admite USD**: un BankCharges en dólares contra esa caja es rechazado
+por ADM («Solo puede afectar la moneda funcional 'DOP' con tasa 1»). Los
+consumos en dólares de esa tarjeta se registran entonces en DOP al tipo de
+cambio **configurado en ADM** al momento del registro, dejando el monto y la
+tasa originales anotados en `propuesta.conversion` del trabajo.
+
+**Consecuencia:** si el banco publica después la tasa real con la que cobró el
+consumo y difiere de la configurada, la diferencia cambiaria se registra como
+partida aparte — no se corrige el cargo ya registrado. Y el gasto extranjero
+sin comprobante dominicano sigue su curso de siempre: 801.01, gasto no admitido.
+
+**Evidencia:** rechazo de ADM verificado el 2026-08-15 (POST BankCharges
+CurrencyID=USD sobre cff0ec45... = 203.10) y registro en DOP del CB00000283
+(US$131.54 × 58.5539 = RD$7,702.18, DHL USA / importación DE093924). Los 50
+BankCharges en USD del histórico van todos contra cajas USD (102.01/102.02);
+ninguna tarjeta tiene pata en dólares.
+
+**Alcance:** Blackbox SRL, consumos en USD de la Visa 1877 (caja 203.10). Otras
+tarjetas en DOP (203.11) aplican igual por analogía. Si algún día se crea una
+subcuenta USD de tarjeta, este criterio se revisa.
+
+**Aprobó:** C.Araujo, por la mesa web (trabajo fd13e9d9, 2026-08-15).
