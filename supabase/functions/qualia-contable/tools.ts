@@ -1,4 +1,4 @@
-// qualia-contable/tools.ts — las 14 tools del turno (docs/contrato-turno.md
+// qualia-contable/tools.ts — las 15 tools del turno (docs/contrato-turno.md
 // §2-§3 con sus enmiendas normativas del 2026-08-16): los JSON schemas que
 // viajan a llamarLLM y la implementación de `ejecutar`.
 //
@@ -26,6 +26,7 @@ import {
   CtxTurno,
   ErrorGuard,
   RE_UUID,
+  recortar,
   ResultadoTool,
 } from './tipos.ts';
 import { EventoNuevo, filaFresca, frenoDeEscritura, insertarEventos, moverEstado } from './bus.ts';
@@ -34,6 +35,7 @@ import { ArgsBanco, ArgsDgii, ArgsDossier, consultarBanco, consultarDgii, dossie
 import { ArgsBuscarPrecedente, buscarPrecedente } from './precedentes.ts';
 import { ArgsLibro, escribirLibro } from './libro.ts';
 import { validarPropuesta, validarResumen } from './validar.ts';
+import { NUCLEO } from './nucleo.ts';
 
 type Dic = Record<string, unknown>;
 
@@ -90,6 +92,154 @@ function rechazo(errores: string[], avisos: string[] = []): ResultadoTool {
     problemas: errores,
     avisos: avisos.length > 0 ? avisos : undefined,
     instruccion: 'corregí y volvé a llamar. Si el problema es que el hecho no entra en ningún documento de ADM, la salida es preguntar_al_humano, no forzar el molde',
+  };
+}
+
+// ═══════════════════════════════════════════════════ el núcleo, servido a pedido
+
+// `consultar_nucleo` sirve lo que el generador empaquetó en nucleo.ts: normas
+// DGII, doctrina de asiento, NIIF-PYMES y los criterios ratificados de la
+// empresa. Por qué a pedido y no inyectado entero: son ~110 KB y cada iteración
+// re-paga el prompt sobre ~11k de presupuesto (contrato §5); lo que viaja en el
+// system es el ÍNDICE, que es corto, y el documento se pide por su clave.
+//
+// Es SOLO lectura sobre un módulo del bundle: no toca base, ni red, ni ADM. Por
+// eso vale igual en server, sombra, nube y examen, y no necesita entrada en el
+// snapshot del corpus — la respuesta es la misma en cualquier corrida.
+
+const NUCLEO_LINEAS_CONTEXTO = 15;
+// Topes del fragmento: un `buscar` amplio podría devolver el núcleo entero y
+// costar más que pedir el documento. Cuando se llega al tope se dice, con la
+// instrucción de pedir el doc completo.
+const NUCLEO_MAX_FRAGMENTOS = 8;
+const NUCLEO_TOPE_FRAGMENTO = 1_200;
+const NUCLEO_MIN_TERMINO = 3;
+
+/**
+ * Minúsculas sin tildes: «retención» y «retencion» tienen que colisionar, o
+ * media búsqueda en un corpus fiscal dominicano falla por un acento.
+ */
+function normNucleo(s: string): string {
+  return s
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+/**
+ * El título del documento: su primer encabezado markdown. Los documentos
+ * ratificados (doctrina, criterios) abren con front-matter YAML, así que la
+ * primera línea es `---` y hay que saltarlo.
+ */
+function tituloNucleo(texto: string): string {
+  const lineas = texto.split('\n');
+  let i = 0;
+  if (lineas[0]?.trim() === '---') {
+    i = 1;
+    while (i < lineas.length && lineas[i].trim() !== '---') i++;
+    i++;
+  }
+  for (; i < lineas.length; i++) {
+    const l = lineas[i].trim();
+    if (l.startsWith('#')) return l.replace(/^#+\s*/, '').trim();
+    if (l !== '') return recortar(l, 120);
+  }
+  return '(sin título)';
+}
+
+/** Índice del núcleo: clave + título. Lo pega el harness al system del turno. */
+export const INDICE_NUCLEO: Array<{ clave: string; titulo: string }> = Object
+  .entries(NUCLEO)
+  .map(([clave, texto]) => ({ clave, titulo: tituloNucleo(texto) }));
+
+interface FragmentoNucleo {
+  clave: string;
+  titulo: string;
+  lineas: string;
+  fragmento: string;
+}
+
+/** Las líneas que matchean, con su contexto y las ventanas vecinas fusionadas. */
+function fragmentosNucleo(termino: string): { fragmentos: FragmentoNucleo[]; total: number } {
+  const aguja = normNucleo(termino);
+  const radio = Math.floor(NUCLEO_LINEAS_CONTEXTO / 2);
+  const fragmentos: FragmentoNucleo[] = [];
+  let total = 0;
+
+  for (const [clave, texto] of Object.entries(NUCLEO)) {
+    const lineas = texto.split('\n');
+    // Dos coincidencias vecinas son UN fragmento, no dos que repiten renglones.
+    const ventanas: Array<[number, number]> = [];
+    for (let i = 0; i < lineas.length; i++) {
+      if (!normNucleo(lineas[i]).includes(aguja)) continue;
+      total++;
+      const desde = Math.max(0, i - radio);
+      const hasta = Math.min(lineas.length - 1, i + radio);
+      const ultima = ventanas[ventanas.length - 1];
+      if (ultima && desde <= ultima[1] + 1) ultima[1] = Math.max(ultima[1], hasta);
+      else ventanas.push([desde, hasta]);
+    }
+    for (const [desde, hasta] of ventanas) {
+      fragmentos.push({
+        clave,
+        titulo: tituloNucleo(texto),
+        lineas: `${desde + 1}-${hasta + 1}`,
+        fragmento: recortar(lineas.slice(desde, hasta + 1).join('\n'), NUCLEO_TOPE_FRAGMENTO),
+      });
+    }
+  }
+  return { fragmentos, total };
+}
+
+function consultarNucleo(args: Dic): ResultadoTool {
+  const doc = String(args.doc ?? '').trim();
+  const buscar = String(args.buscar ?? '').trim();
+
+  if (doc !== '') {
+    const texto = NUCLEO[doc];
+    // Un documento que no está NO se inventa: vuelve el índice para que la
+    // próxima llamada pida una clave que existe.
+    if (texto === undefined) {
+      return {
+        error: `'${doc}' no existe en el núcleo`,
+        indice: INDICE_NUCLEO,
+        instruccion: 'pedí una de las claves del índice, copiada tal cual. Nunca cites una norma o un hecho que no leíste acá',
+      };
+    }
+    return {
+      clave: doc,
+      titulo: tituloNucleo(texto),
+      contenido: texto,
+      nota: buscar !== '' ? '`buscar` se ignoró: con `doc` viaja el documento entero' : undefined,
+    };
+  }
+
+  const salida: ResultadoTool = {
+    indice: INDICE_NUCLEO,
+    instruccion: 'el texto completo de cualquiera se pide con consultar_nucleo {doc: "<clave>"}',
+  };
+  if (buscar === '') return salida;
+
+  if (normNucleo(buscar).length < NUCLEO_MIN_TERMINO) {
+    return {
+      ...salida,
+      error: `'${buscar}' es demasiado corto para buscar (mínimo ${NUCLEO_MIN_TERMINO} caracteres): matchearía medio núcleo`,
+    };
+  }
+
+  const { fragmentos, total } = fragmentosNucleo(buscar);
+  const servidos = fragmentos.slice(0, NUCLEO_MAX_FRAGMENTOS);
+  return {
+    ...salida,
+    buscar,
+    coincidencias: total,
+    fragmentos: servidos,
+    // Un fragmento es un puntero, no la fuente: lo que se cita se lee entero.
+    nota: total === 0
+      ? 'ninguna coincidencia: el núcleo no habla de eso con esa palabra. Probá otra, o mirá el índice — si de verdad no está, decilo en vez de inventarlo'
+      : fragmentos.length > servidos.length
+      ? `se sirven ${servidos.length} de ${fragmentos.length} fragmentos: afiná el término o pedí el documento entero con {doc}`
+      : 'antes de citar una norma o un hecho, pedí el documento entero: el fragmento es dónde está, no la fuente',
   };
 }
 
@@ -670,7 +820,7 @@ async function proponerCriterio(ctx: CtxTurno, args: Dic): Promise<ResultadoTool
   };
 }
 
-// ════════════════════════════════════════════════════════════ los 14 schemas
+// ════════════════════════════════════════════════════════════ los 15 schemas
 
 interface EsquemaTool {
   type: 'function';
@@ -781,6 +931,14 @@ export const ESQUEMAS_TOOLS: EsquemaTool[] = [
       },
       ['modo'],
     ),
+  ),
+  tool(
+    'consultar_nucleo',
+    'Lo ESCRITO que manda sobre tu juicio, empaquetado con vos: normas de la DGII, doctrina de asiento (P-001..P-005 y el mapa hecho→asiento H-01..H-12), NIIF-PYMES y los criterios RATIFICADOS de la empresa. Sin argumentos, el índice; `buscar` agrega los fragmentos que mencionan la palabra; `doc` trae el documento entero. La clave se copia del índice del system: si no está ahí, no existe. Antes de razonar un asiento sin precedente, leelo — citar de memoria una norma o un hecho es inventarlo.',
+    objeto({
+      doc: texto('la clave exacta del índice, p. ej. "doctrina/conciliacion-hechos"'),
+      buscar: texto('palabra o frase a buscar en todo el núcleo (ignora mayúsculas y tildes)'),
+    }),
   ),
 
   // ── escritura intermedia ─────────────────────────────────────────────────
@@ -920,10 +1078,11 @@ export const NOMBRES_TOOLS: string[] = ESQUEMAS_TOOLS.map((e) => e.function.name
 // tool; poner acá una segunda lista por rama sería una segunda fuente de
 // verdad que se desincroniza sola.
 //
-// El dato de presupuesto para esa decisión: los 14 juntos pesan ~3,3k tokens
-// de entrada, y se re-pagan en CADA iteración sobre las ~11k del contrato §5 —
-// servir sólo lo aplicable baja a ~2,9k en facturas y a ~1k en el turno que
-// viene sólo a escribir el libro.
+// El dato de presupuesto para esa decisión: los 14 primeros juntos pesan ~3,3k
+// tokens de entrada (medido antes de `consultar_nucleo`, que suma su schema a
+// todas las ramas), y se re-pagan en CADA iteración sobre las ~11k del contrato
+// §5 — servir sólo lo aplicable baja a ~2,9k en facturas y a ~1k en el turno
+// que viene sólo a escribir el libro.
 
 // ═══════════════════════════════════════════════════════════════ el dispatch
 
@@ -953,6 +1112,9 @@ export async function ejecutar(
       return await buscarPrecedente(ctx, a as ArgsBuscarPrecedente);
     case 'consultar_dgii':
       return await consultarDgii(ctx, a as ArgsDgii);
+    // Sin ctx a propósito: lee el módulo del bundle, no la base ni la red.
+    case 'consultar_nucleo':
+      return consultarNucleo(a);
     case 'avisar_progreso':
       return await avisarProgreso(ctx, a);
     case 'proponer':

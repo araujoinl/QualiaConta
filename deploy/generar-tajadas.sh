@@ -10,13 +10,18 @@
 #   facturas.md   ← rama-facturas-1.md + rama-facturas-2.md, concatenadas
 #   casos.md      ← rama-casos.md + secciones de facturas EMBEBIDAS (enmienda 2)
 #   respuestas.md ← rama-respuestas.md, re-tajada al turno (§5.3) y anotada
+#   nucleo.ts     ← nucleo-contable/{dgii,doctrina,niif-pymes} + criterios de la
+#                   empresa, tal cual sus fuentes (se transportan, no se adaptan)
 
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REF="$REPO/skills/mesa-de-trabajo/references"
 SOUL="$REPO/empresas/blackbox/hermes/SOUL.md"
-OUT="$REPO/supabase/functions/qualia-contable/tajadas"
+NUC="$REPO/nucleo-contable"
+MEM="$REPO/empresas/blackbox/hermes/memoria"
+FUNC="$REPO/supabase/functions/qualia-contable"
+OUT="$FUNC/tajadas"
 
 HEADER='<!-- GENERADO por deploy/generar-tajadas.sh — NO editar a mano -->'
 
@@ -30,6 +35,12 @@ FUENTES=(
   "$REF/rama-facturas-2.md"
   "$REF/rama-casos.md"
   "$REF/rama-respuestas.md"
+  # el núcleo: los índices son fijos; sus documentos se recorren por glob abajo,
+  # para que una norma nueva viaje sin tocar este script
+  "$NUC/dgii/INDEX.md"
+  "$NUC/doctrina/INDEX.md"
+  "$NUC/niif-pymes/INDEX.md"
+  "$MEM/criterios.md"
 )
 for f in "${FUENTES[@]}"; do
   [ -f "$f" ] || die "fuente ausente: $f"
@@ -123,11 +134,15 @@ FIN
 )
 
 R_FISCAL=$(cat <<'FIN'
-<!-- adaptado: se quita la ruta /nucleo-contable/dgii del contenedor — las
-reglas fiscales viajan empaquetadas en este mismo contexto (tajada del núcleo,
-plan §4.5); no hay filesystem que recorrer ni INDEX.md que abrir. -->
-Las reglas fiscales de la DGII viajan contigo en este contexto, con su índice de
-qué hay y qué está marcado para verificar.
+<!-- adaptado: se quita la ruta /nucleo-contable/dgii del contenedor. El núcleo
+viaja en el bundle del turno, pero NO entero en el contexto: son ~100 KB que cada
+iteración volvería a pagar. Va el ÍNDICE, y el documento se pide con la tool
+`consultar_nucleo` (plan §4.5). -->
+Las reglas fiscales de la DGII viajan con vos en el núcleo del turno, junto a la
+doctrina de asiento, las NIIF-PYMES y los criterios ratificados de la empresa. En
+el contexto tenés su ÍNDICE —qué hay y qué está marcado para verificar—; el texto
+de cada documento se pide con `consultar_nucleo`, por su clave del índice. No lo
+cites de memoria: pedilo.
 FIN
 )
 
@@ -1358,6 +1373,73 @@ partes.append('};')
 print(f'  tajadas.ts       {(out.parent / "tajadas.ts").stat().st_size} bytes')
 PYEOF
 
+# ── nucleo.ts: el conocimiento escrito, empaquetado igual que las tajadas ────
+# Mismo motivo que arriba (el bundler solo empaqueta lo que se importa) y una
+# diferencia de fondo: esto se TRANSPORTA tal cual sus fuentes — no hay tajada
+# ni adaptación, porque la doctrina y las normas no se re-escriben para el
+# turno. El contenido NO se inyecta en el contexto: viaja el índice y el
+# documento se pide con la tool `consultar_nucleo`.
+python3 - "$NUC" "$MEM" "$FUNC" <<'PYEOF'
+import json, pathlib, sys
+
+nuc, mem, func = (pathlib.Path(p) for p in sys.argv[1:4])
+
+def die(msg):
+    sys.exit(f'generar-tajadas: ERROR: {msg}')
+
+def fijo(ruta, clave):
+    if not ruta.is_file():
+        die(f'fuente del núcleo ausente: {ruta}')
+    return [(clave, ruta)]
+
+def carpeta(ruta, prefijo, excluir=()):
+    """Los .md de una carpeta, ordenados y con la clave derivada del nombre.
+    Vacía es error: una carpeta del núcleo sin documentos es un repo a medias,
+    no un núcleo sin esa rama."""
+    if not ruta.is_dir():
+        die(f'carpeta del núcleo ausente: {ruta}')
+    hallados = [p for p in sorted(ruta.glob('*.md')) if p.name not in excluir]
+    if not hallados:
+        die(f'carpeta del núcleo sin documentos: {ruta}')
+    return [(f'{prefijo}/{p.stem}', p) for p in hallados]
+
+# El orden es el del índice que ve el modelo: cada núcleo abre por su INDEX
+# —que dice qué hay y qué está marcado para verificar— y sigue con sus
+# documentos. Fijo y ordenado, para que dos corridas den los mismos bytes.
+mapa = (
+    fijo(nuc / 'dgii' / 'INDEX.md', 'dgii/INDEX')
+    + carpeta(nuc / 'dgii' / 'normas', 'dgii')
+    + fijo(nuc / 'doctrina' / 'INDEX.md', 'doctrina/INDEX')
+    + carpeta(nuc / 'doctrina', 'doctrina', excluir={'INDEX.md'})
+    + fijo(nuc / 'niif-pymes' / 'INDEX.md', 'niif/INDEX')
+    + carpeta(nuc / 'niif-pymes' / 'secciones', 'niif')
+    + fijo(mem / 'criterios.md', 'memoria/criterios')
+)
+
+partes = ['// GENERADO por deploy/generar-tajadas.sh — NO editar a mano.',
+          '// El núcleo (normas DGII, doctrina de asiento, NIIF-PYMES) y los criterios',
+          '// ratificados de la empresa, transportados TAL CUAL sus fuentes del repo.',
+          '// Viajan como MÓDULO por lo mismo que las tajadas: el bundler del deploy solo',
+          '// empaqueta lo que se importa. El contenido NO se inyecta en el contexto del',
+          '// turno — va el índice, y el documento se pide con la tool `consultar_nucleo`.',
+          '',
+          'export const NUCLEO: Record<string, string> = {']
+vistas = set()
+for clave, ruta in mapa:
+    if clave in vistas:
+        die(f'clave repetida en el núcleo: {clave} ({ruta})')
+    vistas.add(clave)
+    texto = ruta.read_text()
+    if not texto.strip():
+        die(f'fuente del núcleo vacía: {ruta}')
+    partes.append(f'  {json.dumps(clave)}: {json.dumps(texto)},')
+partes.append('};')
+
+destino = func / 'nucleo.ts'
+destino.write_text('\n'.join(partes) + '\n')
+print(f'  nucleo.ts        {destino.stat().st_size} bytes  ({len(mapa)} documentos)')
+PYEOF
+
 # ── verificación final: lo generado dice lo que debe decir ───────────────────
 # (las anotaciones <!-- adaptado: … --> nombran la ruta que quitaron; esas no cuentan)
 if grep -E '/opt/data|/nucleo-contable' "$OUT/system.md" | grep -qv 'adaptado:'; then
@@ -1425,8 +1507,26 @@ for t in system.md comun.md facturas.md casos.md respuestas.md; do
     || die "$t sin la línea GENERADO al inicio"
 done
 
+# system.md: el bloque fiscal tiene que decir la verdad nueva — el índice viaja
+# en el contexto y el documento se pide. Antes AFIRMABA que las reglas viajaban
+# adentro y era mentira: nada del núcleo llegaba al turno.
+grep -q 'consultar_nucleo' "$OUT/system.md" \
+  || die "system.md no nombra la tool consultar_nucleo — el bloque fiscal volvió a mentir"
+
+# nucleo.ts: las claves que el turno cita por su nombre tienen que estar. Si una
+# fuente se movió de carpeta, se ve acá y no en producción.
+for clave in dgii/INDEX doctrina/INDEX niif/INDEX doctrina/conciliacion-hechos \
+             doctrina/principios-de-asiento dgii/retenciones-itbis memoria/criterios; do
+  grep -q "^  \"$clave\":" "$FUNC/nucleo.ts" \
+    || die "nucleo.ts quedó sin la clave $clave"
+done
+
 echo "tajadas regeneradas en $OUT:"
 for t in system.md comun.md facturas.md casos.md respuestas.md; do
   printf '  %-14s %7d bytes  %5d líneas\n' "$t" \
     "$(wc -c < "$OUT/$t")" "$(wc -l < "$OUT/$t")"
 done
+echo "módulos del bundle en $FUNC:"
+printf '  %-14s %7d bytes\n' tajadas.ts "$(wc -c < "$FUNC/tajadas.ts")"
+printf '  %-14s %7d bytes  %5d documentos\n' nucleo.ts \
+  "$(wc -c < "$FUNC/nucleo.ts")" "$(grep -c '^  "' "$FUNC/nucleo.ts")"

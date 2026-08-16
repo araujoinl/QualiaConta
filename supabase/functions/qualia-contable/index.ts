@@ -21,7 +21,7 @@ import {
   type SnapshotExamen,
   TOPE_EVENTO_CHARS,
 } from './tipos.ts';
-import { ejecutar, ESQUEMAS_TOOLS, TOOLS_CIERRE } from './tools.ts';
+import { ejecutar, ESQUEMAS_TOOLS, INDICE_NUCLEO, TOOLS_CIERRE } from './tools.ts';
 
 /**
  * Edge Function: qualia-contable — EL TURNO (F3).
@@ -722,12 +722,17 @@ function archivosDeRama(rama: Rama): string[] {
  *  - `proponer_criterio` y `escribir_libro` viven en el carril de respuestas.
  */
 function toolsDeRama(rama: Rama, conProgreso: boolean): string[] {
+  // `consultar_nucleo` va en TODAS las ramas: es solo lectura sobre el módulo
+  // del bundle (no toca base ni red), así que no hay guard que pueda reventar
+  // ni modo —server, sombra, nube, examen— donde no valga. Y la doctrina que
+  // sirve manda sobre el juicio del modelo en cualquiera de las tres ramas.
   const lectura = [
     'dossier_completo',
     'leer_adm',
     'consultar_banco',
     'buscar_precedente',
     'consultar_dgii',
+    'consultar_nucleo',
   ];
   const progreso = conProgreso ? ['avisar_progreso'] : [];
   switch (rama) {
@@ -797,6 +802,32 @@ const PEDIDO: Record<MotivoTurno, string> = {
   criterio:
     'Es un criterio: si el humano lo aprobó, va su entrada de libro por regla; si lo rechazó, se cierra con una nota y JAMÁS engendra otro criterio.',
 };
+
+/**
+ * El ÍNDICE del núcleo, pegado al system. El modelo tiene que saber QUÉ puede
+ * pedir —una clave no se adivina— y el CONTENIDO no viaja acá: son ~110 KB que
+ * cada iteración volvería a pagar sobre las ~11k del contrato §5. El índice son
+ * ~1 KB y se paga una vez.
+ *
+ * Nace de `INDICE_NUCLEO`, derivado del mismo módulo que sirve la tool: índice y
+ * contenido no pueden desincronizarse porque son la misma fuente.
+ */
+function bloqueNucleo(): string {
+  return [
+    '## El núcleo: lo escrito que manda sobre tu juicio',
+    '',
+    'Estos documentos viajan con vos. Acá está el índice; el texto de cualquiera',
+    'se pide con `consultar_nucleo {doc: "<clave>"}`, y si no sabés en cuál está',
+    'lo que buscás, `consultar_nucleo {buscar: "<palabra>"}` te lo dice.',
+    '',
+    ...INDICE_NUCLEO.map((d) => `- \`${d.clave}\` — ${d.titulo}`),
+    '',
+    'La clave se copia de esta lista: si no está acá, no existe — y una norma o un',
+    'hecho que no leíste no se cita. El protocolo ya te lo pide para un asiento',
+    "`razonado`: se apoya en el núcleo y cita la norma o el hecho en `detalle`.",
+    'Ahora podés leerlo en vez de citarlo de memoria.',
+  ].join('\n');
+}
 
 /** Las instrucciones del harness: el pedido del turno, la valla del nonce y las
  * reglas del loop. Lo único que el harness le suma al system; el resto es la
@@ -1302,6 +1333,7 @@ async function armarCarta(
 ): Promise<MensajeLLM[]> {
   const piezas = [await tajada('system.md')];
   for (const archivo of archivosDeRama(t.rama)) piezas.push(await tajada(archivo));
+  piezas.push(bloqueNucleo());
   piezas.push(instruccionesHarness(t, N_ITERACIONES));
   const system = piezas.join('\n\n---\n\n');
 

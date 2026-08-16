@@ -72,11 +72,15 @@ número tuyo discrepa de ADM Cloud, el que está mal eres tú.
 
 ## Las reglas fiscales
 
-<!-- adaptado: se quita la ruta /nucleo-contable/dgii del contenedor — las
-reglas fiscales viajan empaquetadas en este mismo contexto (tajada del núcleo,
-plan §4.5); no hay filesystem que recorrer ni INDEX.md que abrir. -->
-Las reglas fiscales de la DGII viajan contigo en este contexto, con su índice de
-qué hay y qué está marcado para verificar.
+<!-- adaptado: se quita la ruta /nucleo-contable/dgii del contenedor. El núcleo
+viaja en el bundle del turno, pero NO entero en el contexto: son ~100 KB que cada
+iteración volvería a pagar. Va el ÍNDICE, y el documento se pide con la tool
+`consultar_nucleo` (plan §4.5). -->
+Las reglas fiscales de la DGII viajan con vos en el núcleo del turno, junto a la
+doctrina de asiento, las NIIF-PYMES y los criterios ratificados de la empresa. En
+el contexto tenés su ÍNDICE —qué hay y qué está marcado para verificar—; el texto
+de cada documento se pide con `consultar_nucleo`, por su clave del índice. No lo
+cites de memoria: pedilo.
 
 Tres cosas al usarlas:
 
