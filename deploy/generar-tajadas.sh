@@ -1303,6 +1303,28 @@ CASOS_ADAPTADO=$(awk \
   cat "$TJER"
 } | emitir casos.md
 
+
+# ── tajadas.ts: el MÓDULO que viaja en el bundle ─────────────────────────────
+# El bundler del deploy solo empaqueta lo que se IMPORTA: leer los .md del
+# disco del worker falla con "path not found" (medido 2026-08-16 contra la
+# function desplegada). Los .md quedan para leerlos y diffearlos; el turno
+# importa este módulo.
+python3 - "$OUT" <<'PYEOF'
+import json, pathlib, sys
+out = pathlib.Path(sys.argv[1])
+partes = ['// GENERADO por deploy/generar-tajadas.sh — NO editar a mano.',
+          '// Las tajadas viajan como MÓDULO, no como archivos: el bundler del deploy',
+          '// solo empaqueta lo que se importa (medido 2026-08-16: leerlas del disco',
+          '// daba "path not found" en el worker desplegado).',
+          '',
+          'export const TAJADAS: Record<string, string> = {']
+for md in sorted(out.glob('*.md')):
+    partes.append(f'  {json.dumps(md.name)}: {json.dumps(md.read_text())},')
+partes.append('};')
+(out.parent / 'tajadas.ts').write_text('\n'.join(partes) + '\n')
+print(f'  tajadas.ts       {(out.parent / "tajadas.ts").stat().st_size} bytes')
+PYEOF
+
 # ── verificación final: lo generado dice lo que debe decir ───────────────────
 # (las anotaciones <!-- adaptado: … --> nombran la ruta que quitaron; esas no cuentan)
 if grep -E '/opt/data|/nucleo-contable' "$OUT/system.md" | grep -qv 'adaptado:'; then

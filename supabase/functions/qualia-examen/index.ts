@@ -470,16 +470,28 @@ async function invocarTurno(
     fila: snapshot.fila,
     eventos: snapshot.eventos,
     examen: {
-      dossier: {
-        fila: snapshot.fila,
-        propuesta: null,
-        hilo: snapshot.eventos,
-        dossier: snapshot.dossier,
-        clasificacion: null,
-        precedente: null,
-        ...(snapshot.fila.tipo === 'caso' ? { hijos: [] } : {}),
+      // El turno lee el caso de examen.snapshot (normalizarExamen): ahí van
+      // trabajo_id, rama y el dossier precargado. Verificado contra el turno
+      // desplegado — el TODO del contrato queda resuelto.
+      caso_path: clave,
+      snapshot: {
+        caso: clave,
+        trabajo_id: snapshot.fila.id,
+        empresa_id: snapshot.fila.empresa_id,
+        rama: MANIFIESTO[clave]?.rama ?? clave.split('/')[0],
+        dossier: {
+          fila: snapshot.fila,
+          propuesta: null,
+          hilo: snapshot.eventos,
+          dossier: snapshot.dossier,
+          clasificacion: null,
+          precedente: null,
+          ...(snapshot.fila.tipo === 'caso' ? { hijos: [] } : {}),
+        },
+        // Vacío a propósito: sin entrada en el snapshot, cada lectura va a la
+        // fuente real (solo lectura) y el examen mide al turno buscando.
+        respuestas: {},
       },
-      respuestas: {},
     },
   };
 

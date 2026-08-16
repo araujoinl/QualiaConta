@@ -2,6 +2,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 
 import { modo, sb } from '../_shared/db.ts';
 import { autorizado } from '../_shared/auth.ts';
+import { TAJADAS } from './tajadas.ts';
 import { registrarSombra } from '../_shared/sombra.ts';
 import { llamarLLM, type MensajeLLM } from '../_shared/llm.ts';
 import { frenoDeEscritura, insertarEventos } from './bus.ts';
@@ -673,20 +674,17 @@ async function batchRechazos(
 
 // ─────────────────────────── la CARTA ────────────────────────────────────────
 
-// Las tajadas viajan en el bundle de la function (deploy/generar-tajadas.sh las
-// genera; el check de tamaño del deploy las mide). Se leen del disco del worker
-// y se cachean por proceso: son ~130 KB en total y no cambian en caliente.
-const cacheTajadas = new Map<string, string>();
-
+// Las tajadas viajan como MÓDULO (tajadas.ts, que genera
+// deploy/generar-tajadas.sh junto a los .md): el bundler del deploy empaqueta
+// lo que se IMPORTA, y leerlas del disco del worker fallaba con "path not
+// found" (medido 2026-08-16 contra la function desplegada).
 async function tajada(archivo: string): Promise<string> {
-  const previa = cacheTajadas.get(archivo);
-  if (previa !== undefined) return previa;
+  const texto = TAJADAS[archivo];
   // Fallar acá es RUIDOSO a propósito: un turno sin su tajada es un contable
   // sin protocolo, y servir media rama cuesta un asiento mal hecho.
-  const texto = await Deno.readTextFile(new URL(`./tajadas/${archivo}`, import.meta.url));
+  if (texto === undefined) throw new Error(`tajada desconocida: ${archivo}`);
   if (!texto.trim()) throw new Error(`tajada vacía: ${archivo}`);
-  cacheTajadas.set(archivo, texto);
-  return texto;
+  return await Promise.resolve(texto);
 }
 
 /** Los archivos de cada rama, en el ORDEN del router (abrir-trabajo.sh
