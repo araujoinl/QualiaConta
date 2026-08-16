@@ -723,6 +723,29 @@ Criterio de cutover de F3, con esto medido: facturas y criterios en verde;
   deadline de 300s, no el contador). `cashback` pasó de "no cerró" a cerrar…
   proponiendo `BankCharges` donde el real fue `Journals`. Sigue reprobado, pero
   ahora el fallo es CONTABLE y medible, no un turno que se apaga mudo.
+### Segunda vuelta: el turno razonaba SIN las reglas (hallazgo de fondo)
+
+Antes de seguir tocando el prompt se verificó lo obvio que nadie había mirado:
+**el núcleo DGII, la doctrina (P-001..P-005 y el mapa H-01..H-12) y los
+criterios ratificados NUNCA se empaquetaron con el turno**, y ninguna tool los
+leía — mientras `system.md` le afirmaba que sí los llevaba. Todo el examen
+anterior midió a un contable sin su manual. Corregido: `nucleo.ts` (20
+documentos, 110 KB) viaja en el bundle, el índice (1,4 KB) va pegado al system
+y el texto se pide con `consultar_nucleo`.
+
+Re-examen con el núcleo a bordo, contra los mismos casos:
+
+- `guan-lan` (ITBIS con ISC embebido): **aprobado**.
+- `suena-inversor`: reprobado → **parcial** (ahora pregunta donde antes cerraba
+  mal; el histórico probó que se podía proponer).
+- `cashback`: sigue reprobado en `documento_adm`, pero **usó el núcleo** y las
+  cuentas pasaron a parciales (203.10 y 7xx, la familia que manda H-09).
+- `nuevo-milenio`: sin cambio — y NO consultó el núcleo.
+
+Lectura honesta: el material faltante explicaba parte de los fallos y su
+llegada movió dos casos, pero **no cierra la brecha de fondo**: cuándo el turno
+decide proponer y cuándo preguntar. Eso sigue siendo el trabajo de F3.
+
 - **La rama de correcciones: NO se arregla con doctrina.** Se agregó al manual
   la lección literal del caso nuevo-milenio (el dato corregido pisa al dossier
   y se re-verifica; sospechar del RNC que es el propio; si falta un campo,
