@@ -108,11 +108,40 @@ notas as (
      and t.monto < 0
      and t.fecha_posteo >= current_date - interval '120 days'
      and t.descripcion ~* 'nota de debito'
+     -- Ya reclamada por un trabajo VIVO — el PRIMERO de los dos `not exists`
+     -- de sugerir-cargos.sh, mismo criterio que `idsLevantados()` en la mesa.
+     -- El segundo de allá (estado = 'rechazada') NO está acá: ver la nota al
+     -- pie de este bloque. Las dos mitades del que sí está importan:
+     --
+     -- Vivo: un documento anulado o borrado en ADM deja de reclamar su
+     -- movimiento, porque anular es casi siempre el paso previo a registrarlo
+     -- bien. Sin esto, la primera sugerencia se quedaba con la nota para
+     -- siempre y corregir un registro equivocado no tenía salida.
+     --
+     -- Y las CINCO formas de reclamar, no sólo `banco_tx_id`: el comprobante
+     -- fiscal reclama sus movimientos por el array `movimientos` y la
+     -- transferencia por sus dos patas. El 2026-08-04, mirando sólo
+     -- `banco_tx_id`, 40 cargos con su comprobante vivo volvieron a sugerirse
+     -- uno por uno — acá el mismo agujero re-sugería la nota aunque otro
+     -- trabajo ya la tuviera amparada.
      and not exists (
        select 1 from qualia_trabajos q
         where q.empresa_id = '{empresa_id}'
-          and q.propuesta->>'banco_tx_id' = t.id::text
+          and q.propuesta->'registro_adm'->>'anulado_en' is null
+          and q.propuesta->'registro_adm'->>'eliminado_en' is null
+          and ( q.propuesta->>'banco_tx_id' = t.id::text
+             or q.propuesta->'origen'->>'banco_tx_id' = t.id::text
+             or q.propuesta->'destino'->>'banco_tx_id' = t.id::text
+             or q.propuesta->'banco_tx_ids' @> to_jsonb(t.id::text)
+             or q.propuesta->'movimientos' @> to_jsonb(t.id::text) )
      )
+     -- Falta a propósito el segundo `not exists` de cargos, el que además
+     -- calla lo que ya se rechazó una vez. Hay un hueco conocido: una fila
+     -- 'rechazada' que lleve registro_adm ANULADO pasa el criterio de vivo de
+     -- arriba y su movimiento vuelve a la cola pese al rechazo humano. Al
+     -- 2026-08-15 hay 4 filas así en la base y ninguna reclama una nota de
+     -- débito —las 4 son 'Debito Por Transferencia'—, así que el hueco no
+     -- dispara todavía. Si aparece una, portar también ese bloque.
    order by t.fecha_posteo
    limit 40
 ),

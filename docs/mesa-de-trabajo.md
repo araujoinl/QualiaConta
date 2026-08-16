@@ -85,6 +85,40 @@ Una fila por documento arrastrado o sugerencia del contable.
 | `aprobada → registrada` | contable, al registrar en ADM Cloud — **todavía no habilitado** (Entrega 2); mientras tanto los trabajos quedan en `aprobada` y eso es correcto |
 | `* → error` | contable, con `error_detalle` |
 
+### Cuándo un movimiento del banco ya está reclamado
+
+Todo detector que siembre sugerencias desde `openbanking_transactions` tiene que
+preguntarse, antes de proponer, si otro trabajo ya se hizo cargo de ese
+movimiento. La respuesta **no** es mirar `banco_tx_id`: un movimiento se reclama
+de CINCO formas, según el carril que lo levantó.
+
+| Llave en `propuesta` | Quién la escribe |
+|---|---|
+| `banco_tx_id` | el cargo suelto, la nota de débito, la asignación de pago |
+| `origen.banco_tx_id` / `destino.banco_tx_id` | la transferencia, por sus dos patas |
+| `banco_tx_ids[]` | la transferencia, como array de sus dos movimientos |
+| `movimientos[]` | el comprobante fiscal, que ampara varios cargos a la vez |
+
+Y sólo cuentan los trabajos **vivos**: si `registro_adm` trae `anulado_en` o
+`eliminado_en`, esa fila dejó de reclamar. Anular es casi siempre el paso previo
+a registrar bien, así que un documento muerto no puede quedarse con el
+movimiento para siempre — sin esto, corregir un registro equivocado no tiene
+salida.
+
+Mirar sólo `banco_tx_id` es el error que ya se pagó dos veces: el 2026-08-04, al
+pasar de un documento por movimiento a uno por comprobante, 40 cargos volvieron
+a sugerirse uno por uno teniendo su comprobante vivo esperando decisión; el
+2026-08-15 apareció el mismo agujero en `sugerir-notas-debito.sh`. La
+implementación de referencia es el bloque `not exists` de `sugerir-cargos.sh`,
+y su gemelo en la web es `idsLevantados()`.
+
+Aparte de esas cinco, `sugerir-cargos.sh` lleva un segundo `not exists` que
+además calla lo que ya se rechazó una vez (`estado = 'rechazada'`), porque una
+fila rechazada que arrastre un `registro_adm` anulado pasa el criterio de vivo y
+su movimiento vuelve a la cola pese al rechazo humano. Los demás detectores no
+lo llevan: al 2026-08-15 hay 4 filas de esa forma en la base y ninguna reclama
+un movimiento que ellos levanten.
+
 ### Forma de `propuesta` (jsonb)
 
 ```json
