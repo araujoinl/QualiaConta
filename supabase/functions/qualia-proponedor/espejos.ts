@@ -49,6 +49,28 @@ export async function descargarTexto(ruta: string): Promise<string | null> {
   }
 }
 
+/**
+ * Como descargarJson, pero ESPERANDO una versión: Storage no garantiza que lo
+ * recién escrito se lea al instante (medido 2026-08-16: el dossier subido a
+ * las :41.983 se leía viejo a las :43). Si el preparador mandó su sello
+ * (`preparado_en`), se reintenta con backoff corto hasta verlo; agotados los
+ * intentos devuelve lo último leído y el motivo queda en el diff.
+ */
+export async function descargarJsonFresco(
+  ruta: string,
+  selloEsperado: string | null,
+  campoSello = 'preparado_en',
+): Promise<Dic | null> {
+  let ultimo: Dic | null = null;
+  for (let intento = 0; intento < 5; intento++) {
+    ultimo = await descargarJson(ruta);
+    if (!selloEsperado) return ultimo;
+    if (ultimo && String(ultimo[campoSello] ?? '') === selloEsperado) return ultimo;
+    await new Promise((r) => setTimeout(r, 300 * (intento + 1)));
+  }
+  return ultimo;
+}
+
 /** cargar_json del fuente: JSON del bucket; ausente o ilegible = null, jamás
  * una excepción — la compuerta que consuma el null pone el motivo. */
 export async function descargarJson(ruta: string): Promise<Dic | null> {

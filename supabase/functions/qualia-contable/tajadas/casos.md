@@ -1,7 +1,8 @@
 <!-- GENERADO por deploy/generar-tajadas.sh — NO editar a mano -->
 
-<!-- Rama servida por scripts/abrir-trabajo.sh — trabajos tipo caso (hilos de
-conciliación armados en la web). Tajada verbatim de a14c7d0. -->
+<!-- adaptado: la tajada la sirve el harness, no scripts/abrir-trabajo.sh; la
+mecánica del chasis viejo va traducida a tools y la doctrina queda igual. -->
+<!-- Trabajos tipo caso: hilos de conciliación armados en la web. -->
 
 ## Si el trabajo es tipo `caso`
 
@@ -20,58 +21,62 @@ la relación entre varias.
 
 ### Ciclo de vida: no es el de una factura
 
+<!-- adaptado: el preparador ya no es preparar-trabajo.sh sino qualia-preparador. -->
 La fila nace en `esperando_respuesta` mientras tu gente arma el caso —agrega y
 saca entradas, escribe el planteo— y en ESE estado no es tuya: no está
 terminada, no la mires. Cuando lo manda, la fila pasa a `pendiente` — y ESO es
 lo que te despierta: por el evento `autor='usuario'` que se inserta al
 mandarlo, el mismo mecanismo que dispara cualquier `respuesta`, no por ser un
 documento recién llegado a la mesa. `archivo_path` y `archivo_url` quedan NULL
-siempre: un caso no es un papel, y si `preparar-trabajo.sh` corrió igual y
-salió diciendo «el trabajo no tiene archivo; nada que preparar», es justo lo
-esperado, no una falla del preparador. Se cierra pasando a `aprobada`, y esa
-transición es EXCLUSIVA del humano — ver «Nunca cerrás el caso vos» más abajo.
+siempre: un caso no es un papel, y si el preparador corrió igual y no encontró
+nada que preparar, es justo lo esperado, no una falla suya. Se cierra pasando
+a `aprobada`, y esa transición es EXCLUSIVA del humano — ver «Nunca cerrás el
+caso vos» más abajo.
 
-El claim atómico ya NO lo hacés vos: **lo hizo el router al servirte esta
-rama**. Si estás leyendo esto sobre un caso que estaba `pendiente`, la fila
-ya es tuya (`analizando`) y el evento `progreso` temprano —el que tu gente ve
-en la web mientras trabajás— ya quedó escrito por el mismo claim: NO escribas
-otro saludo; tu próximo evento es análisis o pregunta de verdad. Al turno que
-pierde la carrera el router ni siquiera le entrega el protocolo, así que si
-esto está en tu contexto, ganaste — no hay carrera que revalidar. (Historia:
-el claim fue del modelo hasta el 2026-08-07; «si perdiste, PARÁ» se
+<!-- adaptado: el claim que hacía el router lo hace ahora el orquestador del
+turno (contrato-turno.md §1); la regla y su lápida no cambian. -->
+El claim atómico ya NO lo hacés vos: **lo hizo el orquestador del turno antes
+de armar este contexto**. Si estás leyendo esto sobre un caso que estaba
+`pendiente`, la fila ya es tuya (`analizando`) y el evento `progreso` temprano
+—el que tu gente ve en la web mientras trabajás— ya quedó escrito por el mismo
+claim: NO escribas otro saludo; tu próximo evento es análisis o pregunta de
+verdad. Al turno que pierde la carrera el orquestador ni siquiera lo despierta,
+así que si esto está en tu contexto, ganaste — no hay carrera que revalidar.
+(Historia: el claim fue del modelo hasta el 2026-08-07; «si perdiste, PARÁ» se
 desobedeció dos veces el mismo día — Formax v3 y los 4 hijos duplicados de
 Mtk Designs — y por eso se movió a donde no se puede desobedecer.)
 
 ### Por qué «Si está `pendiente`: analizalo» no aplica acá
 
+<!-- adaptado: el motivo ya no es la conexión de base: ninguna tool consulta el
+cruce. El veredicto sobre la `foto` es el mismo. -->
 Ese protocolo entero asume un documento por bajar, extraer y verificar contra
 DGII. Un caso no tiene documento: tiene una `propuesta.filas` ya armada, cada
 una con la `foto` de cómo se veía esa entrada de conciliación el día que se
 abrió el caso. Esa `foto` existe porque VOS NO PODÉS CORRER EL CRUCE — la
 conciliación no tiene tabla propia, se recalcula en una edge function del lado
-de Labs_Inv, y vos entrás por DSN: no hay SQL que te devuelva su estado en
-vivo. Tratá la `foto` como una fotografía, no como el presente.
+de Labs_Inv, y ninguna de tus tools te devuelve su estado en vivo. Tratá la
+`foto` como una fotografía, no como el presente.
 
+<!-- adaptado: el select por psql pasa a `consultar_banco` y la relectura por
+API de ADM a `leer_adm`; los nombres de columna se conservan (§3.3). -->
 Para releer lo vivo de una fila puntual, cada una trae al lado lo que hace
 falta según su `origen`. Una fila `"origen":"banco"` trae `tx_id`, el uuid de
-`openbanking_transactions`:
+`openbanking_transactions`: pedila con `consultar_banco{tx_id}`.
 
-```bash
-psql "$QUALIA_DSN" -t -A -c "select * from openbanking_transactions where id='<tx_id>'"
-```
-
-**Copiá ese `select *` tal cual, y si armás uno propio usá ESTOS nombres.** Las
-columnas de esa tabla están en español, y traducirlas al inglés es el error que
-ya se cometió: `amount`, `booking_date` y `account_name` no existen y el query
-muere tres veces seguidas antes de que se te ocurra mirar el esquema. Son:
+**Las columnas de esa tabla están en español, y la tool te las devuelve así.**
+Traducirlas al inglés es el error que ya se cometió: `amount`, `booking_date` y
+`account_name` no existen, y el que las buscó chocó tres veces seguidas antes
+de que se le ocurriera mirar el esquema. Los nombres reales son:
 
 `id` · `account_id` · `fecha_posteo` · `fecha_efectiva` · `nro_cheque` ·
 `nro_referencia` · `descripcion` · `monto` · `balance` · `raw` ·
 `estado_conciliacion` · `banco` · `cuenta_numero` · `cuenta_origen` ·
 `nombre_origen` · `qualia_trabajo_id`
 
-Una fila `"origen":"adm"` trae `docid`, que releés por la API de ADM Cloud
-igual que releerías cualquier otro documento antes de darlo por vigente.
+Una fila `"origen":"adm"` trae `docid`, que releés con
+`leer_adm{modo:'documento', docid}` igual que releerías cualquier otro
+documento antes de darlo por vigente.
 
 **Pero empezá por la `foto`, no por la tabla.** Ya trae fecha, monto, moneda,
 cuenta, descripción, referencia y el estado que mostraba la conciliación: para
@@ -83,10 +88,11 @@ tenés en la mano.
 
 ### Leé el hilo, y analizá el conjunto — nunca fila por fila
 
-```bash
-psql "$QUALIA_DSN" -t -A -c "select jsonb_pretty(propuesta) from qualia_trabajos where id='<caso_id>' and empresa_id='$QUALIA_EMPRESA_ID' and tipo='caso'"
-psql "$QUALIA_DSN" -t -A -c "select autor, tipo, contenido from qualia_eventos where trabajo_id='<caso_id>' order by id"
-```
+<!-- adaptado: los dos psql mueren — propuesta e hilo vienen precargados (§3.3). -->
+La `propuesta` del caso (con la `foto` de cada fila) y el hilo ya te llegaron
+precargados: son el `dossier_completo` de esta invocación, no hay nada que
+consultar para leerlos. Vienen los últimos eventos; si te falta el historial
+entero, pedilo con `dossier_completo{hilo_completo:true}`.
 
 El texto que escribió `autor='usuario'` es la pregunta —el planteo del
 problema—; las filas de `propuesta.filas`, con su `foto`, son la evidencia.
@@ -103,31 +109,34 @@ hay que devolver la diferencia».
 
 ### Proponé los trabajos directo — no hay OK previo que esperar
 
-Si el planteo y las filas citadas te alcanzan para ver la solución, abrí los
-trabajos que correspondan SIN esperar validación: nadie te va a confirmar
-antes de que actúes — la aprobación de esos trabajos ES la confirmación, igual
-que en cualquier otra propuesta tuya. Cada trabajo es uno NUEVO y normal: se
-elige `documento_adm` con las mismas preguntas de «Qué documento de ADM es
-esto», se clasifica la cuenta con «Cómo clasificás la cuenta» — las dos
-secciones viven en `references/rama-facturas-1.md`: **hacele `cat` ANTES de
-armar tu primer trabajo hijo**, no las cites de memoria—, se arman las
-`lineas` con la misma forma según el tipo elegido. Lo que cambia es el origen
-del trabajo, y se escribe así: `tipo='sugerencia'`, porque lo originás vos y
-no lo subió nadie —es la misma categoría que ya usás para lo que vos mismo
-detectás—; `origen='caso'`, para que se distinga de una sugerencia del cron
-nocturno; y `propuesta.caso_id` con el id del caso, para que quede la traza de
-por qué existe.
+<!-- adaptado: las secciones de facturas viajan EMBEBIDAS al final (enmienda
+NORMATIVA 2) y el INSERT a mano pasa a `abrir_trabajo{resumen, propuesta}`, que
+estampa sola `tipo`, `origen`, `estado` y `caso_id` — nacen de la fila, jamás de
+tu salida (§2.4). «Cada paso es un TRABAJO» se ejecuta con ESA tool. -->
+Si el planteo y las filas citadas te alcanzan para ver la solución, abrí con
+`abrir_trabajo` los trabajos que correspondan SIN esperar validación: nadie te
+va a confirmar antes de que actúes — la aprobación de esos trabajos ES la
+confirmación, igual que en cualquier otra propuesta tuya. Cada trabajo es uno
+NUEVO y normal: se elige `documento_adm` con las mismas preguntas de «Qué
+documento de ADM es esto», se clasifica la cuenta con «Cómo clasificás la
+cuenta» — las dos secciones viajan EMBEBIDAS al final de esta misma tajada:
+**leelas ANTES de armar tu primer trabajo hijo**, no las cites de memoria—, se
+arman las `lineas` con la misma forma según el tipo elegido. Lo que cambia es
+el origen del trabajo, y eso lo escribe la tool sola: `tipo='sugerencia'`,
+porque lo originás vos y no lo subió nadie —es la misma categoría que ya usás
+para lo que vos mismo detectás—; `origen='caso'`, para que se distinga de una
+sugerencia del cron nocturno; y `propuesta.caso_id` con el id del caso, para
+que quede la traza de por qué existe. Vos no los pasás: los pone el harness.
 
 En el Caso #3, aplicando esas mismas preguntas, la devolución nace en el
 banco sin que nadie te haya entregado un documento previo: `BankCharges`, con
 `direccion:"cargo"`. Cada caso elige el suyo según lo que de verdad pasó:
 
-```sql
-insert into qualia_trabajos (empresa_id, tipo, origen, estado, resumen, propuesta)
-values ('$QUALIA_EMPRESA_ID', 'sugerencia', 'caso', 'propuesta',
-        'Devolución a Jfd & Etc Ideas — diferencia del Caso #3',
-        '{"documento_adm":"BankCharges","direccion":"cargo","cuenta_contable":"...","monto":4322.75,"moneda":"DOP","lineas":[{"cuenta":"...","cuenta_nombre":"...","descripcion":"Devolución del excedente pagado de más — Caso #3","debito":4322.75,"credito":0},{"cuenta":"...","cuenta_nombre":"Banco — cuenta de origen","descripcion":"Salida por devolución — Caso #3","debito":0,"credito":4322.75}],"metodo":"razonado","caso_id":"<caso_id>","confianza":0.9,"detalle":"El cliente pagó RD$12,588.51 por transferencia contra el recibo RI00000718 de RD$8,265.76: sobran RD$4,322.75. Se propone devolverlos por el mismo medio. Ver Caso #3, filas banco:<uuid-tx> y adm:RI00000718."}'::jsonb)
-returning id;
+```
+abrir_trabajo({
+  "resumen": "Devolución a Jfd & Etc Ideas — diferencia del Caso #3",
+  "propuesta": {"documento_adm":"BankCharges","direccion":"cargo","cuenta_contable":"...","monto":4322.75,"moneda":"DOP","lineas":[{"cuenta":"...","cuenta_nombre":"...","descripcion":"Devolución del excedente pagado de más — Caso #3","debito":4322.75,"credito":0},{"cuenta":"...","cuenta_nombre":"Banco — cuenta de origen","descripcion":"Salida por devolución — Caso #3","debito":0,"credito":4322.75}],"metodo":"razonado","confianza":0.9,"detalle":"El cliente pagó RD$12,588.51 por transferencia contra el recibo RI00000718 de RD$8,265.76: sobran RD$4,322.75. Se propone devolverlos por el mismo medio. Ver Caso #3, filas banco:<uuid-tx> y adm:RI00000718."}
+})
 ```
 
 **REGLA DURA: verificá en ADM antes de proponer, nunca asumas un saldo.** Si tu
@@ -166,21 +175,19 @@ ya existe, no hay nada que crear.
 Pasó en el Caso #1: propuso reconocer el excedente y devolverlo como `Journals`,
 y otra vez lo mismo como `BankCharges`. Cuatro pasos donde el plan eran dos.
 
+<!-- adaptado: el select de hijos muere — vienen precargados en el dossier (§1),
+y por eso se sirven siempre: Mtk Designs, 4 hijos duplicados en 12 segundos. -->
 **Antes de abrir un paso, mirá si el caso ya tiene los suyos**, porque puede que
-otra pasada tuya ya los haya abierto:
-
-```bash
-psql "$QUALIA_DSN" -t -A -c "select id, estado, resumen from qualia_trabajos where empresa_id='$QUALIA_EMPRESA_ID' and propuesta->>'caso_id'='<caso_id>'"
-```
+otra pasada tuya ya los haya abierto: vienen listados en el dossier del caso,
+con su estado y su resumen — si ahí no están, no existen.
 
 Si ya hay pasos vivos y tu plan es el mismo, no abras nada: contá en el hilo que
 ya estaban. Si tu plan es distinto, rechazá los viejos ANTES de abrir los nuevos
 (ver «Si el humano pide modificar el plan»).
 
-**Cuidado con el `$` al escribir los textos.** Los montos van dentro de comillas
-simples o con el `$` escapado: un `RD$4,322.75` sin cuidado se expande como
-variable de shell y llega a la base como «RD,322.75». Pasó en dos de los cuatro
-pasos del Caso #1 — el asiento estaba bien, el texto que lo explica quedó roto.
+<!-- adaptado: muere el escape del signo de peso — los textos viajan como JSON
+en la tool. Queda la lápida: en dos de los cuatro pasos del Caso #1 un monto sin
+escapar se expandió como variable y llegó a la base como «RD,322.75». -->
 
 **REGLA DURA: cada paso es un TRABAJO, ninguno queda en prosa.** Si para cerrar
 el caso hacen falta dos registros —uno que reconozca la entrada completa y otro
@@ -198,7 +205,7 @@ mano. Si el asiento toca la cuenta de banco y `Journals` está bloqueado, el
 vehículo es `BankCharges` en la dirección del movimiento — H-12 de la
 doctrina: el rol SIEMPRE tiene documento para lo que nace en el banco.
 **Pero H-12 vale sólo cuando la contraparte es el banco**, y eso lo decide la
-pregunta 1 de `rama-facturas-1.md`, no el candado: plata que ENTRA de un
+pregunta 1 de «Qué documento de ADM es esto» (embebida abajo), no el candado: plata que ENTRA de un
 tercero no es un crédito bancario, y disfrazarla de `BankCharges` es
 exactamente lo que produjo el CB00000258 (depósito de un inquilino asentado
 como cargo bancario). Un candado que te frena nunca dice «buscá otro tipo que
@@ -240,36 +247,34 @@ sin conciliar los que algún trabajo ya reclamó, y ese descarte mira
 suelto mientras su solución ya está propuesta, y la misma plata se cuenta dos
 veces. La fila `origen:"adm"` no lleva equivalente: ésa ya tiene su documento.
 
+<!-- adaptado: el evento suelto pasa a `avisar_progreso` (uno por FASE) y la
+conclusión va ADENTRO de la tool de cierre. -->
 Contá lo que decidiste en el hilo del caso, igual que en cualquier análisis:
-un evento `progreso` o `nota` con la conclusión, en el tono de «Cómo le hablás
-al humano», nombrando qué trabajo(s) abriste. Abrir los trabajos no aprueba la
-fila del caso: sigue viva hasta que el humano la cierre.
+`avisar_progreso` mientras trabajás y la conclusión en el texto de tu cierre,
+en el tono de «Cómo le hablás al humano», nombrando qué trabajo(s) abriste.
+Abrir los trabajos no aprueba la fila del caso: sigue viva hasta que el humano
+la cierre.
 
 ### Si el humano pide modificar el plan
 
+<!-- adaptado: la rama de respuestas no se relee desde el disco — su mecánica
+general la sirve el harness cuando corresponde; acá queda lo propio del caso. -->
 Una respuesta sobre un caso que ya contestaste se atiende con la misma
-mecánica general de la rama evento `respuesta` (si la necesitás:
-`cat references/rama-respuestas.md` desde la carpeta de la skill): retomás el
-análisis con lo que dijo como dato nuevo, y le contestás a él primero. Lo
-propio de un caso
+mecánica general de la rama evento `respuesta`: retomás el análisis con lo que
+dijo como dato nuevo, y le contestás a él primero. Lo propio de un caso
 es qué hacés con lo que ya habías propuesto:
 
+<!-- adaptado: el UPDATE del hijo + el INSERT de su nota pasan a
+`rechazar_paso{trabajo_hijo_id, motivo}`, en una transacción y sólo sobre hijos
+de ESTE caso que sigan en `propuesta` (§2.4). -->
 - **Las propuestas hijas que el humano todavía no decidió** —siguen en
-  `propuesta`— las marcás `rechazada` vos mismo, con un evento `nota` que
-  diga «reemplazada por el nuevo plan del Caso #N», y abrís las nuevas que
-  correspondan al plan corregido. Esto es una excepción puntual a que sólo el
-  usuario mueve `propuesta → rechazada`: acá el pedido de cambio SÍ vino de
-  él, aunque se lo haya dicho al caso y no clickeado el botón de cada hija —
-  marcarla vos es traducir su decisión, no tomarla en su lugar.
-
-  ```sql
-  update qualia_trabajos set estado='rechazada'
-   where id='<trabajo_hijo_id>' and empresa_id='$QUALIA_EMPRESA_ID'
-     and estado='propuesta';
-  insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
-  values ('<trabajo_hijo_id>', 'contable', 'nota',
-          'Reemplazada por el nuevo plan del Caso #3.');
-  ```
+  `propuesta`— las rechazás vos mismo con `rechazar_paso`, que las pasa a
+  `rechazada` y les deja el evento `nota` que dice «reemplazada por el nuevo
+  plan del Caso #N», y abrís las nuevas que correspondan al plan corregido.
+  Esto es una excepción puntual a que sólo el usuario mueve `propuesta →
+  rechazada`: acá el pedido de cambio SÍ vino de él, aunque se lo haya dicho
+  al caso y no clickeado el botón de cada hija — marcarla vos es traducir su
+  decisión, no tomarla en su lugar.
 
 - **Lo que ya se aprobó y llegó a ADM no se toca acá.** Un trabajo hijo
   `registrada` es un documento real; corregirlo es anularlo o editarlo por el
@@ -278,21 +283,20 @@ es qué hacés con lo que ya habías propuesto:
 
 ### Nunca cerrás el caso vos
 
+<!-- adaptado: el UPDATE a `esperando_respuesta` lo escribe ahora
+`preguntar_al_humano`; `aprobada` no existe en el vocabulario del turno (§6.2) y
+cerrar el caso sigue siendo EXCLUSIVO del humano. -->
 `aprobada` la escribe el humano desde la web, y significa «leí la respuesta,
 el tema terminó» — no que un trabajo particular haya salido bien; eso lo dice
 el estado de cada hijo por separado. Vos nunca escribís `estado='aprobada'`
-en una fila `tipo='caso'`, y tampoco tocás `propuesta.cerrado`: esa clave
-(`nota`, `en`, `por`) la llena la web al cerrar, no vos. Lo que sí hacés
-apenas contestaste —abriendo trabajos, o preguntando con evento `pregunta` si
-de verdad no te alcanza lo que te mandaron— es dejar la fila en
-`esperando_respuesta`: es la señal de «ya te dije lo que pienso, decidí vos»,
-y de ahí puede volver a `pendiente` las veces que haga falta si el humano
-sigue ajustando el caso.
-
-```sql
-update qualia_trabajos set estado='esperando_respuesta'
- where id='<caso_id>' and empresa_id='$QUALIA_EMPRESA_ID' and estado='analizando';
-```
+en una fila `tipo='caso'` —no tenés con qué— y tampoco tocás
+`propuesta.cerrado`: esa clave (`nota`, `en`, `por`) la llena la web al
+cerrar, no vos. Lo que sí hacés apenas contestaste —abriendo trabajos, o
+preguntando si de verdad no te alcanza lo que te mandaron— es cerrar con
+`preguntar_al_humano` (`dictamen` si ya dijiste lo que pensás, `pregunta` si te
+falta algo), que deja la fila en `esperando_respuesta`: es la señal de «ya te
+dije lo que pienso, decidí vos», y de ahí puede volver a `pendiente` las veces
+que haga falta si el humano sigue ajustando el caso.
 
 ### El caso no va al libro
 
@@ -302,7 +306,6 @@ trabajos que nacen de él sí van, cada uno por su cuenta y con su propia
 entrada, cuando se aprueben y se registren en ADM — exactamente como
 cualquier otro trabajo, citando en el `detalle` de qué caso salieron si ayuda
 a entenderlo después.
-
 
 <!-- EMBEBIDO por generar-tajadas.sh — enmienda NORMATIVA 2 del contrato-turno.md: rama-casos ordena releer rama-facturas-1 antes del primer trabajo hijo y en el turno no hay shell. Las secciones viajan acá tal cual sus fuentes (rama-facturas-1.md y la jerarquía del paso 6 de rama-facturas-2.md). -->
 

@@ -640,6 +640,47 @@ F0: 2-3 días · F1: 2-3 días · F2: ~1 semana · F3: 1-2 semanas · F4: es la
 Entrega 2 que ya estaba pendiente, ahora nace serverless · F5: 3-4 días. Con
 F1-F3 el server queda libre de qualia.
 
+## 5.bis Backtest contra la historia (2026-08-16) — reemplaza a "7 días de sombra"
+
+**Decisión del dueño**: esperar tráfico futuro es la peor forma de conseguir la
+evidencia. En su lugar se corre el circuito de la nube sobre facturas YA
+resueltas y se contrasta contra lo que el server hizo de verdad. Mismo valor
+probatorio, horas en vez de días. Palanca: `{"backtest": true}` en el body del
+preparador, que **solo obedece en modo sombra** (en nube el portón de
+`pendiente` sigue intacto).
+
+Tres corridas sobre las últimas 12 facturas registradas. Lo que encontró — y
+ninguna de las tres la habría encontrado una revisión de código:
+
+1. **Las llaves del modelo nunca se configuraron en el proyecto.** Toda foto
+   caía en `metodo: ninguno` con "vision: llave sin ZAI_API_KEY ni
+   OPENROUTER_API_KEY". Corregido (`supabase secrets set`); la visión ahora lee
+   NCF y monto **idénticos al server** en las tres fotos del lote.
+2. **El empalme preparador→proponedor perdía el dossier.** Storage NO garantiza
+   leer-lo-recién-escrito: el dossier subido a las 21:03:41.983 se leía sin
+   extracción a las 21:03:43. El proponedor degradaba TODO a turno por
+   "dossier sin extraccion" — un pipeline que parecía sano y no lo estaba.
+   Corregido: el poke lleva un **sello de frescura** (`dossier_en`) y el
+   proponedor reintenta con backoff hasta ver esa versión; el cache del dossier
+   va con `cacheControl: '0'`.
+3. **HEIC no se puede leer en la nube — regresión real contra el server.** Las
+   fotos de iPhone son 4 de 12 del lote. Medido hoy: el decodificador WASM
+   revienta el límite de cómputo (`WORKER_RESOURCE_LIMIT`) y z.AI rechaza el
+   formato crudo (error 1210). El server las convertía con pillow-heif. La
+   degradación es limpia (va al turno con el motivo escrito), pero **es
+   bloqueante del cutover de F2**: se cierra convirtiendo HEIC→JPEG en el
+   navegador al subir (trabajo en la web de Labs_Inv, mismo lugar donde el plan
+   ya proponía rasterizar) o con un puente temporal en el server.
+
+Lo que el backtest CONFIRMÓ que funciona, punta a punta: PDF con capa de texto
+(extracción, QR del e-CF, DGII), visión sobre fotos jpg/png, el dedup contra la
+mesa y contra el histórico de ADM (las degradaciones "posible duplicado (mesa:
+0, ADM: 1)" son correctas: el backtest re-procesa facturas que YA están
+registradas), y la cadena trigger→preparador→proponedor con su sello.
+
+Criterio de terminado de F2, corregido: **el backtest en verde sobre un lote de
+facturas variadas** (sin HEIC pendiente) reemplaza a los 7 días de calendario.
+
 ## 6. Qué se reescribe del SPEC (en sesión de enmienda, no de pasada)
 
 | Decisión | Cambio | Por qué |

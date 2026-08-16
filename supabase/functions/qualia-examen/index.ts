@@ -13,9 +13,13 @@ import { autorizado } from '../_shared/auth.ts';
  * CALIFICA la decisión del turno contra el desenlace real y la lección.
  *
  * Reglas que esta pieza hereda del contrato (contrato-turno.md):
- *  - CERO escrituras a cualquier tabla: acá solo hay SELECT (el bearer) y
- *    fetch. El modo 'examen' del turno tampoco escribe ni pokea — todo vuelve
- *    en la respuesta HTTP.
+ *  - CERO escrituras a cualquier tabla: acá solo hay SELECT (el bearer y la
+ *    fila real de cada caso) y fetch. El modo 'examen' del turno tampoco
+ *    escribe ni pokea — todo vuelve en la respuesta HTTP.
+ *  - Los identificadores nacen de la FILA, jamás del corpus ni del LLM
+ *    (§2 del contrato): `empresa_id`, `tipo` y `origen` salen de un SELECT a
+ *    qualia_trabajos por `trabajo_id`. Lo único que el examen fuerza es el
+ *    `estado='analizando'`, que es el punto de entrada que se reconstruye.
  *  - El snapshot NO lleva la clave de respuestas: leccion, desenlace_adm,
  *    resumen_humano, estado_final y las decisiones contables de la propuesta
  *    (cuentas, documento_adm, tipo_gasto, registro_adm) se REDACTAN — un
@@ -75,12 +79,29 @@ interface CasoCorpus {
   leccion: string;
 }
 
+/**
+ * La fila real de qualia_trabajos, leída por `trabajo_id`. Solo las columnas
+ * que son IDENTIDAD (no desenlace): el estado de hoy es la respuesta y jamás
+ * viaja — el examen lo reemplaza por 'analizando', que es el punto de entrada.
+ */
+interface FilaExamen {
+  id: string;
+  empresa_id: string;
+  tipo: string;
+  origen: string;
+  estado: 'analizando';
+  archivo_nombre: string | null;
+  // La propuesta previa al corte NO se reconstruye: el corpus solo guarda la
+  // FINAL y pasarla sería pasarle la respuesta. Ver TODO en armarSnapshot().
+  propuesta: null;
+  reconstruida?: true;
+}
+
 /** Lo que el turno recibe: el punto de entrada del caso, SIN la respuesta. */
 interface SnapshotExamen {
   trabajo_id: string;
   rama: string;
-  // El estado en que el turno siempre corre: el harness ya reclamó la fila.
-  estado: 'analizando';
+  fila: FilaExamen;
   // Cronología hasta el punto de corte (el hilo que el turno habría visto).
   eventos: EventoCorpus[];
   // Hechos del documento/movimiento, redactados de propuesta_final: lo que un
@@ -219,24 +240,47 @@ function esEventoPreparador(ev: EventoCorpus): boolean {
 }
 
 /**
+ * El veredicto del humano sobre el trabajo: aprobación de una propuesta o
+ * cierre de un caso. Es la frontera de la fase de análisis — todo lo que viene
+ * después (el registro, la anulación, el libro) ya no es el punto de entrada
+ * que este examen reconstruye.
+ */
+function esVeredictoDelHumano(ev: EventoCorpus): boolean {
+  return ev.autor === 'usuario' && /aprobad[oa] por|caso cerrado por/i.test(ev.texto);
+}
+
+/**
  * El punto de corte de la cronología (README del corpus: «se corta en el punto
- * que se quiera probar»). Reglas deterministas por rama:
+ * que se quiera probar»). Dos reglas deterministas:
  *
- *  - correcciones: el turno entra a atender la VOZ del humano — se corta
- *    después del primer evento de usuario que llega cuando ya había análisis
- *    del contable en el hilo (la corrección, o el rechazo). Si no hay tal voz
- *    (formax-90k llega al corpus solo con la nota del rechazo), cae a la regla
- *    general.
- *  - resto: el turno entra donde entró el contable real — se corta ANTES del
- *    primer evento del contable que no sea el aviso del preparador. En casos y
- *    criterios eso deja visible el pedido/aviso del humano que abrió la fila.
+ *  1. Voz que REABRE (todas las ramas menos casos): si antes del veredicto del
+ *     humano hay un evento de usuario que llega cuando el contable YA analizó
+ *     —la corrección de un dato, un rechazo—, se corta justo después: el turno
+ *     entra a atender esa voz. Sin esto, FREEWAY y GUAN LAN se calificaban
+ *     contra una respuesta que nació de una corrección que el turno no veía
+ *     (corretaje≠alquiler, el NCF con un cero de más): reprobados por no
+ *     adivinar. Se corta en la PRIMERA voz, no en la última: en ERIK GAS la
+ *     segunda ya viene después de que el contable escribió la línea corregida,
+ *     y eso es la respuesta.
+ *  2. Regla general: se corta ANTES del primer evento del contable que no sea
+ *     el aviso del preparador — el turno entra donde entró el contable real.
+ *     En casos y criterios eso deja visible el pedido del humano que abrió la
+ *     fila. La rama `casos` usa SIEMPRE esta: su hilo es una conversación
+ *     entera y cortar en la voz del humano dejaría a la vista el análisis y el
+ *     dictamen que el turno tiene que producir.
+ *
+ * El corte se puede forzar por request (`{corte: n}`) para probar otro punto:
+ * el ejemplo vivo es CLARO, cuyo momento interesante —«anulaste FP00001131,
+ * ¿qué re-registro?»— cae DESPUÉS de la aprobación y ninguna regla automática
+ * lo elige sin arrastrar el registro entero.
  */
 function indiceCorte(caso: CasoCorpus): number {
   const evs = caso.eventos;
-  if (caso.rama === 'correcciones') {
+  if (caso.rama !== 'casos') {
     let huboContable = false;
     for (let i = 0; i < evs.length; i++) {
       const ev = evs[i];
+      if (esVeredictoDelHumano(ev)) break;
       if (ev.autor === 'contable' && !esEventoPreparador(ev)) huboContable = true;
       else if (ev.autor === 'usuario' && huboContable) return i + 1;
     }
@@ -262,6 +306,16 @@ const CLAVES_DE_HECHO = new Set([
 // 'cuenta_nombre' son la decisión y se retiran.
 const CLAVES_DE_LINEA = ['descripcion', 'precio', 'cantidad', 'itbis', 'grupo_impuesto'] as const;
 
+/**
+ * TODO(F3): fuga residual conocida — el corpus solo guarda la propuesta FINAL,
+ * así que los hechos que viajan son los de DESPUÉS de la corrección humana (el
+ * NCF ya corregido de GUAN LAN, la línea sin precio/galón de ERIK GAS). En los
+ * casos con corte en la voz del humano eso es coherente con lo que el turno
+ * vería —el humano acaba de dictar el dato—, pero en el resto adelanta trabajo
+ * de lectura. Lo que NUNCA viaja es la decisión contable, que es lo que se
+ * califica; si la doble corrida muestra que igual infla las notas, el arreglo
+ * es reconstruir el dossier del preparador desde el cache, no aflojar acá.
+ */
 function redactarDossier(caso: CasoCorpus): Record<string, unknown> | null {
   const p = caso.propuesta_final;
   if (!p || typeof p !== 'object') return null;
@@ -294,17 +348,83 @@ function redactarDossier(caso: CasoCorpus): Record<string, unknown> | null {
   return Object.keys(dossier).length > 0 ? dossier : null;
 }
 
-function armarSnapshot(caso: CasoCorpus): { snapshot: SnapshotExamen; corte: number } {
-  const corte = indiceCorte(caso);
+/**
+ * TODO(F3): la propuesta que la fila tenía EN el punto de corte no se
+ * reconstruye — el corpus solo guarda `propuesta_final`, y en las ramas de
+ * corrección esa final ES la respuesta. El turno entra entonces con la fila sin
+ * propuesta y los eventos hasta el corte; queda para la doble corrida decidir
+ * si vale la pena reconstruirla desde qualia_eventos (donde el texto completo
+ * de cada propuesta intermedia sí vive).
+ */
+function armarSnapshot(
+  caso: CasoCorpus,
+  fila: FilaExamen,
+  corteForzado: number | null,
+): { snapshot: SnapshotExamen; corte: number } {
+  const corte = corteForzado ?? indiceCorte(caso);
   return {
     corte,
     snapshot: {
       trabajo_id: caso.trabajo_id,
       rama: caso.rama,
-      estado: 'analizando',
+      fila,
       eventos: caso.eventos.slice(0, corte),
       dossier: redactarDossier(caso),
     },
+  };
+}
+
+// ── La fila real ─────────────────────────────────────────────────────────────
+
+/**
+ * Las columnas de identidad de cada trabajo del corpus, de un solo SELECT
+ * (solo lectura). El `estado` de hoy NO se lee a propósito: es el desenlace.
+ *
+ * Si la fila ya no existe (purga, base de otro proyecto) el caso NO se inventa:
+ * se reconstruye SOLO si el entorno declara `QUALIA_EXAMEN_EMPRESA_ID`, y la
+ * fila reconstruida viaja marcada — un examen corrido contra identificadores
+ * adivinados mide otra cosa y hay que saberlo al leer el boletín.
+ */
+async function leerFilas(ids: string[]): Promise<Map<string, FilaExamen>> {
+  const mapa = new Map<string, FilaExamen>();
+  if (ids.length === 0) return mapa;
+  const { data, error } = await sb()
+    .from('qualia_trabajos')
+    .select('id, empresa_id, tipo, origen, archivo_nombre')
+    .in('id', ids);
+  if (error || !data) {
+    console.error(`qualia_trabajos ilegible (${error?.message ?? 'sin datos'})`);
+    return mapa;
+  }
+  for (const f of data) {
+    mapa.set(f.id as string, {
+      id: f.id as string,
+      empresa_id: f.empresa_id as string,
+      tipo: f.tipo as string,
+      origen: f.origen as string,
+      estado: 'analizando',
+      archivo_nombre: (f.archivo_nombre as string | null) ?? null,
+      propuesta: null,
+    });
+  }
+  return mapa;
+}
+
+function filaReconstruida(caso: CasoCorpus): FilaExamen | null {
+  const empresa = Deno.env.get('QUALIA_EXAMEN_EMPRESA_ID');
+  if (!empresa) return null;
+  return {
+    id: caso.trabajo_id,
+    empresa_id: empresa,
+    // Lo único que la rama dice con certeza: los 5 `casos` del corpus son las 5
+    // filas tipo 'caso' de producción. El resto puede ser factura o sugerencia
+    // y por eso la fila va marcada.
+    tipo: caso.rama === 'casos' ? 'caso' : 'factura',
+    origen: 'web',
+    estado: 'analizando',
+    archivo_nombre: null,
+    propuesta: null,
+    reconstruida: true,
   };
 }
 
@@ -328,9 +448,40 @@ async function invocarTurno(
 
   // El contrato de este payload con qualia-contable: modo 'examen' = cero
   // escrituras a cualquier tabla, cero pokes, todo en la respuesta HTTP.
-  // TODO(F3): confirmar el nombre exacto de los campos con el turno cuando
-  // las dos piezas se integren — este es el lado que el examen propone.
-  const payload = { modo: 'examen', caso: clave, snapshot };
+  //
+  // La forma sigue a qualia-contable/tipos.ts: `fila` es la FilaTrabajo que el
+  // harness habría reclamado (de ahí nacen empresa_id y trabajo_id, jamás del
+  // LLM) y `examen` es el SnapshotExamen — `dossier` reemplaza entera la
+  // respuesta de la tool `dossier_completo`, y `respuestas` va VACÍO a
+  // propósito: sin entrada en el snapshot, cada lectura (leer_adm,
+  // consultar_banco, buscar_precedente, consultar_dgii) va a la fuente real,
+  // que es solo lectura. Eso es lo que hace que el examen mida al turno
+  // buscando de verdad — con la advertencia de que ADM y el banco están en su
+  // estado de HOY, no en el de la fecha del caso (FP00001063 ya no existe).
+  //
+  // TODO(F3): al integrar, confirmar contra el harness los nombres exactos de
+  // las claves internas de `dossier` (acá se usan las palabras del contrato
+  // §2.1: fila, propuesta, hilo, dossier, clasificacion, precedente, hijos).
+  const payload = {
+    modo: 'examen',
+    caso: clave,
+    trabajo_id: snapshot.fila.id,
+    empresa_id: snapshot.fila.empresa_id,
+    fila: snapshot.fila,
+    eventos: snapshot.eventos,
+    examen: {
+      dossier: {
+        fila: snapshot.fila,
+        propuesta: null,
+        hilo: snapshot.eventos,
+        dossier: snapshot.dossier,
+        clasificacion: null,
+        precedente: null,
+        ...(snapshot.fila.tipo === 'caso' ? { hijos: [] } : {}),
+      },
+      respuestas: {},
+    },
+  };
 
   try {
     const resp = await fetch(`${base}/qualia-contable`, {
@@ -492,6 +643,15 @@ function calificar(
   // salvo en los rechazos, donde es el anti-ejemplo.
   const finalBendecida = !caso.estado_final.startsWith('rechazada');
 
+  // El estado_final de la tabla puede mentir por sí solo (README del corpus):
+  // hay filas `registrada` cuyo documento fue después eliminado o anulado en
+  // ADM. Coincidir con esa propuesta NO es prueba de acierto y el boletín tiene
+  // que decirlo — es el aviso que separa «igual al histórico» de «correcto».
+  const registro = final.registro_adm as Record<string, unknown> | undefined;
+  const documentoMuerto = !!registro &&
+    typeof registro === 'object' &&
+    (texto(registro.eliminado_en) !== null || texto(registro.anulado_en) !== null);
+
   let resultadoVeredicto: Veredicto | null = null;
 
   if (decisiones.length === 0) {
@@ -619,7 +779,7 @@ function calificar(
 
     if (cuentasFinal.length > 0) {
       contenidoComparable = true;
-      const cuentas = cuentasDe(propuestaDeArgs(cierre.args).lineas);
+      const cuentas = cuentasDe(propuesta.lineas);
       if (cuentas.join(',') === cuentasFinal.join(',')) {
         aciertos.push(`cuentas coinciden: ${cuentasFinal.join(', ')}`);
       } else if (cuentas.some((c) => cuentasFinal.includes(c))) {
@@ -672,6 +832,12 @@ function calificar(
         fallos.push(`NCF: propuso ${ncfTurno} y el real fue ${ncfFinal}`);
       }
     }
+
+    if (documentoMuerto || /elimina|anulad/i.test(caso.estado_final)) {
+      ojoHumano.push(
+        'el documento real fue eliminado o anulado después: coincidir con esta propuesta prueba que el turno repite al contable histórico, NO que el tratamiento fuera correcto',
+      );
+    }
   }
 
   // ── Veredicto ──
@@ -719,11 +885,26 @@ function calificar(
 async function examinarCaso(
   clave: string,
   caso: CasoCorpus,
+  fila: FilaExamen | undefined,
+  corteForzado: number | null,
   bearer: string,
   timeoutMs: number,
   recortarCrudo: boolean,
 ): Promise<ResultadoCaso | { caso: string; rama: string; error: string }> {
-  const { snapshot, corte } = armarSnapshot(caso);
+  // Sin fila no hay examen: los identificadores nacen de qualia_trabajos y
+  // inventarlos sería exactamente la falla que el contrato prohíbe (§2).
+  const filaUsada = fila ?? filaReconstruida(caso);
+  if (!filaUsada) {
+    return {
+      caso: clave,
+      rama: caso.rama,
+      error:
+        `sin fila real para ${caso.trabajo_id} en qualia_trabajos (y sin QUALIA_EXAMEN_EMPRESA_ID): ` +
+        'los identificadores nacen de la fila, no se inventan',
+    };
+  }
+
+  const { snapshot, corte } = armarSnapshot(caso, filaUsada, corteForzado);
   const resp = await invocarTurno(clave, snapshot, bearer, timeoutMs);
   if (!resp.ok) {
     // Un turno que no contestó no reprueba el examen: es un fallo de
@@ -737,7 +918,13 @@ async function examinarCaso(
     if (s.length > TOPE_CRUDO_LOTE) crudo = `${s.slice(0, TOPE_CRUDO_LOTE)}… [recortado: ${s.length} bytes]`;
   }
 
-  return calificar(clave, caso, corte, normalizarDecisiones(resp.cuerpo), crudo);
+  const r = calificar(clave, caso, corte, normalizarDecisiones(resp.cuerpo), crudo);
+  if (filaUsada.reconstruida) {
+    r.detalle.ojo_humano.push(
+      'la fila real no estaba en qualia_trabajos: empresa_id vino del entorno y el tipo se dedujo de la rama — el ruteo del turno pudo no ser el del caso real',
+    );
+  }
+  return r;
 }
 
 function esResultado(r: ResultadoCaso | { error: string }): r is ResultadoCaso {
@@ -779,6 +966,10 @@ Deno.serve(async (req) => {
       const erroresCasos: Array<{ caso: string; rama: string; error: string }> = [];
       const pendientes: string[] = [];
 
+      // Un solo SELECT para todas las filas: el examen no gasta un round-trip
+      // por caso en algo que es identidad estable.
+      const filas = await leerFilas(claves.map((c) => MANIFIESTO[c].trabajo_id));
+
       for (let i = 0; i < claves.length; i++) {
         const restante = DEADLINE_LOTE_MS - (Date.now() - t0);
         if (restante < 15_000) {
@@ -791,6 +982,8 @@ Deno.serve(async (req) => {
         const r = await examinarCaso(
           clave,
           MANIFIESTO[clave],
+          filas.get(MANIFIESTO[clave].trabajo_id),
+          null,
           bearer,
           Math.min(TIMEOUT_CASO_LOTE_MS, restante - 10_000),
           true,
@@ -852,7 +1045,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    const r = await examinarCaso(clave, caso, bearer, TIMEOUT_CASO_SOLO_MS, false);
+    // Corte manual: para probar un punto de entrada que ninguna regla elige
+    // sola (CLARO tras la anulación, un caso a mitad de su hilo).
+    let corteForzado: number | null = null;
+    if (body.corte !== undefined) {
+      const n = body.corte;
+      if (typeof n !== 'number' || !Number.isInteger(n) || n < 0 || n > caso.eventos.length) {
+        return json(
+          { ok: false, error: `corte invalido: entero entre 0 y ${caso.eventos.length}` },
+          400,
+        );
+      }
+      corteForzado = n;
+    }
+
+    const filas = await leerFilas([caso.trabajo_id]);
+    const r = await examinarCaso(
+      clave,
+      caso,
+      filas.get(caso.trabajo_id),
+      corteForzado,
+      bearer,
+      TIMEOUT_CASO_SOLO_MS,
+      false,
+    );
     if (!esResultado(r)) {
       return json({ ok: false, funcion: FUNCION, ...r, duracion_ms: Date.now() - t0 }, 502);
     }

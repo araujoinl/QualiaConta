@@ -106,6 +106,7 @@ interface Ctx {
   m: ModoActivo;
   fila: Fila;
   motivo: string;
+  backtest: boolean;
   t0: number;
   errores: string[];
   suprimidas: string[];
@@ -159,7 +160,11 @@ async function subirCache(
 ): Promise<boolean> {
   const { error } = await ctx.db.storage
     .from(BUCKET_CACHE)
-    .upload(rutaCache(ctx.id, archivo), contenido, { contentType, upsert: true });
+    .upload(rutaCache(ctx.id, archivo), contenido, {
+      contentType,
+      upsert: true,
+      cacheControl: '0', // el dossier se reescribe y se lee en el mismo segundo
+    });
   if (error) {
     ctx.log(`no pude subir ${archivo} al cache: ${error.message}`);
     return false;
@@ -304,7 +309,7 @@ async function rncEmpresa(ctx: Ctx): Promise<string> {
  * Fallar es suave: la fila sigue 'pendiente' y el re-poke del barrido rearma
  * la cadena — esa ES la red.
  */
-async function pokeProponedor(ctx: Ctx): Promise<void> {
+async function pokeProponedor(ctx: Ctx, dossierEn?: string): Promise<void> {
   const base = Deno.env.get('QUALIA_FUNCTIONS_URL') ??
     `${Deno.env.get('SUPABASE_URL') ?? ''}/functions/v1`;
   let bearer = Deno.env.get('QUALIA_CRON_BEARER') ?? '';
@@ -330,6 +335,10 @@ async function pokeProponedor(ctx: Ctx): Promise<void> {
         trabajo_id: ctx.id,
         motivo: 'dossier_listo',
         intento: String(Math.floor(Date.now() / 1000)),
+        // Sello de frescura: Storage NO garantiza que lo recién subido se lea
+        // al instante (medido 2026-08-16: el proponedor leyó la copia anterior
+        // 1s después de subir). El proponedor reintenta hasta ver ESTE sello.
+        dossier_en: dossierEn ?? null,
       }),
       signal: AbortSignal.timeout(15_000),
     });
@@ -356,8 +365,8 @@ async function preparar(ctx: Ctx): Promise<void> {
   // El humano puede decir «leíste mal el documento» desde la web: ese chip —y
   // sólo ése— marca su mensaje con datos.forzar_relectura y bota la copia. Se
   // mira si el pedido es POSTERIOR a la preparación: uno viejo ya se atendió.
-  let forzar = false;
-  if (previo?.preparadoEn) {
+  let forzar = ctx.backtest; // el backtest siempre re-lee: mide el camino entero
+  if (!forzar && previo?.preparadoEn) {
     const { data: pedido } = await db
       .from('qualia_eventos')
       .select('id')
@@ -804,7 +813,7 @@ async function preparar(ctx: Ctx): Promise<void> {
 
   if (dossierSubido) await insertarEvento(ctx, 'progreso', evento);
 
-  await pokeProponedor(ctx);
+  await pokeProponedor(ctx, preparadoEn);
 
   // ── Sombra: el producto de esta fase es la fila del diff ─────────────────
   if (m === 'sombra') {
@@ -862,6 +871,10 @@ Deno.serve(async (req) => {
     const motivo = typeof body.motivo === 'string'
       ? body.motivo.replace(/[^a-z0-9_ -]/gi, '').slice(0, 40)
       : '';
+    // Backtest: re-preparar una fila YA resuelta para diffear la nube contra lo
+    // que el server hizo de verdad. Vale SOLO en sombra (se re-chequea abajo,
+    // cuando el modo ya está resuelto): en nube el portón de 'pendiente' manda.
+    const backtest = body.backtest === true;
 
     const db = sb();
     const { data: filas, error: eFila } = await db
@@ -877,7 +890,7 @@ Deno.serve(async (req) => {
 
     // El prep solo trabaja sobre 'pendiente'. Cualquier otro estado significa
     // que el contable o el usuario ya están en eso: no se toca nada.
-    if (fila.estado !== 'pendiente') {
+    if (fila.estado !== 'pendiente' && !backtest) {
       return json({ ok: true, accion: 'ninguna', estado: fila.estado, motivo: 'no es pendiente; no toco nada' });
     }
     // Sin archivo no hay nada que masticar (sugerencias y bloques de criterios
@@ -891,6 +904,9 @@ Deno.serve(async (req) => {
       // No tocar NADA: ni cache, ni eventos, ni sombra — el sidecar es el dueño.
       return json({ ok: true, modo: 'server', accion: 'ninguna' });
     }
+    if (backtest && m !== 'sombra') {
+      return json({ ok: false, error: 'backtest solo corre en modo sombra' }, 409);
+    }
 
     const id8 = id.slice(0, 8);
     const ctx: Ctx = {
@@ -900,6 +916,7 @@ Deno.serve(async (req) => {
       m,
       fila,
       motivo,
+      backtest,
       t0,
       errores: [],
       suprimidas: [],

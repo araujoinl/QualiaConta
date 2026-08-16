@@ -1,54 +1,45 @@
 <!-- GENERADO por deploy/generar-tajadas.sh — NO editar a mano -->
 
-<!-- Rama servida por scripts/abrir-trabajo.sh — primera mitad del análisis de un
-pendiente (dossier, documento, extracción, DGII, duplicados). La segunda mitad la
-sirve el mismo router con `parte2`; no la busques a mano. Tajada verbatim del
-SKILL.md pre-partición (a14c7d0); historial en git. -->
+<!-- adaptado: la rama la sirve el harness (no scripts/abrir-trabajo.sh) y las dos mitades van
+concatenadas. Re-tajada de a14c7d0 según contrato-turno.md §5.3: muere la mecánica del
+chasis viejo, quedan las reglas contables y las lápidas. -->
 
 ## Si está `pendiente`: analizalo
 
 ### Paso 0 — si el hilo ya tiene voz del humano, no es un análisis nuevo
 
-Antes de nada, mirá si alguien ya te dijo algo sobre esta fila:
-
-```bash
-psql "$QUALIA_DSN" -t -A -c "select id, tipo, contenido from qualia_eventos where trabajo_id='<trabajo_id>' and autor='usuario' order by id desc limit 5"
-```
+<!-- adaptado: psql del hilo y `cat rama-respuestas.md` → hilo en el dossier, ruteo del harness. -->
+Antes de nada, mirá si alguien ya te dijo algo sobre esta fila: los últimos eventos
+del hilo ya vienen en el dossier, y `dossier_completo {hilo_completo: true}` te trae
+el hilo entero.
 
 Si hay una respuesta del usuario posterior a una propuesta tuya, **estás por
-repetir un análisis que ya fue corregido**: cargá la rama «evento `respuesta`»
-con `cat references/rama-respuestas.md` (desde la carpeta de la skill) y tratá
-lo que dijo como dato, no arranques de cero. El
-motivo del webhook puede llegar equivocado —el poke es un puntero y la base es
-la única verdad— y **el dossier del preparador NO contiene eventos**: si el
+repetir un análisis que ya fue corregido**: el harness te sirve la rama «evento
+`respuesta`» en lugar de ésta, y lo que dijo el humano es dato, no un arranque de
+cero. El motivo del poke puede llegar equivocado —el poke es un puntero y la base
+es la única verdad— y **el dossier del preparador NO contiene eventos**: si el
 documento no cambió te lo entrega idéntico al de antes de la corrección, así que
 leerlo te devuelve exactamente el razonamiento que el humano acaba de rechazar.
 
 ### El dossier del preparador — mirá esto ANTES de trabajar
 
-Antes de despertarte, un preparador determinista (`preparar-trabajo.sh`, corre
-en el sidecar, sin LLM) pudo dejar el trabajo masticado en
-`/tmp/mesa/<trabajo_id>/dossier.json`. El claim atómico (paso 1, abajo) sigue
-siendo SIEMPRE tu primer movimiento — y tu primer movimiento es UN comando,
-no cinco (cada llamada tuya re-paga el prompt entero contra la cuota):
+<!-- adaptado: `leer-contexto.sh --claim` y el dossier.json de /tmp/mesa → claim del harness,
+dossier precargado y `avisar_progreso`. La regla —un movimiento y no cinco— queda. -->
+Antes de despertarte, un preparador determinista (sin LLM) dejó el trabajo masticado,
+y **ya tenés su dossier**: la iteración 1 llega con la fila, el hilo, el rastro del
+proponedor determinista si lo hubo (`clasificacion.json`: por qué el camino sin LLM
+NO propuso — ése es tu punto de partida, no lo re-descubras), el dossier y el
+precedente del proveedor ya buscado. No lo vuelvas a pedir: `dossier_completo` es
+para releer el hilo entero o mirarlo tras una corrección. El claim tampoco es tuyo:
+nunca ves la carrera.
 
-```bash
-bash /opt/data/memoria/scripts/leer-contexto.sh <trabajo_id> --claim
-```
-
-Hace el claim y te imprime TODO junto: la fila, el hilo, el rastro del
-proponedor determinista si lo hubo (`clasificacion.json`: por qué el camino
-sin LLM NO propuso — ése es tu punto de partida, no lo re-descubras), el
-dossier y el precedente del proveedor ya buscado. Si la primera línea dice
-`CLAIM: perdido`, PARÁ sin escribir nada, como siempre. En las ramas donde no
-hay claim (`accion_usuario`, `escribir_libro`), corrélo SIN `--claim`.
-
-- **Si existe**: el documento YA está local en `archivo.path` (convertido a jpg
-  si era HEIC, con `texto.txt` si hubo texto), y la extracción, la verificación
-  DGII y el chequeo de duplicados YA están hechos. **SALTATE los pasos 2-5** y
-  andá DIRECTO al precedente y la propuesta (pasos 6-8). **Tu PRIMER movimiento
-  tras leer el dossier es UN evento `progreso` corto anunciando SOLO tu plan y
-  tu juicio** — sin repetir proveedor/monto/DGII, que ya están en el evento del
+- **Con dossier** (lo normal): el documento ya lo procesó el preparador
+  (convertido a jpg si era HEIC, con su texto extraído si lo hubo), y la
+  extracción, la verificación DGII y el chequeo
+  de duplicados YA están hechos. **SALTATE los pasos 2-5** y andá DIRECTO al
+  precedente y la propuesta (pasos 6-8). **Tu PRIMER movimiento tras leer el
+  dossier es UNA llamada a `avisar_progreso` corta anunciando SOLO tu plan y tu
+  juicio** — sin repetir proveedor/monto/DGII, que ya están en el evento del
   preparador — p.ej. «Este comprobante no pasó la verificación de DGII, así
   que no sirve como crédito fiscal: te preparo la propuesta para registrarlo
   como gasto no admitido» o «A este proveedor siempre lo registramos como
@@ -58,10 +49,12 @@ hay claim (`accion_usuario`, `escribir_libro`), corrélo SIN `--claim`.
 
   **NO repitas lo que el dossier ya hizo** (medido 2026-08-02: re-hacer la
   visión + re-consultar DGII quemó ~80s de una corrida que ya los traía):
+<!-- adaptado: `vision_analyze` no existe; la prohibición de relectura queda igual de dura. -->
   - `extraccion` con campos y confianza alta → esos son tus datos. Verificá
-    coherencia contra `texto.txt` o contra la aritmética, NUNCA re-leyendo la
-    imagen con `vision_analyze`; si algo de verdad no cierra, aplicá la regla
-    de abajo (patrón conocido → renglón inferido; sin patrón → preguntá).
+    coherencia contra el texto extraído del dossier o contra la aritmética,
+    NUNCA re-leyendo la imagen —el turno no tiene tool de visión—; si algo de
+    verdad no cierra, aplicá la regla de abajo (patrón conocido → renglón
+    inferido; sin patrón → preguntá).
     **La aritmética correcta** (corrección del dueño, 2026-08-02): el ITBIS es
     un porcentaje de la BASE GRAVADA, JAMÁS del total. La verificación es
     `base + itbis + exentos + propina/cargos == monto`.
@@ -98,13 +91,14 @@ hay claim (`accion_usuario`, `escribir_libro`), corrélo SIN `--claim`.
        recargo impreso) → renglón inferido + explicación en `detalle`, y
        proponé. La aprobación del humano ES la confirmación.
     3. SOLO si la diferencia no calza con ningún patrón: NO reeleas la
-       imagen — PREGUNTALE al humano con evento `pregunta` +
-       `esperando_respuesta`, con la diferencia exacta y tu mejor hipótesis.
-       Él tiene el documento a un click. Con su respuesta, cerrás.
+       imagen — PREGUNTALE al humano con `preguntar_al_humano`, con la
+       diferencia exacta y tu mejor hipótesis. Él tiene el documento a un
+       click. Con su respuesta, cerrás.
+<!-- adaptado: no hay `texto.txt` en disco; el texto extraído viaja en el dossier. -->
   - `dgii` del dossier → va a tu propuesta TAL CUAL. No re-consultes DGII.
     EXCEPCIÓN: un `dgii` con estado "no verificable" cuenta como AUSENTE —
-    intentá el paso 5 vos (desde `texto.txt`, sin visión); si tampoco podés,
-    queda "no verificable" con el motivo.
+    intentá el paso 5 vos (con `consultar_dgii`, desde el texto extraído del
+    dossier, sin visión); si tampoco podés, queda "no verificable" con el motivo.
   - `duplicados` del dossier → decidís con eso. No re-busques.
   - `extraccion.items` (fotos): esa ES tu tabla de líneas — mapeale la cuenta
     a cada item y armá la propuesta con ellos, SIN re-leer la imagen. Si
@@ -119,21 +113,21 @@ hay claim (`accion_usuario`, `escribir_libro`), corrélo SIN `--claim`.
   presentes NO hay relectura de imagen bajo NINGUNA condición — confianza
   media/baja, montos que no cierran o razón social que no casa se resuelven
   con las reglas de arriba (aritmética sobre la base gravada; y si de verdad
-  no cuadra, PREGUNTA al humano), jamás con `vision_analyze`. El `dgii` del dossier va a tu propuesta como siempre
+  no cuadra, PREGUNTA al humano), jamás re-leyendo la imagen: no hay tool de
+  visión en el turno. El `dgii` del dossier va a tu propuesta como siempre
   (nunca lo dejes vacío), y si `duplicados` trae filas, decidís vos con la
   regla del paso 4 — el prep nunca marca error por duplicado. El prep ya dejó
   un evento de progreso con el resumen: no lo repitas, contá solo tu juicio.
 
-- **Si NO existe** (o no parsea, o su `row_updated_at` no coincide con el
-  `updated_at` que leíste ANTES del claim — ojo: tu claim cambia el
-  `updated_at` de la fila, por eso la comparación es contra el valor
-  pre-claim del primer SELECT, jamás contra el actual): protocolo completo,
-  pasos 2-9, como siempre.
+<!-- adaptado: la vigencia del dossier la compara el harness, y sin él no te invoca (§1). -->
+- **Si el dossier no llegara**, no es tu turno: el harness no invoca sin dossier
+  vigente. Lo que sí puede faltar es un campo suelto: ése lo completás vos.
 
 ### Qué documento de ADM es esto: lo decide el ROL del hecho, no el papel
 
+<!-- adaptado: `poller.sh` → la pieza que registra (el mesa hasta F4). -->
 Primero el documento, después la cuenta: `documento_adm` no es una etiqueta, es
-el router — `poller.sh` elige con qué script registrar según ese campo, y la
+el router — la pieza que registra elige el camino según ese campo, y la
 forma de tus `lineas` depende de él.
 
 **REGLA DURA: el NCF NO decide el tipo de documento. Ni su presencia ni su
@@ -179,15 +173,17 @@ Preguntá en este orden; la primera que dé SÍ, gana:
    archiva bajo «Bancos → Cargos Bancarios», que es donde un contador va a
    buscar comisiones, y ahí esa plata no es lo que el módulo dice que es.
 
+<!-- adaptado: el evento `pregunta` a mano → `preguntar_al_humano`; `poller.sh` → quien registra. -->
    **Plata que ENTRA de un tercero: hoy no tenés documento para eso — pará y
    preguntá.** El rol del agente niega toda emisión AR (`CashInvoices`,
    `CreditInvoices`, notas de crédito de cliente) y también `Deposits`; ver
    `docs/plan-encendido-escritura.md` §1.1. No hay vuelta que darle: no la
-   disfraces de `BankCharges` en crédito ni de `Journals`. Abrís un evento
-   `pregunta` con el movimiento, el tercero y el tratamiento que corresponde, y
-   que el humano lo registre él. Proponer `CashInvoice` es peor que no proponer
-   nada: el router de `poller.sh` no conoce ese tipo, así que la fila se aprueba
-   y no se registra nunca — queda viva simulando que alguien la atendió.
+   disfraces de `BankCharges` en crédito ni de `Journals`. Cerrás con
+   `preguntar_al_humano`, nombrando el movimiento, el tercero y el tratamiento
+   que corresponde, y que el humano lo registre él. Proponer `CashInvoice` es
+   peor que no proponer nada: la pieza que registra no conoce ese tipo, así que
+   la fila se aprueba y no se registra nunca — queda viva simulando que alguien
+   la atendió.
 
    **Y si el candado de `Journals` te frena, ése NO es tu permiso para
    re-etiquetar.** El `hint` del trigger sugiere `BankCharges`, y esa sugerencia
@@ -389,34 +385,27 @@ DÓNDE SALIÓ LA PLATA sin un movimiento delante.
 
 ### Cómo clasificás la cuenta (con o sin dossier)
 
-**Un solo comando resuelve los pasos 1 y 3 de abajo** (el paso 2, tu memoria
-curada, lo leés vos aparte y SIEMPRE: lo ratificado manda sobre el destilado).
-Corré esto y leé la salida entera antes de decidir nada:
+<!-- adaptado: `buscar-precedente.py`, sus comillas y el veto al `python3 -c` (con los 8-17s
+del guardián de comandos) → la tool `buscar_precedente`. -->
+**Una sola llamada resuelve los pasos 1 y 3 de abajo** (el paso 2, tu memoria
+curada, la leés aparte y SIEMPRE: lo ratificado manda sobre el destilado). El
+precedente del proveedor de ESTE documento **ya vino precargado con el dossier**:
+leé esa salida entera antes de decidir nada, y usá la tool sólo para OTRA
+búsqueda:
 
-```bash
-python3 /opt/data/memoria/scripts/buscar-precedente.py "nombre del proveedor"
-```
+`buscar_precedente {termino: "nombre del proveedor"}`
 
-El término **siempre entre comillas** — hay 11 proveedores con `&` en el
-nombre. Podés pasarle el RNC en vez del nombre. Otros modos:
-`--cuenta <codigo>` (quién usa esa cuenta), `--cuentas` (el catálogo completo
-de cuentas en uso), `--plan <palabra>` (busca en las 215 cuentas del plan, no
-sólo en las que ya se usan).
-
-**PROHIBIDO consultar los agg con `python3 -c`** (ni `perl -e`, ni ningún
-intérprete con `-c`/`-e`): el guardián de comandos marca ese flag y consulta a
-otro modelo antes de dejarte ejecutar — medido, 8 a 17 segundos POR LLAMADA, y
-en el trabajo 133ea3d5 se comió 57 de los 98 segundos de la clasificación. El
-script hace exactamente lo mismo en 30 milisegundos porque es un archivo.
-También sigue PROHIBIDO greppear `preentrenamiento/raw/` para cuentas.
-La prohibición es para CONSULTAR LOS AGG y nada más: la conversión de HEIC del
-paso 3 (`uv run --with pillow-heif python -c ...`) sigue igual de válida —
-verificado que no dispara el guardián, porque el comando es `uv`.
+Podés pasarle el RNC en vez del nombre (`{rnc: "..."}`). Otros modos:
+`{cuenta: "<codigo>"}` (quién usa esa cuenta), `{plan: "<palabra>"}` (busca en las
+215 cuentas del plan, no sólo en las que ya se usan) y `{tipos: true}` (catálogo
+606). El catálogo entero de cuentas EN USO viene en el mismo bloque cuando no hay
+precedente. Y el plan VIVO, con el vecindario de la serie completo, sale de
+`leer_adm {modo: 'plan_cuentas'}`: adivinar un código sigue prohibido.
 
 Las cinco etiquetas de su salida se leen literal y no se reinterpretan:
 
 - **`PRECEDENTE:`** — hay cuenta dominante con muestra suficiente. Es tu punto
-  de partida, con el `precedente_ref` que el propio script te imprime. Sigue
+  de partida, con el `precedente_ref` que la propia tool te devuelve. Sigue
   siendo el default de arranque: está sujeto al chequeo por item y a tu memoria
   ratificada, que manda sobre él.
 - **`SIN CUENTA DOMINANTE`** — el proveedor SÍ está, pero se registró
@@ -433,21 +422,20 @@ Las cinco etiquetas de su salida se leen literal y no se reinterpretan:
   impreso no es el del proveedor que la emitió, y una de ellas te devuelve otro
   proveedor con 96% de confianza. Si el nombre no casa, buscá por nombre.
 
-El método NO lo cambia el script: si devolvió `PRECEDENTE` va
-`metodo='precedente'`. `metodo='script'` queda reservado para cuando un script
-tuyo calcula el asiento completo (conciliación, nómina).
-
+<!-- adaptado: no hay scripts tuyos; `metodo='script'` queda para la pieza determinista. -->
+El método NO lo cambia la tool: si devolvió `PRECEDENTE` va
+`metodo='precedente'`. `metodo='script'` queda reservado para cuando el asiento
+completo lo calcula una pieza determinista (conciliación, nómina), no tu juicio.
 
 <!-- ——— generar-tajadas.sh: fin de rama-facturas-1.md · sigue rama-facturas-2.md ——— -->
 
-<!-- Rama servida por scripts/abrir-trabajo.sh — segunda mitad del análisis de un
-pendiente (precedente del proveedor, propuesta, turno, preguntas). Tajada verbatim
-de a14c7d0. -->
+<!-- adaptado: segunda mitad de la tajada; ya no la sirve abrir-trabajo.sh. -->
 
 
 El paso 6 del protocolo completo usa ESTA misma jerarquía:
 
-1. **Precedente del proveedor**: `/opt/data/preentrenamiento/agg/proveedor-cuentas.json`
+<!-- adaptado: la ruta /opt/data/…/agg muere; el espejo lo lee `buscar_precedente`. -->
+1. **Precedente del proveedor**: el espejo agg `proveedor-cuentas.json`
    — con qué cuenta registró la contabilidad REAL las facturas de ESE
    proveedor (1,050 facturas destiladas). Si el proveedor está y su cuenta
    dominante tiene ≥70% de usos: ese es tu punto de partida,
@@ -466,17 +454,17 @@ El paso 6 del protocolo completo usa ESTA misma jerarquía:
    `{"_meta", "proveedores": [{"nombre", "rnc", "facturas", "cuentas": [{"codigo","nombre","usos","pct"}]}]}`.
    El RNC del agg es real desde 2026-08-02 (sale de `raw/vendors.jsonl`, campo
    `FiscalID`: 154 de 164 proveedores lo tienen), así que buscar por RNC vale.
-   Lo resuelve el script de arriba — por nombre o por RNC, da igual:
+<!-- adaptado: los `python3 buscar-precedente.py` de ejemplo → la tool. -->
+   Lo resuelve la tool — por nombre o por RNC, da igual:
+   `buscar_precedente {termino: "tupaq"}` · `buscar_precedente {rnc: "132942248"}`
 
-   ```bash
-   python3 /opt/data/memoria/scripts/buscar-precedente.py tupaq
-   python3 /opt/data/memoria/scripts/buscar-precedente.py 132942248
-   ```
+<!-- adaptado: la memoria curada viaja en este contexto, no en archivos (§6.7). -->
+2. **Tu memoria curada** (proveedores y criterios RATIFICADOS, empaquetados en
+   este contexto) si matiza o contradice el precedente crudo — lo ratificado
+   manda sobre el agg.
 
-2. **Tu memoria curada** (`memoria/proveedores.md`, criterios RATIFICADOS)
-   si matiza o contradice el precedente crudo — lo ratificado manda sobre el agg.
-
-3. **Proveedor nuevo sin precedente**: el script ya te lo dijo con
+<!-- adaptado: esa salida la devuelve la tool, no un script. -->
+3. **Proveedor nuevo sin precedente**: la tool ya te lo dijo con
    `SIN PRECEDENTE PARA "..."`, y en ese mismo bloque te imprimió **todas las
    cuentas que la contabilidad real usa** (el encabezado dice cuántas), con su
    nombre exacto y cuántos proveedores las usan. Razonás (`metodo='razonado'`) eligiendo de ESA lista
@@ -484,16 +472,16 @@ El paso 6 del protocolo completo usa ESTA misma jerarquía:
    categorías de proveedor, y un "39 restaurantes históricos" improvisado es
    justo el error que se cometió el 2026-08-02 (eran 39 proveedores de la
    cuenta, con supermercados adentro).
+<!-- adaptado: `--cuenta` y `--plan` son modos de la tool; el plan VIVO, `leer_adm`. -->
    Para ver quién más usa una cuenta antes de decidirte:
-
-   ```bash
-   python3 /opt/data/memoria/scripts/buscar-precedente.py --cuenta 611.17
-   ```
+   `buscar_precedente {cuenta: "611.17"}`.
 
    No busques la cuenta por palabra clave adivinada: "viaje" no encuentra
    "Dieta y Viáticos". Leé los nombres de la lista. Y si de verdad ninguna
-   encaja, el plan completo tiene 215 cuentas — `--plan <palabra>` — pero salir
-   de las cuentas en uso hay que justificarlo en `detalle`.
+   encaja, el plan completo tiene 215 cuentas —`buscar_precedente {plan:
+   "<palabra>"}`, y el vecindario vivo de una serie con `leer_adm {modo:
+   'plan_cuentas'}`— pero salir de las cuentas en uso hay que justificarlo en
+   `detalle`.
 
 **La extracción del dossier es auto-generada: tratála como borrador a validar,
 no como verdad.** Solo el XML e-CF (`confianza: alta`) es dato exacto; lo demás
@@ -501,39 +489,14 @@ salió de regex sobre texto o de una pasada de visión y puede leer mal un dígi
 Nada del dossier te exime del juicio contable: la cuenta, el precedente y la
 propuesta siguen siendo tuyos.
 
-1. **Claim atómico** — con el mismo `leer-contexto.sh <id> --claim` de arriba
-   (te lo hace y te trae el contexto en la misma corrida). `CLAIM: perdido` =
-   otro proceso lo tomó o ya no está pendiente: PARÁ ahí, sin escribir nada.
-   El SQL de referencia, por si el script no está:
+<!-- adaptado: el claim (`leer-contexto.sh --claim` y su SQL) es del harness; `bajar-documento.sh`,
+del preparador. Los pasos quedan numerados para que «saltate los pasos 2-5» siga cerrando. -->
+1. **El claim ya está hecho** — lo hizo el harness antes de invocarte, con su
+   UPDATE guardado, y el que pierde la carrera no gasta un token: si estás
+   leyendo esto, la fila es tuya y está en `analizando`.
 
-```sql
-update qualia_trabajos set estado='analizando'
- where id='<trabajo_id>' and empresa_id='$QUALIA_EMPRESA_ID'
-   and estado='pendiente' returning id;
-```
-
-2. **Bajá el documento con el script** — NUNCA manejes la URL a mano (es larga,
-   lleva un JWT y varios `&`; cada vez que la copiaste de tu contexto o la
-   pasaste sin comillas la rompiste y culpaste al vencimiento):
-
-   ```bash
-   ruta=$(bash /opt/data/memoria/scripts/bajar-documento.sh <trabajo_id>) || {
-       # el script ya explico el motivo por stderr; dejá el trabajo en error con eso
-   }
-   ```
-
-   Devuelve la ruta local del archivo por stdout y un resumen (tamaño y qué
-   herramienta usar) por stderr. Si falla, usá SU mensaje como `error_detalle`
-   — no inventes "URL vencida" sin haberlo comprobado.
-
-   **Trampa que ya te comió un turno:** no encadenes el script con comandos que
-   quizá no existan en la imagen (`file` NO está instalado; `&& file ...` te
-   devuelve exit 127 y vas a creer que la descarga falló cuando en realidad
-   salió bien). Corré el script SOLO. Si imprimió una ruta, el archivo está ahí.
-
-   **Y si en el hilo hay notas tuyas anteriores diciendo que la URL venció:
-   ignoralas.** Fueron errores tuyos de manejo, no del archivo. Comprobá siempre
-   con el script antes de repetir ese diagnóstico.
+2. **El documento ya está bajado y leído** — es del preparador, y su dossier es
+   lo que tenés: no manejás archivos ni URLs firmadas, y no hay tool de visión.
 
 3. **Extraé los datos**: proveedor, RNC, NCF, fecha, moneda, monto, ITBIS.
    e-CF (XML) es dato exacto; PDF/foto se lee con cuidado y confianza menor.
@@ -568,63 +531,58 @@ update qualia_trabajos set estado='analizando'
    ningún patrón numérico, así que es la que más fácil se pasa por alto — y
    mientras tanto la firma del pie sí viene como `31-07-2026` y se ofrece sola.
 
-   Si es Excel (.xlsx — nómina u otro), bajalo y leelo con Python
-   (openpyxl/pandas); una nómina se propone como su asiento completo
-   (bruto, TSS, retenciones, neto) según el criterio de tu memoria.
+<!-- adaptado: openpyxl, `vision_analyze` y el HEIC con `uv run` son del preparador (§6.5). -->
+   Si es Excel (.xlsx — nómina u otro), lo que leyó el preparador es lo que
+   tenés; una nómina se propone como su asiento completo (bruto, TSS,
+   retenciones, neto) según el criterio de tu memoria.
 
-   Fotos (jpg/png/webp): analizalas con el tool de visión (`vision_analyze`)
-   DESPUÉS de bajarlas a archivo local, nunca sobre la URL. Si viene `.heic`
-   (iPhone), convertila antes a jpg con pillow-heif vía uv:
+   Fotos (jpg/png/webp) y HEIC de iPhone: las convierte y las lee el preparador.
+   Vos trabajás con su extracción — no hay tool de visión en el turno, y con
+   campos presentes la relectura está prohibida.
 
-   ```bash
-   uv run --with pillow-heif python -c "import pillow_heif, PIL.Image as I; pillow_heif.register_heif_opener(); I.open('/tmp/mesa-<id>.heic').convert('RGB').save('/tmp/mesa-<id>.jpg')"
-   ```
-
+<!-- adaptado: psql, grep del histórico y `jsonb_set` → dossier, `leer_adm {listado}` y
+`marcar_error {duplicado_de}`, que enlaza el papel en la misma transacción. -->
 4. **Chequeá duplicados ANTES de proponer** (el NCF es unico por emisor):
-   - En la mesa: otro trabajo con el mismo NCF —
-     `psql ... "select id, estado from qualia_trabajos where empresa_id='$QUALIA_EMPRESA_ID' and propuesta->>'ncf' = '<NCF>' and id != '<trabajo_id>' and propuesta->'registro_adm'->>'eliminado_en' is null and propuesta->'registro_adm'->>'anulado_en' is null"` —
-     si existe y no esta rechazada/error: este trabajo va a `error` con
-     `error_detalle='Duplicada: mismo NCF que el trabajo <id>'` y un evento nota.
+   - En la mesa: el dossier ya trae `duplicados` —otros trabajos con el mismo
+     NCF—. **Decidís con eso, no re-busques.** Si hay uno vivo y no esta
+     rechazada/error: este trabajo va a `error` con `marcar_error`,
+     `error_detalle='Duplicada: mismo NCF que el trabajo <id>'` y su evento nota.
      **Un trabajo cuyo documento ADM ya no cuenta —`eliminado_en` o `anulado_en`
-     en `registro_adm`— NO es un duplicado**, y por eso el query de arriba lo
-     descarta: ese gasto quedo SIN registrar, y volver a subir el papel es justo
-     lo que corresponde hacer. Sin ese corte la resubida caia en `error` para
-     siempre, porque la fila vieja se queda en `registrada` —que no es rechazada
-     ni error— aunque el documento ya no exista (paso el 2026-08-04 con la
+     en `registro_adm`— NO es un duplicado**, y por eso el dossier lo descarta:
+     ese gasto quedo SIN registrar, y volver a subir el papel es justo lo que
+     corresponde hacer. Sin ese corte la resubida caia en `error` para siempre,
+     porque la fila vieja se queda en `registrada` —que no es rechazada ni
+     error— aunque el documento ya no exista (paso el 2026-08-04 con la
      FP00001120 de Carrefour, borrada en ADM).
-   - Contra ADM: busca el NCF en el historico local
-     (`grep <NCF> /opt/data/preentrenamiento/raw/vendor-bills*.jsonl`) y, si no
-     aparece, en las paginas recientes de VendorBills por API (GET). Si YA esta
-     registrada: propuesta con `"posible_duplicado": {"docid": "FPxxxxx", "donde": "ADM"}`
-     y confianza baja — la web lo muestra en rojo y el humano decide. El
-     historico local es una FOTO vieja: si el NCF aparece ahi, confirma por API
+   - Contra ADM: si el dossier no alcanza, `leer_adm {modo: 'listado', tipo_doc:
+     'VendorBills'}` y filtrás el NCF vos —el `?Reference=` / `?DocID=` de la API
+     miente y está prohibido—. Si YA esta registrada: propuesta con
+     `"posible_duplicado": {"docid": "FPxxxxx", "donde": "ADM"}` y confianza
+     baja — la web lo muestra en rojo y el humano decide. El historico que trae
+     el dossier es una FOTO vieja: si el NCF aparece ahi, confirma con `leer_adm`
      que el docid sigue existiendo antes de marcar nada — un documento eliminado
      en ADM no es un duplicado, es el que hay que volver a registrar.
    - **Al cerrar una subida como duplicado de un trabajo VIVO de la mesa, el
      papel no se descarta.** Si el trabajo vigente no tiene documento propio
      (`archivo_path` null — tipico de una sugerencia nacida del banco, como un
-     pago de impuestos), su papel ES la subida que estas cerrando: antes de
-     ponerla en `error`, anota en la propuesta del vigente
-     `"comprobante_de_trabajo": "<id de la subida cerrada>"` (un `jsonb_set`
-     sobre `propuesta`; las columnas `archivo_*` no las podes escribir) y deja
-     un evento nota en el vigente diciendo que su comprobante vive ahi. El
-     script de registro (`registrar-cargo-bancario.py`) baja ese papel con
-     `bajar-documento.sh` y lo adjunta al documento en ADM. Sin este enlace el
-     cargo se registra sin soporte y el papel bueno queda varado en una fila en
-     `error` — paso el 2026-08-07 con el comprobante DGII del anticipo ISR de
-     julio (trabajos 672eacb4 → 646ed1cf).
+     pago de impuestos), su papel ES la subida que estas cerrando: cerrala con
+     `marcar_error {duplicado_de: "<id del trabajo vigente>"}`, que en la misma
+     transacción anota `comprobante_de_trabajo` en la propuesta del vigente y le
+     deja su evento nota. La pieza que registra baja ese papel y lo adjunta al
+     documento en ADM. Sin este enlace el cargo se registra sin soporte y el
+     papel bueno queda varado en una fila en `error` — paso el 2026-08-07 con el
+     comprobante DGII del anticipo ISR de julio (trabajos 672eacb4 → 646ed1cf).
 
 5. **Verificá el comprobante contra DGII — SIEMPRE llená el campo `dgii`**, aun
    cuando no aplique. Nunca lo dejes vacío: quien mira la propuesta no puede
    distinguir "no aplica" de "se me olvidó".
 
    **(a) NCF impreso (B01, B02, B04, B14, B15...): consultá si está autorizado.**
-   No tiene QR ni timbre — eso es solo de los electrónicos. Se consulta con el
-   script (verificado 2026-08-02 contra NCF reales; devuelve JSON):
-
-   ```bash
-   python3 /opt/data/memoria/scripts/consultar-ncf-dgii.py --rnc <rnc_emisor> --ncf <ncf>
-   ```
+<!-- adaptado: `consultar-ncf-dgii.py` → `consultar_dgii {modo:'ncf'}`. -->
+   No tiene QR ni timbre — eso es solo de los electrónicos. Se consulta con
+   `consultar_dgii {modo: 'ncf', rnc: "<rnc_emisor>", ncf: "<ncf>"}` (verificado
+   2026-08-02 contra NCF reales; devuelve JSON), y SOLO si el dossier trae ese
+   campo ausente o `no verificable`.
 
    Guardá su salida tal cual en `"dgii"`. Devuelve `estado` VIGENTE (con
    `razon_social_emisor`, `tipo_comprobante` y `vigencia`), NO VALIDO con su
@@ -674,8 +632,10 @@ update qualia_trabajos set estado='analizando'
 
    `https://ecf.dgii.gov.do/ecf/ConsultaTimbre?RncEmisor=<rnc>&RncComprador=<rnc_blackbox>&ENCF=<encf>&FechaEmision=DD-MM-AAAA&MontoTotal=<total>&FechaFirma=DD-MM-AAAA%20HH:MM:SS&CodigoSeguridad=<code>`
 
-   (para facturas de consumo la variante es /ecf/ConsultaTimbreFC). Hace curl
-   y parsea la tabla HTML. Guarda el resultado en la propuesta:
+<!-- adaptado: el curl y el parseo → `consultar_dgii {modo:'timbre'}`. -->
+   (para facturas de consumo la variante es /ecf/ConsultaTimbreFC). Esa consulta
+   la hace `consultar_dgii {modo: 'timbre', url_qr: "<la URL del QR>"}`, que te
+   devuelve la tabla ya parseada. Guarda el resultado en la propuesta:
    `"dgii": {"estado":"Aceptado","rnc_emisor":"...","razon_social_emisor":"...","rnc_comprador":"...","razon_social_comprador":"...","encf":"...","fecha_emision":"...","total_itbis":11.96,"monto_total":163.26,"verificado_en":"<ISO timestamp>"}`.
    - Estado != Aceptado, o los montos de DGII no cuadran con lo que extrajiste
      del PDF → baja la confianza y decilo en `detalle` (posible factura
@@ -688,20 +648,20 @@ update qualia_trabajos set estado='analizando'
    nombre oficial** — el padrón pide solo el RNC, que siempre se lee, mientras
    que el timbre exige el código de seguridad del QR y la fecha de firma.
 
+<!-- adaptado: `consultar-rnc-dgii.py` → `consultar_dgii {modo:'padron'}`. -->
    El preparador ya lo consulta por vos y lo deja en `rnc_emisor` del dossier
-   (clave aparte de `dgii`, nunca mezcladas). Si falta o querés reconsultar:
-
-   ```bash
-   python3 /opt/data/memoria/scripts/consultar-rnc-dgii.py --rnc <rnc_emisor>
-   ```
+   (clave aparte de `dgii`, nunca mezcladas). Si falta o vino `no verificable`,
+   reconsultá con `consultar_dgii {modo: 'padron', rnc: "<rnc_emisor>"}` — con el
+   campo presente, re-consultar está prohibido.
 
    Devuelve `estado` ENCONTRADO (con `razon_social`, `nombre_comercial`,
    `estado_contribuyente`, `actividad_economica`), NO ENCONTRADO, `formato
    invalido` o `no verificable` con su motivo. Es la web
    `dgii.gov.do/.../consultas/rnc.aspx`, sin captcha (verificado 2026-08-03).
 
+<!-- adaptado: `registrar-en-adm.py` → la pieza que registra. -->
    **Copiá su salida tal cual a la propuesta, en `"rnc_padron"`** (hermana de
-   `"dgii"`, nunca dentro). `registrar-en-adm.py` la lee de ahí para nombrar al
+   `"dgii"`, nunca dentro). La pieza que registra la lee de ahí para nombrar al
    proveedor cuando el comprobante no verificó: si no la ponés, el registro
    muere pidiendo un nombre que ya tenías.
 
@@ -719,63 +679,53 @@ update qualia_trabajos set estado='analizando'
    - Nunca uses el padrón para dar por verificado el comprobante: saber de quién
      es el RNC no dice nada de si el NCF está autorizado.
 
-6. **Buscá precedente** — la salida de `buscar-precedente.py` YA vino en
-   `leer-contexto.sh` (la corrió con el RNC del dossier): usala de ahí, y
-   volvé a correrlo solo para OTRA búsqueda (`--cuenta`, `--plan`, un término
-   distinto — nunca `python3 -c`). Después tu memoria y tu libro
-   (`memoria/proveedores.md`, `memoria/criterios.md`, `libro-de-accion/`). El
-   Alcance de cada entrada dice si aplica. Con precedente →
-   `metodo='precedente'` y su `precedente_ref`. Si lo resolvió un script tuyo
-   → `metodo='script'`. Caso nuevo → `metodo='razonado'`, apoyado en el
-   núcleo DGII (citá la norma en `detalle`).
+<!-- adaptado: la búsqueda la precargó el harness; el resto, `buscar_precedente`. -->
+6. **Buscá precedente** — la salida YA vino con el dossier (la corrió el harness
+   con el RNC): usala de ahí, y llamá a `buscar_precedente` sólo para OTRA
+   búsqueda (`{cuenta}`, `{plan}`, un término distinto). Después tu memoria y tu
+   libro: los criterios ratificados y las entradas del libro de acción viajan en
+   este contexto. El Alcance de cada entrada dice si aplica. Con precedente →
+   `metodo='precedente'` y su `precedente_ref`. Si lo resolvió una pieza
+   determinista → `metodo='script'`. Caso nuevo → `metodo='razonado'`, apoyado en
+   el núcleo DGII (citá la norma en `detalle`).
 
+<!-- adaptado: el insert a `qualia_eventos` → `avisar_progreso`. -->
 7. **Andá contando lo que hacés** — la web lo muestra en vivo:
 
-```sql
-insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
-values ('<trabajo_id>', 'contable', 'progreso', 'Recibí la factura de Sunix por RD$45,200 — la estoy revisando contra DGII y contra cómo hemos registrado a este proveedor antes.');
-```
+`avisar_progreso {texto: "Recibí la factura de Sunix por RD$45,200 — la estoy
+revisando contra DGII y contra cómo hemos registrado a este proveedor antes."}`
 
-8. **Cerrá con la propuesta en UNA corrida** — escribí un JSON a
-   `/tmp/mesa/<trabajo_id>/turno.json` y aplicalo:
+   Uno por FASE, no por comando; los del cierre van en la tool de cierre.
 
-```bash
-python3 /opt/data/memoria/scripts/aplicar-propuesta.py /tmp/mesa/<trabajo_id>/turno.json
-```
-
-   Hace todo en una transacción — tus eventos de cierre, la propuesta, el
-   resumen y el estado — con los guards del contrato adentro, y si el guard
+<!-- adaptado: `aplicar-propuesta.py`, el turno.json y los SQL → la tool `proponer`, con las
+validaciones adentro; del ejemplo salen `trabajo_id` y `estado`, que pone el harness.
+`escribir-libro.py` → `escribir_libro`. -->
+8. **Cerrá con la propuesta en UNA llamada** — `proponer {resumen, propuesta,
+   eventos}`. Hace todo en una transacción — tus eventos de cierre, la propuesta,
+   el resumen y el estado — con los guards del contrato adentro, y si el guard
    no matchea REVIENTA con el motivo (la trampa del «UPDATE 0» silencioso ya
-   mordió dos veces; este script la mata). Ejemplo COMPLETO y coherente
-   (VendorBills en forma de items, aritmética que cuadra:
-   38,305.08 + 6,894.92 = 45,200.00):
+   mordió dos veces; esta tool la mata). El `trabajo_id` y la `empresa_id` los
+   pone el harness, y el único estado que la tool escribe es `propuesta`.
+   Ejemplo COMPLETO y coherente (VendorBills en forma de items, aritmética que
+   cuadra: 38,305.08 + 6,894.92 = 45,200.00):
 
 ```json
 {
-  "trabajo_id": "<trabajo_id>",
   "eventos": [{"tipo": "progreso", "contenido": "A este proveedor siempre lo registramos como combustible: te armé la propuesta igual que las 94 anteriores."}],
-  "estado": "propuesta",
   "resumen": "Factura Isla Dominicana — RD$45,200 combustible flotilla",
   "propuesta": {"proveedor":"Isla Dominicana De Petroleo Corporation","rnc":"101008172","ncf":"E310000012345","fecha":"2026-08-01","moneda":"DOP","monto":45200.00,"itbis":6894.92,"tipo_gasto":{"codigo":"02","nombre":"Gastos por Trabajos, Suministros y Servicios"},"documento_adm":"VendorBills","lineas":[{"descripcion":"Gasoil flotilla","cantidad":1,"precio":38305.08,"grupo_impuesto":"ITBIS","itbis":6894.92,"cuenta":"620.11","cuenta_nombre":"Combustible"}],"metodo":"precedente","precedente_ref":"agg:proveedor-cuentas.json#101008172","confianza":0.95,"detalle":"Combustible de flotilla. Cuenta 620.11 por precedente: 94 de 96 usos de cuenta sobre 96 facturas históricas de este proveedor."}
 }
 ```
 
-   El mismo script cierra las preguntas (`"estado": "esperando_respuesta"`
-   con tu evento `pregunta`) y los errores (`"estado": "error"` con
-   `error_detalle`). El SQL de referencia, por si el script no está:
-
-```sql
-update qualia_trabajos
-   set estado='propuesta', resumen='…', propuesta='…'::jsonb
- where id='<trabajo_id>' and empresa_id='$QUALIA_EMPRESA_ID' and estado='analizando';
-```
+   Las otras dos salidas son tools propias y **una sola cierra la invocación**:
+   `preguntar_al_humano` (evento + `esperando_respuesta`) y `marcar_error`. Tras
+   cualquiera de las tres, el turno termina.
 
    **Dejá el borrador del libro en la MISMA propuesta**, campo
-   `borrador_libro`, mientras el análisis está fresco: al aprobarse, la
-   entrada la materializa una plantilla (`escribir-libro.py`, la corre el
-   poller) SIN abrirte otra sesión — usa tu borrador si está y el `detalle` a
-   secas si no, y el que redacta con el caso en la cabeza sos vos ahora, no
-   un turno frío tres horas después. Forma:
+   `borrador_libro`, mientras el análisis está fresco: al aprobarse y
+   registrarse, la entrada la materializa la tool `escribir_libro` — usa tu
+   borrador si está y el `detalle` a secas si no, y el que redacta con el caso en
+   la cabeza sos vos ahora, no un turno frío tres horas después. Forma:
    `"borrador_libro":{"titulo":"…","caso":"…","por_que":"…","sosten":"norma o precedente citado","alcance":"a qué casos futuros aplica"}`.
    `Aprobó` y DocID NO van — todavía no existen; los pone la plantilla al
    materializar. El `alcance` escribilo como siempre: sin alcance, la entrada
@@ -793,12 +743,13 @@ update qualia_trabajos
    para toda la factura, y por renglón la cuenta **611.17 Dieta y Viáticos** para
    el consumo más **690.06 Propina Legal** para la propina.
 
+<!-- adaptado: el dato lo devuelve `buscar_precedente`; `--tipos` → `{tipos: true}`. -->
    El tipo de gasto sale del MISMO precedente que la cuenta, y de hecho es el
-   más firme de los dos: `buscar-precedente.py` te lo imprime como
+   más firme de los dos: `buscar_precedente` te lo devuelve como
    `TIPO DE GASTO 606:` — 40 suplidores tienen uno citable (con 3 facturas o
    más), y esos 40 cubren el 85% de las facturas del histórico. Sin
-   precedente, elegilo del catálogo con `--tipos` por la naturaleza del
-   documento.
+   precedente, elegilo del catálogo con `buscar_precedente {tipos: true}` por la
+   naturaleza del documento.
 
    **NO pongas `cuenta_destino`**: se retiró del contrato el 2026-08-02. La
    factura no tiene UNA cuenta — la tiene cada renglón, en `lineas[].cuenta`.
@@ -834,14 +785,15 @@ update qualia_trabajos
      la diferencia exacta, sin releer. NO cierres una propuesta que no cuadra
      — la web la marca en rojo y no sirve para registrar.
 
+<!-- adaptado: el chequeo del script de registro → validación dura de `proponer`. -->
      **Que sume NO alcanza.** Esa verificación la podés hacer pasar siempre:
      con la cabecera sola (total + ITBIS) elegís la base y el resto lo mandás a
      un renglón exento, y da. Por eso, si alguna línea quedó exenta, revisá
      ANTES de cerrar que ese exento salga del papel y no de la resta: probá las
      otras tasas legales (`base = itbis/tasa`) y mirá si alguna cierra con
      exento CERO. Si alguna cierra sola, esa es la tasa buena y la tuya está
-     mal. El script de registro tiene el mismo chequeo y te va a frenar ahí
-     (`verificar_cuadre`), pero para entonces el humano ya aprobó algo falso.
+     mal. La tool `proponer` corre ese mismo chequeo de cuadre y te frena ANTES
+     de que el humano apruebe algo falso — antes llegaba recién en el registro.
 
      Ejemplo restaurante (asi debe quedar): items de comida con su ITBIS + una
      linea "Propina legal 10%" con su precio y `itbis: 0` (la propina no se
@@ -861,21 +813,20 @@ update qualia_trabajos
    Estas lineas seran el payload del registro real cuando la escritura se
    encienda: escribilas como si ya estuvieras llenando la pantalla de ADM.
 
+<!-- adaptado: el insert + el UPDATE → `preguntar_al_humano`, con las DOS puertas adentro. -->
    ¿Te falta algo para decidir? Preguntá y esperá:
 
-```sql
-insert into qualia_eventos (trabajo_id, autor, tipo, contenido)
-values ('<id>', 'contable', 'pregunta', '¿Este flete de Marítima Dominicana es de la importación de julio o gasto local?');
--- Los DOS estados desde los que se pregunta: 'analizando' cuando estás en el
--- análisis, y 'aprobada' cuando el registro en ADM se trabó y necesitás al
--- humano (el AMBIGUO del cargo bancario, por ejemplo). Con el guard viejo —sólo
--- 'analizando'— preguntar desde una fila aprobada escribía el evento y dejaba el
--- UPDATE en CERO filas sin fallar: psql decía «UPDATE 0», la web no la mostraba
--- esperando respuesta y el poller la reintentaba dos horas hasta rendirse.
-update qualia_trabajos set estado='esperando_respuesta'
- where id='<id>' and empresa_id='$QUALIA_EMPRESA_ID'
-   and estado in ('analizando','aprobada');
-```
+`preguntar_al_humano {tipo: 'pregunta', texto: "¿Este flete de Marítima
+Dominicana es de la importación de julio o gasto local?"}`
 
-9. Si algo revienta: `estado='error'` + `error_detalle` legible + evento `nota`.
+   Escribe el evento y deja la fila en `esperando_respuesta` en una sola
+   transacción. **Los DOS estados desde los que se pregunta**: `analizando`
+   cuando estás en el análisis, y `aprobada` cuando el registro en ADM se trabó y
+   necesitás al humano (el AMBIGUO del cargo bancario, por ejemplo). Con el guard
+   viejo —sólo `analizando`— preguntar desde una fila aprobada escribía el evento
+   y dejaba el UPDATE en CERO filas sin fallar: «UPDATE 0», la web no la mostraba
+   esperando respuesta y el poller la reintentaba dos horas hasta rendirse.
 
+<!-- adaptado: el `estado='error'` a mano → `marcar_error`, con su nota adentro. -->
+9. Si algo revienta: `marcar_error {error_detalle, nota}` — el `error_detalle`
+   legible y NUNCA vacío: un trabajo mudo es un trabajo perdido.

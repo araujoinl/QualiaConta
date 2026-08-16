@@ -36,6 +36,7 @@ import { autorizado } from '../_shared/auth.ts';
 import { registrarSombra } from '../_shared/sombra.ts';
 import {
   descargarJson,
+  descargarJsonFresco,
   descargarTexto,
   RUTA_AGG_TIPO_GASTO,
   rutaAggPlanCuentas,
@@ -100,8 +101,12 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'trabajo_id invalido: no es un UUID' }, 400);
   }
 
+  // Sello de frescura del preparador (ver descargarJsonFresco): Storage no
+  // garantiza leer-lo-recién-escrito y sin esto se analiza un dossier viejo.
+  const dossierEn = typeof body.dossier_en === 'string' ? body.dossier_en : null;
+
   try {
-    return await atender(trabajoId);
+    return await atender(trabajoId, dossierEn);
   } catch (e) {
     // El error duro del fuente (exit 1): también cae a sesión — quien re-poke
     // (trigger o barrido) lo ve como fallo y la fila queda donde estaba (o el
@@ -112,7 +117,7 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function atender(trabajoId: string): Promise<Response> {
+async function atender(trabajoId: string, dossierEn: string | null = null): Promise<Response> {
   const fila = await leerFila(trabajoId);
   if (!fila) {
     return json(
@@ -161,7 +166,7 @@ async function atender(trabajoId: string): Promise<Response> {
       throw new NoPropone(`estado '${fila.estado}': solo se propone sobre pendiente`);
     }
 
-    const d = await descargarJson(rutaDossier(trabajoId));
+    const d = await descargarJsonFresco(rutaDossier(trabajoId), dossierEn);
     if (!d) {
       // El dossier lo arma el preparador; este proponedor NO lo rearma.
       // 424: quien re-poke vuelve cuando el preparador haya corrido.
