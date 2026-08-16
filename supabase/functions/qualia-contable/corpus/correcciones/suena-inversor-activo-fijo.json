@@ -1,0 +1,39 @@
+{
+  "trabajo_id": "36f9232a-d672-45b9-b0e5-0af2cd6db6b5",
+  "rama": "correcciones",
+  "resumen_humano": "Factura de Suena Electrónica por RD$12,350 (inversor Phase II 1.5KW). El contable la clasificó por precedente dominante del proveedor (650.09, mantenimiento). El humano corrige DOS veces con dos preguntas quirúrgicas: '¿no va en cuenta de activos?' (→ 160.07 Otros Activos Fijos, porque un inversor es equipo nuevo capitalizable, no reparación) y '¿el tipo no sería adquisición de activo fijo?' (→ tipo 606 = 10 Adquisición de Activos, no 04 Gastos de Activo Fijo). El desenlace dejó criterio en el libro: 'equipo nuevo capitalizable → 160.07, tipo 10' con alcance a toda compra de equipo capitalizable. Caso doble: corrección humana en cuenta Y en tipo de gasto 606, dos ejes distintos.",
+  "estado_final": "registrada",
+  "aprobado_por": "C.Araujo",
+  "eventos": [
+    {"fecha": "2026-08-03T17:54:38Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. SUENA ELECTRONICA S.R.L, e-NCF E310000005880, RD$12,350.00, DGII: no verificable, sin duplicados."},
+    {"fecha": "2026-08-03T19:52:53Z", "autor": "contable", "tipo": "progreso", "texto": "RNC corregido: 101805404 (dossier leyó mal un dígito), padrón DGII confirma SUENA ELECTRONICA SRL ACTIVO. Aritmética corregida: base 10,466.10 + ITBIS 1,883.90 = 12,350. Precedente 650.09 (3/4 facturas). Timbre e-NCF no verificable. Propongo con confianza media."},
+    {"fecha": "2026-08-03T19:57:00Z", "autor": "usuario", "tipo": "respuesta", "texto": "es compra de un inversor no se si va en cuenta de activos ?"},
+    {"fecha": "2026-08-03T19:59:04Z", "autor": "contable", "tipo": "progreso", "texto": "Buena observación: un INVERSOR es un equipo nuevo (compra), no una reparación. 650.09 solo aplica a mantenimiento. Muevo a 160.07 Otros Activos Fijos — el proveedor ya la usó para equipos electrónicos y calza con compra de activo capitalizable. Repongo la propuesta corregida."},
+    {"fecha": "2026-08-03T20:21:17Z", "autor": "usuario", "tipo": "respuesta", "texto": "pero el tipo no seria adquisicion de activo fijo ?"},
+    {"fecha": "2026-08-03T20:22:15Z", "autor": "contable", "tipo": "progreso", "texto": "Correcto. La factura compra un equipo nuevo (capitalizable), no es gasto sobre un activo existente. En el catálogo 606 hay dos tipos distintos: 04 «Gastos de Activo Fijo» (instalación/mantenimiento sobre algo que ya tenés) vs 10 «Adquisición de Activos» (la compra del activo nuevo). Este caso es 10. Corrijo y repongo la propuesta."},
+    {"fecha": "2026-08-03T20:29:29Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por C.Araujo"},
+    {"fecha": "2026-08-03T20:30:33Z", "autor": "contable", "tipo": "nota", "texto": "Registrada en ADM como FP00001107. Libro de acción escrito: criterio 'equipo nuevo capitalizable → 160.07 (no 650.09), tipo gasto 606 = 10' con alcance a toda compra de equipo capitalizable. Fila cerrada."}
+  ],
+  "propuesta_final": {
+    "ncf": "E310000005880",
+    "rnc": "101805404",
+    "dgii": {"estado": "no verificable", "motivo": "ConsultaTimbre respondió 'No fue encontrada la factura (e-CF)'. Faltan código de seguridad (6 dígitos) y hora de firma exacta para construir la URL válida."},
+    "fecha": "2026-07-23",
+    "itbis": 1883.9,
+    "monto": 12350.0,
+    "lineas": [
+      {"itbis": 1883.9, "cuenta": "160.07", "precio": 10466.1, "cantidad": 1, "descripcion": "INVERSOR PHASE II 1.5KW 120VAC 12VDC DELUXE", "cuenta_nombre": "Otros Activos Fijos", "grupo_impuesto": "ITBIS"}
+    ],
+    "metodo": "precedente",
+    "moneda": "DOP",
+    "detalle": "Cuenta corregida a 160.07 Otros Activos Fijos por observación del usuario: un inversor es compra de equipo nuevo, no reparación. 650.09 (3/4 históricas) es para mantenimiento; este item es capitalizable → 160.07, que el propio proveedor ya usó (1/4) para equipos electrónicos. Naturaleza del renglón manda sobre la cuenta dominante. Aritmética: base 10,466.10 + ITBIS 1,883.90 (18%) = 12,350.00. Timbre e-NCF no verificable; padrón DGII confirma SUENA ELECTRONICA SRL ACTIVO.",
+    "confianza": 0.65,
+    "proveedor": "SUENA ELECTRONICA SRL",
+    "tipo_gasto": {"codigo": "10", "nombre": "Adquisición de Activos"},
+    "registro_adm": {"uuid": "c40128b5-8bbc-4695-b4fc-08def10be22b", "docid": "FP00001107", "fecha": "2026-08-03", "documento": "VendorBills", "reference": "E310000005880"},
+    "documento_adm": "VendorBills",
+    "precedente_ref": "agg:proveedor-cuentas.json#101805404"
+  },
+  "desenlace_adm": "Registrada como FP00001107 con cuenta 160.07 y tipo 606 = 10. Criterio nuevo escrito al libro con Alcance.",
+  "leccion": "El turno nuevo debe: (1) aplicar 'la naturaleza del renglón manda sobre la cuenta dominante del proveedor' — un precedente 3/4 no gana contra un ítem que es claramente otra cosa; (2) distinguir en el 606 el tipo 04 (gasto sobre activo existente) del tipo 10 (adquisición de activo nuevo) — la cuenta correcta no arrastra automáticamente el tipo correcto, son dos decisiones; (3) tras cada corrección del humano, reponer la propuesta corregida (no editar en silencio) y al registrar dejar el criterio en el libro CON alcance, para que la próxima compra capitalizable no repita la pregunta."
+}

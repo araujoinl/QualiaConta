@@ -1,0 +1,33 @@
+{
+  "trabajo_id": "e677ff83-25f1-46ce-ac61-30364f789634",
+  "rama": "facturas-dificiles",
+  "resumen_humano": "Factura de PIER 17 Group Dominicana en USD (2,306.15) por flete de importación (B/L LGZSDM26530923PH, vessel CMA CGM UNITY): 15 renglones mezclando 7 gravados con ITBIS y 8 exentos, moneda extranjera, timbre e-CF no encontrado en DGII (probado en USD y DOP), y una decisión de destino no trivial: importación en curso → activo 130.02 Compras en Tránsito (no gasto de flete 611.16), tipo 606 = 09. Confianza 0.6 — la más baja del histórico registrado. Difícil por moneda, cantidad de renglones con impuestos mixtos y la regla capitalizable del ITBIS si no se toma el crédito.",
+  "estado_final": "registrada",
+  "aprobado_por": "C.Araujo",
+  "eventos": [
+    {"fecha": "2026-08-04T08:29:42Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. archivo pdf, e-NCF E310000003177, US$2,306.15, DGII: no verificable, padrón RNC: PIER 17 GROUP DOMINICANA SRL, sin duplicados."},
+    {"fecha": "2026-08-04T08:30:35Z", "autor": "contable", "tipo": "progreso", "texto": "Flete de importación PIER 17 (B/L LGZSDM26530923PH, CMA CGM UNITY). Aritmética cuadra exacta: 2,154.12 + 152.03 = 2,306.15 USD. Precedente + memoria ratificada: 130.02 Compras en Tránsito (importación en curso). Tipo gasto 606: 09. NCF E310000003177 NO encontrado en timbre DGII (probado en USD y DOP) — no verificable; propongo igual porque el padrón confirma emisor ACTIVO y el documento es e-CF con código de seguridad."},
+    {"fecha": "2026-08-04T08:32:25Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por C.Araujo"},
+    {"fecha": "2026-08-04T08:33:11Z", "autor": "contable", "tipo": "nota", "texto": "Libro de acción escrito: 2026-08-04-pier-17-flete-importacion-fp00001118.md. Entrada espejada en qualia_libro. Trabajo registrada en ADM como FP00001118."}
+  ],
+  "propuesta_final": {
+    "ncf": "E310000003177",
+    "rnc": "130547386",
+    "dgii": {"encf": "E310000003177", "tipo": "ecf", "estado": "no verificable", "motivo": "Timbre DGII: No fue encontrada la factura (e-CF). Probado en USD y DOP con fecha firma 28-07-2026 10:28:37 y codigo seguridad AWasZw"},
+    "fecha": "2026-07-28",
+    "itbis": 152.03,
+    "monto": 2306.15,
+    "moneda": "USD",
+    "lineas_resumen": "15 renglones, todos a 130.02 Compras en Tránsito: agency fee 218.90 (ex), BL Printing 35.00 (ITBIS 6.30), CAF 95.00 (ex), Certificación de flete 25.00 (ITBIS 4.50), CFS Surcharge 100.00 (ITBIS 18.00), CISF 481.58 (ex), Collect Fee 65.48 (ITBIS 11.79), FHC 306.46 (ITBIS 55.16), H/C 30.00 (ex), Handling 50.00 (ITBIS 9.00), Other Charge 65.00 (ex), Peak Season Surcharge 131.34 (ex), Port Congestion Surcharge 262.68 (ex), PSC 25.00 (ex), THC 262.68 (ITBIS 47.28)",
+    "metodo": "precedente",
+    "detalle": "Flete de importación. 15 renglones: 7 gravados (ITBIS 18%, base 844.62) + 8 exentos (1,309.50). Aritmética cuadra exacta: 2,154.12 + 152.03 = 2,306.15 USD. Cuenta 130.02 por precedente (4 de 5 facturas históricas) y memoria ratificada (importación en curso → 130.02; flete suelto → 611.16). Tipo gasto 606: 09. NCF NO encontrado en timbre DGII (probado en USD 2,306.15 y DOP 135,163.45). Padrón confirma emisor ACTIVO y facturador electrónico — el 'no encontrada' puede ser retardo de reporte del emisor. Si deciden no tomar el crédito fiscal, el ITBIS (152.03) se capitaliza en el activo (no va a ITBIS Operativo). El humano decide.",
+    "confianza": 0.6,
+    "proveedor": "PIER 17 GROUP DOMINICANA SRL",
+    "tipo_gasto": {"codigo": "09", "nombre": "Compras y Gastos que Formarán parte del Costo de Venta"},
+    "registro_adm": {"uuid": "0b65f210-675e-4ec5-ec98-08def10be22b", "docid": "FP00001118", "fecha": "2026-08-04", "documento": "VendorBills", "reference": "E310000003177"},
+    "documento_adm": "VendorBills",
+    "precedente_ref": "agg:proveedor-cuentas.json#130547386"
+  },
+  "desenlace_adm": "Registrada como FP00001118 (VendorBills en USD) y aprobada tal cual en una sola ronda.",
+  "leccion": "El turno nuevo debe: (1) distinguir importación en curso (→ activo 130.02, tipo 09) de flete suelto (→ gasto 611.16) usando el B/L y la memoria ratificada; (2) mantener el desglose renglón por renglón con su grupo de impuesto — no colapsar 15 renglones mixtos en uno; (3) verificar timbre e-CF probando el monto en la moneda del documento Y su conversión a DOP antes de declararlo no verificable; (4) enunciar la regla condicional del ITBIS en importación: si no se toma el crédito, se capitaliza en el activo; (5) confianza baja + explicación completa es mejor que confianza inflada — el humano aprobó a la primera porque el análisis exponía todos los riesgos."
+}

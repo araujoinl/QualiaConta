@@ -1,0 +1,29 @@
+{
+  "trabajo_id": "7c7680aa-64ec-4410-894a-2ac231982b9a",
+  "rama": "casos",
+  "resumen_humano": "Caso #5 · Débito de DHL EXPRESS USA por US$-131.54 en la Visa 1877 US$. El humano explica que es un pago de impuestos en USA: gasto no admitido que sirve como costo de la importación DE093924 de Technicoflor. El contable lo propone como cargo de tarjeta contra 'gastos sin comprobante fiscal y/o al exterior', citando el precedente del renglón de impuesto USA de Tupaq de junio, y lo deja identificado con la importación en la descripción. Remate valioso: una segunda corrida del turno detectó que otro análisis del mismo caso ya había dejado el paso abierto y aprobado, y CERRÓ su propia propuesta duplicada. Único caso aún en vuelo (esperando_respuesta) — sirve como prueba de estado intermedio sin desenlace de cierre.",
+  "estado_final": "esperando_respuesta",
+  "aprobado_por": null,
+  "eventos": [
+    {"fecha": "2026-08-15T16:45:47Z", "autor": "usuario", "tipo": "respuesta", "texto": "este pago se hizo en impuestos de USA es un gasto no admitido servira como costo para la importacion DE093924 de technicoflor"},
+    {"fecha": "2026-08-15T16:48:20Z", "autor": "contable", "tipo": "progreso", "texto": "Releo el movimiento de la tarjeta y busco cómo tratamos importaciones anteriores antes de proponer."},
+    {"fecha": "2026-08-15T17:09:16Z", "autor": "contable", "tipo": "nota", "texto": "Entendido: son los impuestos de USA que DHL cobró por la importación DE093924 de Technicoflor. Te dejé el registro propuesto como gasto no admitido — cuenta «gastos sin comprobante fiscal y/o al exterior» — contra la tarjeta Visa 1877 en dólares. Es el mismo tratamiento que ya le dimos al renglón de impuesto USA de la factura de Tupaq de junio: un impuesto pagado afuera no reduce el ISR de acá ni genera crédito de ITBIS. No lo metí al costo de la mercancía en tránsito por ese mismo motivo, pero quedó anotado a DE093924 en la descripción, así que la historia de costo de esa importación se reconstruye completa."},
+    {"fecha": "2026-08-15T17:20:00Z", "autor": "contable", "tipo": "nota", "texto": "Ya te armé el paso: el débito de DHL (US$131.54) queda como cargo de la tarjeta contra gasto no admitido. Si aprobás el paso, la conciliación lo recoge sola. De una nota: esa importación ya tiene su factura de Technico Flor en ADM (FP00001140, US$242.06 del 10/8), por si querés que la mire en otro momento."},
+    {"fecha": "2026-08-15T17:21:21Z", "autor": "contable", "tipo": "nota", "texto": "Una aclaración sobre mi mensaje anterior: cuando armé mi propuesta vi que otro análisis del mismo caso ya había dejado el paso abierto, y ustedes ya lo aprobaron — así que cerré el mío para que no queden dos registros del mismo débito. Todo queda en un solo documento: el paso aprobado de las 17:09, idéntico en cuenta y monto."}
+  ],
+  "propuesta_final": {
+    "filas": [
+      {
+        "foto": {"tipo": "externa", "fecha": "2026-08-12", "monto": -131.54, "cuenta": "Visa 1877 US$", "estado": "Sin registro en ADM", "moneda": "USD", "movimiento": "egreso", "referencia": "#1", "descripcion": "DHL EXPRESS USA, INC ( AD"},
+        "clave": "banco:7e605860-6c47-4e45-8255-667950a3d511",
+        "tx_id": "7e605860-6c47-4e45-8255-667950a3d511",
+        "origen": "banco",
+        "resumen": "12/08/26 · US$-131.54 · DHL EXPRESS USA, INC ( AD"
+      }
+    ],
+    "numero": 5,
+    "mandado_en": "2026-08-15T16:45:47.797Z"
+  },
+  "desenlace_adm": "Paso hijo propuesto y aprobado por la mesa (cargo tarjeta USD contra gasto no admitido, identificado con DE093924); el caso sigue esperando_respuesta al momento del corte del corpus.",
+  "leccion": "El turno nuevo debe: (1) buscar el precedente análogo en el histórico ANTES de proponer (renglón impuesto USA de Tupaq); (2) portar la regla fiscal: impuesto pagado en el exterior = gasto no admitido, no reduce ISR ni da crédito de ITBIS, y NO se capitaliza en tránsito — pero se deja trazado a su importación en la descripción; (3) moneda del documento = moneda del movimiento (USD); (4) idempotencia entre corridas concurrentes: si otro turno ya dejó el paso abierto/aprobado, cerrar el propio duplicado y decirlo — jamás dos documentos por el mismo débito; (5) señalar contexto útil adyacente (FP00001140 de la misma importación) sin actuar sobre él sin pedido."
+}

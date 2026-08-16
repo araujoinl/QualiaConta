@@ -1,0 +1,44 @@
+{
+  "trabajo_id": "92a5fadc-860c-42f8-8013-d87d6fb3d22a",
+  "rama": "facturas-dificiles",
+  "resumen_humano": "Restaurante GUAN LAN (HUAYAO GROUP SRL), RD$4,520.47, proveedor nuevo sin precedente. Cadena de dificultades reales: la visión leyó el NCF con un cero de más (NO VÁLIDO → propuesta inicial de gasto no admitido con confianza 0.4), el humano dictó el NCF real (B0100000050, VIGENTE) y la propuesta se rehizo como representación con ITBIS aprovechable; el dossier además había invertido la fecha DD/MM. Al registrar apareció el problema de fondo: el ITBIS impreso (575.72) es 16.05% de la base, no 18%, porque el sistema del restaurante embebe ISC del Aperol — ADM recalculó a 18% y el total quedó 4,590.26 vs 4,520.47. El proveedor admitió la factura mal calculada; FP00001063 se eliminó y el trabajo quedó esperando la factura corregida. Aritmética que NO cuadra por diseño del emisor: el caso que un proponedor ingenuo registra mal.",
+  "estado_final": "esperando_respuesta",
+  "aprobado_por": "C.Araujo (propuesta aprobada; registro luego eliminado)",
+  "eventos": [
+    {"fecha": "2026-08-03T02:41:08Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. GUAN LAN, NCF B0100000500, RD$4,520.47, DGII: NO VALIDO, sin duplicados."},
+    {"fecha": "2026-08-03T02:48:00Z", "autor": "contable", "tipo": "progreso", "texto": "Propuesta lista: gasto no admitido, todo el total (4,520.47) a cuenta 801.01, ITBIS no aprovechable. Confianza 0.4. Esperando decisión."},
+    {"fecha": "2026-08-03T02:49:04Z", "autor": "usuario", "tipo": "respuesta", "texto": "el comprobante real es B0100000050"},
+    {"fecha": "2026-08-03T02:49:48Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. GUAN LAN HUAYAO GROUP SRL, NCF B0100000050, RD$4,520.47, NCF corregido (la foto se leía B01000000500), DGII: VIGENTE, sin duplicados."},
+    {"fecha": "2026-08-03T02:54:08Z", "autor": "contable", "tipo": "progreso", "texto": "Propuesta corregida lista. NCF B0100000050 VIGENTE → gasto de representación normal. 4 items (3,586.14) a 611.17 Dieta y Viáticos con ITBIS aprovechable (575.72) + propina legal 358.61 a 690.06. Total 4,520.47 cuadra. Confianza 0.80."},
+    {"fecha": "2026-08-03T02:57:44Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por C.Araujo"},
+    {"fecha": "2026-08-03T02:58:40Z", "autor": "contable", "tipo": "progreso", "texto": "Aprobada por C.Araujo. Proveedor nuevo — simulando el registro en ADM antes de escribir."},
+    {"fecha": "2026-08-03T03:07:23Z", "autor": "contable", "tipo": "nota", "texto": "Registrada en ADM como FP00001063. Cuidado: ADM recalculó el ITBIS a 18% (no puede representar el ISC del Aperol) → total ADM 4,590.26 vs factura 4,520.47 (diferencia 69.79 por ISC de bebida)."},
+    {"fecha": "2026-08-03T03:12:26Z", "autor": "contable", "tipo": "nota", "texto": "Se registró en ADM como FP00001063 y el monto no coincide con el documento: el ITBIS impreso (RD$575.72) es 16.05% de la base, no 18%, así que ADM cobró 645.51 y el total quedó en 4,590.26 contra los 4,520.47 del papel. El proveedor confirmó que la factura está mal calculada de su lado. Queda esperando la factura corregida; FP00001063 debe eliminarse de ADM."}
+  ],
+  "propuesta_final": {
+    "ncf": "B0100000050",
+    "rnc": "133542013",
+    "dgii": {"ncf": "B0100000050", "tipo": "ncf_impreso", "estado": "VIGENTE", "vigencia": "31/12/2027", "rnc_emisor": "133542013", "tipo_comprobante": "FACTURA DE CRÉDITO FISCAL", "razon_social_emisor": "HUAYAO GROUP SRL"},
+    "fecha": "2026-08-01",
+    "itbis": 575.72,
+    "monto": 4520.47,
+    "lineas": [
+      {"itbis": 104.35, "cuenta": "611.17", "precio": 650.0, "cantidad": 1, "descripcion": "APEROL SPRITZ", "cuenta_nombre": "Dieta y Viáticos", "grupo_impuesto": "ITBIS"},
+      {"itbis": 140.95, "cuenta": "611.17", "precio": 878.0, "cantidad": 1, "descripcion": "B4 SELECCION DE DIM", "cuenta_nombre": "Dieta y Viáticos", "grupo_impuesto": "ITBIS"},
+      {"itbis": 260.4, "cuenta": "611.17", "precio": 1622.0, "cantidad": 1, "descripcion": "F5 CARNE DE RES HERV", "cuenta_nombre": "Dieta y Viáticos", "grupo_impuesto": "ITBIS"},
+      {"itbis": 70.02, "cuenta": "611.17", "precio": 436.14, "cantidad": 1, "descripcion": "I2 TORTITAS DE CALAB", "cuenta_nombre": "Dieta y Viáticos", "grupo_impuesto": "ITBIS"},
+      {"itbis": 0, "cuenta": "690.06", "precio": 358.61, "cantidad": 1, "descripcion": "Propina legal 10% (XLEY)", "cuenta_nombre": "Propina Legal", "grupo_impuesto": "Exento"}
+    ],
+    "metodo": "razonado",
+    "moneda": "DOP",
+    "detalle": "Restaurante GUAN LAN (HUAYAO GROUP SRL). NCF corregido por C.Araujo (la visión leyó un cero de más). DGII VIGENTE: ITBIS aprovechable. Anatomía: 4 items (3,586.14) + ITBIS 575.72 + propina legal 358.61 = 4,520.47 (cuadra). El ITBIS declarado (575.72) es menor al 18% de la base (645.51) por ISC interno del sistema Soft Restaurant sobre el Aperol Spritz. Fecha 2026-08-01: el dossier trajo 2026-01-08 (inversión DD/MM). Proveedor nuevo sin precedente; clasificación razonada: consumo a 611.17 (70 usos en 39 restaurantes), propina a 690.06 (52 usos), tipo 05 Representación.",
+    "confianza": 0.8,
+    "proveedor": "HUAYAO GROUP SRL",
+    "tipo_gasto": {"codigo": "05", "nombre": "Gastos de Representación"},
+    "registro_adm": {"uuid": "513ae4a6-3bd1-4968-1e11-08deeea63f34", "docid": "FP00001063", "fecha": "2026-08-03", "documento": "VendorBills", "reference": "B0100000050", "eliminado_en": "2026-08-03", "motivo_eliminacion": "El ITBIS impreso no era 18% de la base: ADM cobró 645.51 contra los 575.72 del documento. El restaurante emitirá una factura corregida."},
+    "documento_adm": "VendorBills",
+    "precedente_ref": null
+  },
+  "desenlace_adm": "FP00001063 registrada y luego ELIMINADA: ADM recalcula el ITBIS a 18% y no puede representar el ISC embebido, dejando el total 69.79 arriba del papel. El proveedor admitió el error de su sistema; el trabajo espera la factura corregida.",
+  "leccion": "El turno nuevo debe: (1) verificar ANTES de registrar que el ITBIS impreso sea exactamente 18% de la base gravada — si no lo es (ISC embebido, error del emisor), NO registrar: ADM recalcula al 18% y el documento queda descuadrado contra el papel; (2) predecir el comportamiento del sistema destino (ADM recalcula impuestos), no solo la aritmética del papel; (3) patrón de lectura: un NCF con longitud sospechosa (cero de más) se ofrece a corrección antes de condenar a gasto no admitido; (4) las fechas del dossier pueden venir con DD/MM invertido — contrastar con la fecha de la foto; (5) si el descuadre es culpa del emisor, el desenlace correcto es eliminar y esperar factura corregida, no absorber la diferencia."
+}

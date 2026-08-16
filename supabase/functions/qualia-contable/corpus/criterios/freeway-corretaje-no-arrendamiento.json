@@ -1,0 +1,39 @@
+{
+  "trabajo_id": "8ff429dd-9b4d-4a15-98d6-ef4736f23c21",
+  "rama": "criterios",
+  "resumen_humano": "Factura de FREEWAY ENTERPRISE por RD$90,000 — PDF escaneado sin capa de texto que decía 'alquiler de nave industrial'. Primera propuesta: 620.01 Alquiler de Inmuebles, tipo 606 = 03 Arrendamientos. El humano aclara el hecho económico: la empresa cobró por CONSEGUIR el alquiler — es la comisión del corredor, no la renta. Nace el criterio ratificado: comisión de corretaje inmobiliario → 611.02 Comisiones, tipo 02 (el arrendamiento lo paga el inquilino al dueño; acá el gasto es la intermediación). Bonus operativo: el proveedor creado en ADM nace 'Pendiente de Aprobación' y un humano debe aprobarlo dentro de ADM.",
+  "estado_final": "registrada",
+  "aprobado_por": "C.Araujo",
+  "criterio_ratificado": "La comisión que cobra un corredor inmobiliario por conseguir un arrendamiento NO es arrendamiento (tipo 03): es servicio de intermediación → cuenta 611.02 Comisiones, tipo 606 = 02. Registrado en qualia_libro id 10, metodo 'razonado'.",
+  "eventos": [
+    {"fecha": "2026-08-03T04:49:55Z", "autor": "contable", "tipo": "progreso", "texto": "PDF escaneado sin capa de texto. Convierto a imagen y leo los datos del documento."},
+    {"fecha": "2026-08-03T04:52:13Z", "autor": "contable", "tipo": "progreso", "texto": "Propuesta lista: alquiler de nave → tipo gasto 03 Arrendamientos, cuenta 620.01 Alquiler de Inmuebles. NCF VIGENTE en DGII. Queda para aprobación."},
+    {"fecha": "2026-08-03T05:09:29Z", "autor": "usuario", "tipo": "respuesta", "texto": "esta empresa nos cobro por conseguirle alquiler a una nave industrial esta es la factura de su comision"},
+    {"fecha": "2026-08-03T05:10:50Z", "autor": "contable", "tipo": "progreso", "texto": "Corregido: no es alquiler, es comisión de corretaje por conseguir la nave. Cuenta 611.02 Comisiones (no 620.01) y tipo de gasto 02 (no 03 Arrendamientos). Sin duplicados. Propuesta corregida, lista para aprobar."},
+    {"fecha": "2026-08-03T05:12:43Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por C.Araujo"},
+    {"fecha": "2026-08-03T05:13:08Z", "autor": "contable", "tipo": "nota", "texto": "Corrección de C.Araujo acatada: comisión de corretaje por intermediación de alquiler, no alquiler de nave. Cuenta 611.02 Comisiones, tipo gasto 02. Procedo a registrar en ADM Cloud."},
+    {"fecha": "2026-08-03T05:14:10Z", "autor": "contable", "tipo": "nota", "texto": "Registrada en ADM como FP00001068. Proveedor FREEWAY ENTERPRISE SRL creado. Libro escrito, memoria actualizada. Proveedor creado en ADM nace como Pendiente de Aprobación — un humano debe aprobarlo dentro de ADM."}
+  ],
+  "propuesta_final": {
+    "ncf": "B0100000226",
+    "rnc": "131372228",
+    "dgii": {"ncf": "B0100000226", "tipo": "ncf_impreso", "estado": "VIGENTE", "vigencia": "31/12/2026", "rnc_emisor": "131372228", "tipo_comprobante": "FACTURA DE CRÉDITO FISCAL", "razon_social_emisor": "FREEWAY ENTERPRISE SRL"},
+    "fecha": "2026-07-09",
+    "itbis": 13728.81,
+    "monto": 90000.0,
+    "lineas": [
+      {"itbis": 13728.81, "cuenta": "611.02", "precio": 76271.19, "cantidad": 1, "descripcion": "Comisión de corretaje por intermediación de alquiler de nave industrial 225m2", "cuenta_nombre": "Comisiones", "grupo_impuesto": "ITBIS"}
+    ],
+    "metodo": "razonado",
+    "moneda": "DOP",
+    "detalle": "Corregido por aclaración del usuario: NO es alquiler de nave, es la comisión que FREEWAY ENTERPRISE cobró por conseguirle a Blackbox el alquiler (corretaje/intermediación inmobiliaria). Proveedor nuevo sin precedente en el histórico (1,050 facturas). Cuenta 611.02 Comisiones por la naturaleza del servicio, tipo de gasto 02 (no 03 Arrendamientos: el arrendamiento lo paga el inquilino al dueño del inmueble, acá el gasto es la comisión de quien consiguió el local). NCF VIGENTE en DGII. Aritmética: 76,271.19 + 13,728.81 = 90,000.00.",
+    "confianza": 0.9,
+    "proveedor": "FREEWAY ENTERPRISE SRL",
+    "tipo_gasto": {"codigo": "02", "nombre": "Gastos por Trabajos, Suministros y Servicios"},
+    "registro_adm": {"uuid": "f6dc3e0d-ba96-47b9-8e41-08def10be22b", "docid": "FP00001068", "fecha": "2026-08-03", "documento": "VendorBills", "reference": "B0100000226"},
+    "documento_adm": "VendorBills",
+    "precedente_ref": null
+  },
+  "desenlace_adm": "Registrada como FP00001068; criterio de corretaje en el libro; proveedor creado quedó Pendiente de Aprobación en ADM.",
+  "leccion": "El turno nuevo debe: (1) clasificar por el hecho económico y no por las palabras del papel — 'alquiler de nave' en la descripción puede ser el OBJETO de la intermediación, no el servicio facturado; (2) cuando el humano aporta contexto que el documento no trae, rehacer cuenta Y tipo 606 juntos (la corrección de una arrastra la otra); (3) citar este criterio para toda comisión de intermediación futura (inmobiliaria o análoga): 611.02 tipo 02; (4) avisar los efectos colaterales del registro (proveedor nuevo nace Pendiente de Aprobación en ADM y requiere acción humana allá)."
+}

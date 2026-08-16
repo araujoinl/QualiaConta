@@ -1,0 +1,40 @@
+{
+  "trabajo_id": "88aaca29-01ee-419b-b0f4-f1843e047731",
+  "rama": "correcciones",
+  "resumen_humano": "Gasolina de ERIK GAS por RD$750 con e-NCF E31. El preparador armó la línea con precio×galones que descuadraba (750.58 vs 750.00). El humano repite TRES veces la misma aclaración — la factura solo trae el total, sin precio por galón — hasta que el contable la incorpora: cantidad=1, precio=750.00, galones a la descripción. Además el timbre DGII nunca verificó ('No fue encontrada la factura', luego HTTP 000) y el contable documenta cada reintento con fecha-firma y código de seguridad, mantiene confianza media y propone igual con el padrón ACTIVO como sostén. Buen caso de terquedad del modelo frente a una corrección simple y de manejo honesto de un e-CF no verificable.",
+  "estado_final": "registrada",
+  "aprobado_por": "Victor",
+  "eventos": [
+    {"fecha": "2026-08-03T17:10:05Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. ERIK GAS DEL 2000, S.R.L., e-NCF E310000023529, RD$750.00, DGII: no verificable, padrón RNC: ERIK GAS DEL 2000 SRL, sin duplicados."},
+    {"fecha": "2026-08-03T17:17:15Z", "autor": "contable", "tipo": "progreso", "texto": "Combustible estación de servicio. Aplico criterio 620.11 tipo 02, ITBIS exento. Cantidad real del documento: 2.218 GLS (prep leyó 2.22). NCF E31 NO verificó en timbre DGII — RNC sí ACTIVO en padrón. Propongo con confianza media."},
+    {"fecha": "2026-08-03T17:22:52Z", "autor": "usuario", "tipo": "respuesta", "texto": "El monto es 750.00 y el rnc E310000023529 Eso son cuantos galones pero la factura no dice precio por galon solo total"},
+    {"fecha": "2026-08-03T17:23:32Z", "autor": "usuario", "tipo": "respuesta", "texto": "El monto es 750.00 y el NCF E310000023529 Eso son cuantos galones pero la factura no dice precio por galon solo total"},
+    {"fecha": "2026-08-03T17:23:52Z", "autor": "contable", "tipo": "progreso", "texto": "Corrijo la línea: el documento solo tiene total RD$750.00 (sin precio/galón). Pongo cantidad=1, precio=750.00 para que cuadre exacto. Los 2.218 gal van en la descripción como info."},
+    {"fecha": "2026-08-03T17:34:35Z", "autor": "usuario", "tipo": "respuesta", "texto": "Eso son cuantos galones pero la factura no dice precio por galon solo total"},
+    {"fecha": "2026-08-03T17:38:12Z", "autor": "contable", "tipo": "progreso", "texto": "Propuesta confirmada: cantidad=1 / precio=750.00 (el documento solo trae total — el usuario lo aclaró 3 veces). Reintenté timbre DGII con fecha-firma 16-07-2026 10:11:41 y código egzUS2: ecf.dgii.gov.do no responde (HTTP 000); ya constaba 'No fue encontrada la factura'. RNC 123001339 ACTIVO en padrón. Va como combustible exento, cuenta 620.11, tipo 02, confianza media."},
+    {"fecha": "2026-08-03T17:40:03Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por Victor"},
+    {"fecha": "2026-08-03T17:41:02Z", "autor": "contable", "tipo": "nota", "texto": "Registrada en ADM como FP00001103 (uuid 9507c97f). Adjunto subido. Libro de acción escrito. Fila cerrada."}
+  ],
+  "propuesta_final": {
+    "ncf": "E310000023529",
+    "rnc": "123001339",
+    "dgii": {"encf": "E310000023529", "estado": "no verificable", "motivo": "ConsultaTimbre E31: DGII respondió No fue encontrada la factura (e-CF). El RNC 123001339 sí está ACTIVO en padrón. Reintentado el 2026-08-03 con fecha-firma 16-07-2026 10:11:41 y código egzUS2: ecf.dgii.gov.do no respondió (HTTP 000). Probable retardo de DGII en publicar el timbre.", "rnc_emisor": "123001339", "fecha_emision": "2026-07-16", "codigo_seguridad": "egzUS2", "razon_social_emisor": "ERIK GAS DEL 2000 SRL"},
+    "fecha": "2026-07-16",
+    "itbis": 0.0,
+    "monto": 750.0,
+    "lineas": [
+      {"itbis": 0.0, "cuenta": "620.11", "precio": 750.0, "cantidad": 1, "descripcion": "GASOLINA PREMIUM 2.218 GLS (el documento solo trae total, sin precio por galón)", "cuenta_nombre": "Combustible", "grupo_impuesto": "Exento"}
+    ],
+    "metodo": "precedente",
+    "moneda": "DOP",
+    "detalle": "Gasolina premium estación de servicio. El documento solo trae total RD$750 y 2.218 galones, sin precio por galón — cantidad=1 precio=750.00 (lo único del papel, confirmado por el usuario 3 veces). ITBIS 0: combustible de motor con ISC embebido en el precio, el comprobante NO traslada ITBIS (criterio Isla Dominicana 96 facturas). Cuenta 620.11 Combustible. RNC ACTIVO en padrón. NCF E31 no verificó en timbre — confianza media por eso.",
+    "confianza": 0.7,
+    "proveedor": "ERIK GAS DEL 2000 SRL",
+    "tipo_gasto": {"codigo": "02", "nombre": "Gastos por Trabajos, Suministros y Servicios"},
+    "registro_adm": {"uuid": "9507c97f-b051-4ae9-0e87-08def13e52a2", "docid": "FP00001103", "fecha": "2026-08-03", "documento": "VendorBills", "reference": "E310000023529"},
+    "documento_adm": "VendorBills",
+    "precedente_ref": "agg:proveedor-cuentas.json#101008172 (Isla Dominicana: 94 de 96 facturas a 620.11 — misma naturaleza. Erik Gas tiene 1 sola factura histórica, muestra insuficiente, por eso se cita Isla Dominicana como análogo firme)."
+  },
+  "desenlace_adm": "Registrada como FP00001103 (VendorBills).",
+  "leccion": "El turno nuevo debe: (1) cuando el humano repite la misma corrección, la iteración siguiente tiene que demostrar que la incorporó — repetir el análisis viejo quema la paciencia del humano y la cuota; (2) 'el papel solo trae total' → línea con cantidad=1 y precio=total, datos del surtidor a la descripción; (3) e-CF no verificable ≠ NCF inválido: documentar el motivo, los reintentos (fecha-firma + código de seguridad) y bajar la confianza, no bloquear; (4) con muestra propia insuficiente (1 factura), citar el análogo firme de la misma naturaleza (Isla Dominicana 94/96) y decir por qué aplica."
+}

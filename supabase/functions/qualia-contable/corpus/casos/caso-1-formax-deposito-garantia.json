@@ -1,0 +1,31 @@
+{
+  "trabajo_id": "9fcee995-f136-4d1f-a149-2f814534912d",
+  "rama": "casos",
+  "resumen_humano": "Caso #1 · Formax Corp Srl. Transferencia ACH recibida de RD$180,000 con concepto de depósito de alquiler de local. El humano aclara que son depósitos de garantía de renta de nave industrial; el contable aplica C-002 (pasivo 220.06), descubre una segunda transferencia de RD$90,000 del mismo día y del mismo cliente, y pregunta por las dos cosas a la vez: qué es la segunda transferencia y cómo resolver que C-002 pedía Journals pero el sistema bloquea Journals que tocan banco. Es un buen caso porque exige multi-paso, descubrimiento de datos que el humano no dio, y navegación de un conflicto entre criterio ratificado y candado del sistema.",
+  "estado_final": "aprobada",
+  "aprobado_por": "C.Araujo",
+  "eventos": [
+    {"fecha": "2026-08-07T21:00:51Z", "autor": "usuario", "tipo": "respuesta", "texto": "Este cliente dejó dos depósitos de garantía con concepto de renta de nave industrial y estos son con impuestos incluidos ya."},
+    {"fecha": "2026-08-07T21:01:30Z", "autor": "contable", "tipo": "progreso", "texto": "Leí tu respuesta — los RD$180,000 son dos depósitos de garantía de renta de nave industrial, ITBIS incluido. Verifico la transacción y aplico el criterio C-002 (pasivo 220.06)."},
+    {"fecha": "2026-08-07T21:06:35Z", "autor": "contable", "tipo": "nota", "texto": "Encontré dos depósitos de Formax del 06/07: RD$180,000 y RD$90,000 (en total RD$270,000), ambos en la cuenta Ingresos de Santa Cruz, sin conciliar. Como son depósitos en garantía de renta (no ingreso todavía) van al pasivo 220.06. Detalle técnico: C-002 dice registrarlos como Journals, pero el sistema no permite asientos que toquen cuenta de banco — la conciliación no los lee y el movimiento quedaría sin conciliar para siempre."},
+    {"fecha": "2026-08-07T21:10:01Z", "autor": "contable", "tipo": "pregunta", "texto": "Formax depositó RD$180,000 el 06/07 (y hay otra transferencia de RD$90,000 el mismo día del mismo cliente, también sin conciliar). Por C-002 van como depósito en garantía al pasivo 220.06. Dos consultas: 1. ¿La de RD$90,000 es también depósito en garantía, o es renta del mes? Solo me dejaste la de 180k en el caso. 2. C-002 dice Journals, pero el sistema bloquea los Journals que tocan banco. ¿Cómo procedo?"},
+    {"fecha": "2026-08-07T21:23:49Z", "autor": "usuario", "tipo": "nota", "texto": "Caso cerrado por C.Araujo: un DP a 220.06"},
+    {"fecha": "2026-08-07T21:25:27Z", "autor": "contable", "tipo": "nota", "texto": "Confirmo: los dos depósitos de Formax van como depósito en garantía a 220.06. Los RD$180,000 ya están registrados (BankCharges). El segundo de RD$90,000 te queda en la bandeja como propuesta para que lo apruebes; mismo criterio (C-002: BankCharges dirección crédito, débito al banco, crédito a 220.06)."}
+  ],
+  "propuesta_final": {
+    "filas": [
+      {
+        "foto": {"tipo": "externa", "fecha": "2026-07-06", "monto": 180000, "cuenta": "Ingresos", "estado": "Sin registro en ADM", "moneda": "DOP", "movimiento": "ingreso", "referencia": "15795652", "descripcion": "Por Transferencia Ach-Ach Recibida: Formax Corp Srl - Deposito Alquiler Local"},
+        "clave": "banco:ba7864fa-9263-4a33-9f0b-4750649070f2",
+        "tx_id": "ba7864fa-9263-4a33-9f0b-4750649070f2",
+        "origen": "banco",
+        "resumen": "06/07/26 · RD$180,000.00 · Por Transferencia Ach-Ach Recibida: Formax Corp Srl - Deposito Alquiler Local"
+      }
+    ],
+    "numero": 1,
+    "cerrado": {"en": "2026-08-07T21:23:49.092Z", "por": "C.Araujo", "nota": "un DP a 220.06"},
+    "mandado_en": "2026-08-07T21:00:51.137Z"
+  },
+  "desenlace_adm": "BankCharges CB00000258 por RD$180,000 (débito 101.04 Banco Ingresos 801, crédito 220.06). Entrada de libro razonada del 2026-08-07. OJO: la propuesta hermana de RD$90,000 fue después RECHAZADA por el humano (ver correcciones/formax-90k-rechazo-corrige-c002.json) — era renta ya conciliada contra FCC00000286, no garantía.",
+  "leccion": "El turno nuevo debe: (1) abrir el caso leyendo el banco completo del cliente, no solo la fila que el humano adjuntó — acá descubrió una segunda transferencia; (2) NO asumir que dos transferencias del mismo día del mismo cliente son lo mismo: preguntar cada una por separado (el desenlace real probó que la de 90k era otra cosa); (3) cuando un criterio ratificado (C-002 Journals) choca con un candado del sistema (Journals no toca banco), exponer el conflicto al humano en la misma pregunta, no resolverlo callado; (4) cada paso del caso es un TRABAJO aprobable con su botón, nunca prosa suelta."
+}

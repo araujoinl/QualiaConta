@@ -1,0 +1,37 @@
+{
+  "trabajo_id": "4e99f265-7c81-48f6-9c2e-fa7d003a9195",
+  "rama": "criterios",
+  "resumen_humano": "Póliza RC Auto Exceso de Humano Seguros (RD$1,856). El proveedor tiene cuenta dominante 611.18 (Seguro Médico) en el histórico, pero la póliza asegura un VEHÍCULO — el contable clasificó a 660.01 Seguros de Vehículos por naturaleza del bien asegurado, apoyándose en que los 16 usos históricos de 660.01 vienen de pólizas de auto (facturadas vía Banco Santa Cruz). El ISC 16% de seguros (Ley 146-02) va como renglón propio a 620.09. Aprobada a la primera; quedó ratificado en el libro el criterio 'la cuenta se elige por la naturaleza del bien, no por el proveedor dominante' — uno de los criterios más citados después.",
+  "estado_final": "registrada",
+  "aprobado_por": "C.Araujo",
+  "criterio_ratificado": "Seguro de vehículo → 660.01 por naturaleza del bien asegurado, aunque el proveedor tenga cuenta dominante 611.18 (seguro médico). ISC 16% de seguros (Ley 146-02) → 620.09 como renglón propio. Registrado en qualia_libro id 8, metodo 'precedente', ref 'agg:proveedor-cuentas.json#102017174 + plan:660.01'.",
+  "eventos": [
+    {"fecha": "2026-08-03T04:47:15Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. archivo pdf, e-NCF E310000514080, RD$1,856.00, DGII: no verificable, sin duplicados."},
+    {"fecha": "2026-08-03T04:48:31Z", "autor": "contable", "tipo": "progreso", "texto": "Póliza seguro RC Auto Exceso (Humano Seguros), no seguro médico: busco cuenta por naturaleza. Timbre DGII no verificó (fecha firma incompleta en PDF)."},
+    {"fecha": "2026-08-03T05:08:46Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por C.Araujo"},
+    {"fecha": "2026-08-03T05:10:51Z", "autor": "contable", "tipo": "nota", "texto": "Registrada FP00001067 en ADM Cloud. Libro de acción escrito (2026-08-03-humano-seguros-rc-auto-exceso.md). Memoria Humano Seguros actualizada: seguros de vehículo a 660.01 por naturaleza del bien, ISC a 620.09. Cerrada."}
+  ],
+  "propuesta_final": {
+    "ncf": "E310000514080",
+    "rnc": "102017174",
+    "dgii": {"estado": "no verificable", "motivo": "ConsultaTimbre DGII: no fue encontrada con fecha firma 01/06/2026 (sin hora en el PDF). e-NCF E310000514080, codigo seguridad mTBa0F."},
+    "fecha": "2026-07-05",
+    "itbis": 0,
+    "monto": 1856.0,
+    "lineas": [
+      {"itbis": 0, "cuenta": "660.01", "precio": 1600.0, "cantidad": 1, "descripcion": "Prima póliza RC Auto Exceso 30-35-89255 (Renovación 05/07/26-05/07/27, Jetour 2025)", "cuenta_nombre": "Seguros de Vehículos", "grupo_impuesto": "Exento"},
+      {"itbis": 0, "cuenta": "620.09", "precio": 256.0, "cantidad": 1, "descripcion": "ISC 16% sobre prima (Ley 146-02)", "cuenta_nombre": "Gasto de Impuesto Selectivo al consumo", "grupo_impuesto": "Exento"}
+    ],
+    "metodo": "precedente",
+    "moneda": "DOP",
+    "detalle": "Póliza de Responsabilidad Civil Auto Exceso, renovación anual, vehículo Jetour 2025. Asegurado Blackbox SRL; facturada a Banco Múltiple Santa Cruz — patrón histórico confirmado: los 16 usos de la cuenta 660.01 provienen de Banco Múltiple Santa Cruz. Cuenta 660.01 Seguros de Vehículos por naturaleza del bien asegurado (auto), no 611.18 Seguro Médico del precedente dominante del proveedor. El ISC 16% es el impuesto selectivo propio de seguros (Ley 146-02), va como ítem propio a 620.09. No hay ITBIS en el documento.",
+    "confianza": 0.85,
+    "proveedor": "HUMANO SEGUROS, S. A",
+    "tipo_gasto": {"codigo": "11", "nombre": "Gastos de Seguros"},
+    "registro_adm": {"uuid": "a86ecf55-70d8-4707-8e3e-08def10be22b", "docid": "FP00001067", "fecha": "2026-08-03", "documento": "VendorBills", "reference": "E310000514080"},
+    "documento_adm": "VendorBills",
+    "precedente_ref": "agg:proveedor-cuentas.json#102017174 + plan:660.01"
+  },
+  "desenlace_adm": "Registrada como FP00001067; criterio asentado en libro y memoria del proveedor.",
+  "leccion": "El turno nuevo debe: (1) NO dejarse arrastrar por la cuenta dominante del proveedor cuando el objeto del documento es de otra naturaleza — el precedente por proveedor es una heurística, la naturaleza del bien es la regla; (2) buscar el sostén cruzado en el plan de cuentas (quién usa 660.01 y para qué) además del agregado por proveedor; (3) tratar el ISC de seguros (Ley 146-02, 16%) como renglón exento propio a 620.09, nunca mezclado en la prima; (4) al registrar, escribir el criterio en libro Y memoria del proveedor para que la próxima póliza de auto del mismo emisor salga directa."
+}

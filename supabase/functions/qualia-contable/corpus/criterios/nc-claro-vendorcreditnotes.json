@@ -1,0 +1,42 @@
+{
+  "trabajo_id": "0534fc90-cfb0-4c24-9879-feb6607e78b3",
+  "rama": "criterios",
+  "resumen_humano": "Nota de crédito electrónica de Claro (e-NCF E34) por RD$27.95 que corrige la factura E310016002709 (FP00001066): devolución por avería en el servicio, rebajando proporcionalmente ITBIS, ISC 10% y CDT 2%. El criterio nació en el registro: una NC de proveedor NO entra como VendorBills con montos negativos (ADM no los acepta) — va por VendorCreditNotes con precios positivos, acreditando las cuentas del gasto original y bajando la CxP. También muestra el QR pisando al texto: el encabezado decía 'Julio 04' y el pie '01-07'; prevaleció la fecha resuelta por el QR. Desenlace con arruga: C.Araujo anuló NCP00000006 después, y el contable ofreció re-registrar sin tomar la anulada como duplicado.",
+  "estado_final": "registrada (NCP00000006 luego anulada por el humano; ver desenlace_adm)",
+  "aprobado_por": "C.Araujo",
+  "criterio_ratificado": "Nota de crédito de proveedor → VendorCreditNotes, nunca VendorBills en negativo. Asiento: crédito a las cuentas del gasto original (620.05/210.01/620.09/690.05), débito a CxP. Registrado en qualia_libro id 219, metodo 'precedente', ref 'agg:proveedor-cuentas.json#101001577'.",
+  "eventos": [
+    {"fecha": "2026-08-07T05:02:32Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. archivo pdf, e-NCF E340009998496, RD$27.95, DGII: Aceptado, sin duplicados."},
+    {"fecha": "2026-08-07T05:04:10Z", "autor": "contable", "tipo": "progreso", "texto": "Esto no es una factura de compra nueva: es una nota de crédito de Claro (e-NCF E34) que corrige la factura E310016002709 por RD$27.95. Todos los renglones son créditos que revierten el gasto original. Verifico si la factura que corrige ya está registrada y preparo la propuesta."},
+    {"fecha": "2026-08-07T05:06:52Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por C.Araujo"},
+    {"fecha": "2026-08-07T05:11:51Z", "autor": "contable", "tipo": "nota", "texto": "Registrada en ADM como NCP00000006 (nota de crédito de proveedor). Una NC no entra como factura con montos negativos: ADM no los acepta, y el asiento correcto va por VendorCreditNotes con precios positivos. Quedó con crédito a Comunicación (RD$21.50), ITBIS Operativo (RD$3.87), ISC (RD$2.15) y Otros Impuestos (RD$0.43), reduciendo la cuenta por pagar con Claro. Dejé escrito el criterio en el libro para la próxima NC de cualquier proveedor."},
+    {"fecha": "2026-08-07T17:42:04Z", "autor": "usuario", "tipo": "nota", "texto": "C.Araujo anuló NCP00000006 en ADM Cloud"},
+    {"fecha": "2026-08-07T17:43:58Z", "autor": "contable", "tipo": "nota", "texto": "Entendido, Carlos. NCP00000006 quedó anulada, así que la nota de crédito de Claro ya no está registrada. El crédito de RD$27.95 quedó sin asiento. Si querés que la vuelva a registrar, avisame y la repropongo: como la anterior está anulada, no la voy a tomar como duplicado."}
+  ],
+  "propuesta_final": {
+    "ncf": "E340009998496",
+    "rnc": "101001577",
+    "dgii": {"encf": "E340009998496", "tipo": "ecf", "estado": "Aceptado", "fuente": "ecf.dgii.gov.do/ecf/ConsultaTimbre", "rnc_emisor": "101001577", "monto_total": 27.95, "rnc_comprador": "131188648"},
+    "fecha": "2026-07-04",
+    "itbis": -3.87,
+    "monto": -27.95,
+    "lineas": [
+      {"itbis": -3.87, "cuenta": "620.05", "precio": -21.5, "cantidad": 1, "descripcion": "Ajuste Avería en Servicio (reversa)", "cuenta_nombre": "Comunicación", "grupo_impuesto": "ITBIS"},
+      {"itbis": 0, "cuenta": "620.09", "precio": -2.15, "cantidad": 1, "descripcion": "Ajuste ISC 10% (reversa)", "cuenta_nombre": "Gasto de Impuesto Selectivo al consumo", "grupo_impuesto": "Exento"},
+      {"itbis": 0, "cuenta": "690.05", "precio": -0.43, "cantidad": 1, "descripcion": "CDT 2% (reversa)", "cuenta_nombre": "Otros Impuestos", "grupo_impuesto": "Exento"}
+    ],
+    "metodo": "precedente",
+    "moneda": "DOP",
+    "detalle": "Nota de crédito electrónica (e-NCF E34) de Claro que corrige la factura E310016002709 (FP00001066, RD$6,351.00). Claro devolvió RD$27.95 por avería en el servicio, rebajando ITBIS, ISC 10% y CDT 2% en proporción. Se registra por VendorCreditNotes: revierte parte del gasto de comunicación, reduce el ITBIS operativo y los impuestos, y baja la CxP con Claro. El QR corrigió la fecha del texto: el documento dice Julio 04 2026 en el encabezado pero 01-07-2026 en el pie (firma digital); prevalece la del encabezado. Cuentas por precedente: 19 de 19 facturas históricas de CODETEL.",
+    "confianza": 0.85,
+    "proveedor": "Compania Dominicana De Telefonos S A",
+    "tipo_gasto": {"codigo": "02", "nombre": "Gastos por Trabajos, Suministros y Servicios"},
+    "registro_adm": {"uuid": "6ffc92f3-5151-4243-86d4-08def3752ab7", "docid": "NCP00000006", "fecha": "2026-08-07", "documento": "VendorCreditNotes", "reference": "E340009998496", "anulado_en": "2026-08-07"},
+    "documento_adm": "VendorCreditNotes",
+    "ncf_modificado": "E310016002709",
+    "precedente_ref": "agg:proveedor-cuentas.json#101001577",
+    "aplicacion_pendiente": {"monto": 27.95, "factura_docid": "FP00001066", "ncf_modificado": "E310016002709"}
+  },
+  "desenlace_adm": "NCP00000006 registrada por VendorCreditNotes y luego ANULADA por C.Araujo. El contable dejó constancia de que el crédito quedó sin asiento y ofreció re-proponerla sin tratarla como duplicado. El criterio del libro quedó vigente.",
+  "leccion": "El turno nuevo debe: (1) reconocer el tipo E34 como nota de crédito y localizar la factura que modifica ANTES de proponer (ncf_modificado + docid original); (2) portar el criterio: NC de proveedor va por VendorCreditNotes con precios positivos — VendorBills en negativo es rechazado por ADM; (3) rebajar proporcionalmente TODOS los impuestos del original (ITBIS, ISC, CDT), no solo la base; (4) usar el QR del e-CF como autoridad sobre la fecha cuando el texto se contradice; (5) tras una anulación del humano, la fila anulada deja de contar para el dedup — re-proponer solo a pedido, diciéndolo explícito."
+}

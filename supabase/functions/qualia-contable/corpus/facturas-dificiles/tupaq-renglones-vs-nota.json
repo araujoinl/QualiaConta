@@ -1,0 +1,43 @@
+{
+  "trabajo_id": "c21a76a8-d360-495b-8e2e-5a092352fec2",
+  "rama": "facturas-dificiles",
+  "resumen_humano": "Factura de TUPAQ Cargo & Courier por RD$2,117.98 con 6 renglones (artículo + flete aéreo + airport fee + combustible + gestión aduanal + DGA). La primera lectura clasificó el primer renglón como INVENTARIO ('artículo personal deportivo' parecía mercancía) y el resto como envíos. El humano aclaró el matiz de layout: 'el primer articulo es flete aereo, lo demas era una nota arriba' — la descripción del artículo era una NOTA del documento, no un renglón facturable aparte. Con eso, los 6 renglones son servicios de courier y todos van a 620.10 por precedente aplastante (117/120 usos, 97.5%). Difícil por estructura del documento: distinguir renglones facturables de notas descriptivas es un problema de layout que la visión no resuelve sola.",
+  "estado_final": "registrada",
+  "aprobado_por": "Victor",
+  "eventos": [
+    {"fecha": "2026-08-03T15:21:36Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. TUPAQ CARGO & COURIER, NCF B0100066273, RD$2,117.98, DGII: VIGENTE, sin duplicados."},
+    {"fecha": "2026-08-03T15:27:28Z", "autor": "contable", "tipo": "progreso", "texto": "Analizando: Tupaq mixto (1 renglón inventario + 5 envíos). Precedente 620.10 aplica a logística, item personal deportivo va a inventario."},
+    {"fecha": "2026-08-03T15:31:40Z", "autor": "usuario", "tipo": "respuesta", "texto": "el primer articulo es flete aereo , lo demas era una nota arriba"},
+    {"fecha": "2026-08-03T15:31:52Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. archivo imagen, DGII: no verificable, duplicados no verificados. Prep parcial (1 paso(s) fallaron)."},
+    {"fecha": "2026-08-03T16:27:09Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. TUPAQ CARGO & COURIER, NCF B0100066273, RD$2,117.98, DGII: VIGENTE, sin duplicados."},
+    {"fecha": "2026-08-03T16:28:00Z", "autor": "contable", "tipo": "progreso", "texto": "Proveedor conocido, aplico precedente 620.10 (97.5%). Los 6 renglones son servicios de courier (artículo enviado + flete + airport fee + combustible del envío + gestión aduanal + DGA). Ninguno contradice Envíos y Correspondencias. Propuesta directa."},
+    {"fecha": "2026-08-03T16:39:36Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por Victor"}
+  ],
+  "propuesta_final": {
+    "ncf": "B0100066273",
+    "rnc": "132942248",
+    "dgii": {"ncf": "B0100066273", "tipo": "ncf_impreso", "estado": "VIGENTE", "vigencia": "31/12/2027", "rnc_emisor": "132942248", "tipo_comprobante": "FACTURA DE CREDITO FISCAL", "razon_social_emisor": "TUPAQ CARGO & COURIER SRL"},
+    "fecha": "2026-07-09",
+    "itbis": 108.4,
+    "monto": 2117.98,
+    "lineas": [
+      {"itbis": 102.02, "cuenta": "620.10", "precio": 566.78, "cantidad": 1, "descripcion": "TUMIA000828160 - LBS 4.80 ARTICULO PERSONAL DEPORTIVO", "cuenta_nombre": "Envios y Correspondencias", "grupo_impuesto": "ITBIS"},
+      {"itbis": 0, "cuenta": "620.10", "precio": 50.16, "cantidad": 1, "descripcion": "FLETE AEREO PRIORITY", "cuenta_nombre": "Envios y Correspondencias", "grupo_impuesto": "Exento"},
+      {"itbis": 0, "cuenta": "620.10", "precio": 318.82, "cantidad": 1, "descripcion": "AIRPORT FEE", "cuenta_nombre": "Envios y Correspondencias", "grupo_impuesto": "Exento"},
+      {"itbis": 0, "cuenta": "620.10", "precio": 1000.0, "cantidad": 1, "descripcion": "COMBUSTIBLE", "cuenta_nombre": "Envios y Correspondencias", "grupo_impuesto": "Exento"},
+      {"itbis": 0, "cuenta": "620.10", "precio": 38.4, "cantidad": 1, "descripcion": "GESTION ADUANAL", "cuenta_nombre": "Envios y Correspondencias", "grupo_impuesto": "Exento"},
+      {"itbis": 6.38, "cuenta": "620.10", "precio": 35.42, "cantidad": 1, "descripcion": "SERVICIOS DGA", "cuenta_nombre": "Envios y Correspondencias", "grupo_impuesto": "ITBIS"}
+    ],
+    "metodo": "precedente",
+    "moneda": "DOP",
+    "detalle": "Servicios de courier del proveedor TUPAQ (117 de 120 usos históricos a 620.10 Envíos y Correspondencias, 97.5%). Los 6 renglones son servicios de courier sin excepción. NCF VIGENTE en DGII. Aritmética verificada: 2,009.58 base + 108.40 ITBIS = 2,117.98.",
+    "confianza": 0.97,
+    "proveedor": "TUPAQ CARGO & COURIER SRL",
+    "tipo_gasto": {"codigo": "02", "nombre": "Gastos por Trabajos, Suministros y Servicios"},
+    "registro_adm": {"uuid": "f5b68c9d-de69-40ec-a21e-08def10be22b", "docid": "FP00001094", "fecha": "2026-08-03", "documento": "VendorBills", "reference": "B0100066273"},
+    "documento_adm": "VendorBills",
+    "precedente_ref": "agg:proveedor-cuentas.json#132942248"
+  },
+  "desenlace_adm": "Registrada como FP00001094 con los 6 renglones a 620.10.",
+  "leccion": "El turno nuevo debe: (1) sospechar cuando un renglón contradice la naturaleza del emisor — un courier no vende 'artículos deportivos': la descripción del contenido del paquete es metadato del envío, no mercancía facturada; (2) incorporar la aclaración de layout del humano ('era una nota arriba') como corrección de estructura, no solo de valores; (3) con precedente aplastante (97.5%) y ningún renglón contradictorio, proponer directo sin escalar; (4) tolerar corridas del preparador que fallan parcialmente (prep parcial) reintentando antes de degradar el análisis; (5) el combustible DENTRO de una factura de courier es parte del servicio (620.10), no combustible de flotilla (620.11) — el contexto del documento manda sobre la palabra."
+}

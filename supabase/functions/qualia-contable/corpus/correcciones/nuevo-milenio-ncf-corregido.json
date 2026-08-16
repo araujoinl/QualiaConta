@@ -1,0 +1,43 @@
+{
+  "trabajo_id": "3dda44b8-6d5b-40ed-96a0-2b403beaf839",
+  "rama": "correcciones",
+  "resumen_humano": "Recibo de gasolina de RD$750 que el preparador leyó mal en TODO: tomó el RNC del CLIENTE (BlackBox) como emisor, un NCF con un dígito cambiado (NO VÁLIDO en DGII) y una aritmética que no cierra (2.19 gal × 341.10 = 747.01 vs 750.00). El hilo más largo del histórico de facturas (28 eventos, 4 preguntas / 4 respuestas): el humano corrige el NCF dos veces (B0100857686), confirma el total y dicta el RNC verdadero (101830719). Con los datos corregidos el NCF resulta VIGENTE, el emisor es Estación Nuevo Milenio y la propuesta pasa de 'gasto no admitido' a crédito fiscal válido a 620.11. Es EL caso de referencia de corrección iterativa del humano sobre datos de visión.",
+  "estado_final": "registrada",
+  "aprobado_por": "Victor",
+  "eventos": [
+    {"fecha": "2026-08-03T15:20:49Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. BLACKBOX SRL, NCF B0100857605, RD$750.00, DGII: NO VALIDO, padrón RNC: BLACKBOX SRL, sin duplicados."},
+    {"fecha": "2026-08-03T15:23:45Z", "autor": "contable", "tipo": "nota", "texto": "Propuesta enviada: gasto no admitido por NCF no autorizado"},
+    {"fecha": "2026-08-03T15:29:16Z", "autor": "usuario", "tipo": "respuesta", "texto": "B0100857686"},
+    {"fecha": "2026-08-03T15:33:00Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador confundió el RNC del CLIENTE (BlackBox) con el del EMISOR. El emisor real es ESTACION TOTAL ROMULO (RNC 101030719). Ese RNC NO ESTÁ INSCRITO en DGII y ambos NCFs salen NO VALIDO. Propongo gasto no admitido, pero la aritmética no cierra: 747.01 vs 750.00."},
+    {"fecha": "2026-08-03T15:38:01Z", "autor": "contable", "tipo": "pregunta", "texto": "Tres problemas que no puedo resolver solo: 1) ARITMÉTICA: 2.19 gal × RD$341.10 = RD$747.01, pero el total impreso es RD$750.00 — diferencia de RD$2.99 sin patrón conocido (no propina, no ISC, no recargo). ¿Faltó un renglón o la estación redondeó? 2) NCF B0100857605: NO VÁLIDO en DGII. 3) RNC 101030719: NO ENCONTRADO en padrón DGII."},
+    {"fecha": "2026-08-03T15:33:52Z", "autor": "usuario", "tipo": "respuesta", "texto": "El total es 750.00"},
+    {"fecha": "2026-08-03T15:59:29Z", "autor": "usuario", "tipo": "respuesta", "texto": "B0100857686"},
+    {"fecha": "2026-08-03T16:00:02Z", "autor": "usuario", "tipo": "respuesta", "texto": "y el RNC es: 101830719"},
+    {"fecha": "2026-08-03T16:03:56Z", "autor": "contable", "tipo": "progreso", "texto": "NCF B0100857686 VIGENTE en DGII. Emisor: ESTACION DE SERVICIOS H E NUEVO MILENIO SRL (RNC 101830719, ACTIVO). Precedente: 620.11 Combustible (51 de 53 facturas). Gasolina exenta de ITBIS. Propongo crédito fiscal válido, total RD$750.00."},
+    {"fecha": "2026-08-03T16:05:01Z", "autor": "contable", "tipo": "progreso", "texto": "Aritmética: el recibo imprime MONTO=750.00 (línea) y TOTAL=750.00. Galones y precio/gal son del surtidor y no multiplican exacto (747.01) por redondeo de bomba. Registro la línea con el MONTO impreso (750.00), galones en descripción. Cuadra."},
+    {"fecha": "2026-08-03T16:09:10Z", "autor": "contable", "tipo": "nota", "texto": "Verificación independiente confirma la propuesta: RNC correcto es 101830719 (ESTACION DE SERVICIOS H E NUEVO MILENIO SRL, ACTIVO), no 101030719 que leí mal en la imagen. NCF B0100857686 VIGENTE. Cuenta 620.11 correcta."},
+    {"fecha": "2026-08-03T16:12:26Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por Victor"}
+  ],
+  "propuesta_final": {
+    "ncf": "B0100857686",
+    "rnc": "101830719",
+    "dgii": {"ncf": "B0100857686", "tipo": "ncf_impreso", "estado": "VIGENTE", "fuente": "dgii.gov.do/consultas/ncf", "vigencia": "31/12/2026", "rnc_emisor": "101830719", "tipo_comprobante": "FACTURA DE CRÉDITO FISCAL", "razon_social_emisor": "ESTACION DE SERVICIOS H E NUEVO MILENIO S R L"},
+    "fecha": "2026-07-08",
+    "itbis": 0.0,
+    "monto": 750.0,
+    "lineas": [
+      {"itbis": 0.0, "cuenta": "620.11", "precio": 750.0, "cantidad": 1, "descripcion": "GASOLINA PREMIUM (2.19 gal x 341.10)", "cuenta_nombre": "Combustible", "grupo_impuesto": "Exento"}
+    ],
+    "metodo": "precedente",
+    "moneda": "DOP",
+    "detalle": "Recibo combustible corregido por el humano. Datos originales del preparador (RNC emisor y NCF) estaban equivocados. NCF B0100857686 VIGENTE en DGII, emisor ESTACION DE SERVICIOS H E NUEVO MILENIO SRL (RNC 101830719, ACTIVO). Precedente 620.11 Combustible: 51 de 53 facturas históricas. Gasolina premium exenta de ITBIS. La línea se registra con el MONTO impreso (750.00); los galones (2.19) y precio/gal (341.10) son del surtidor y no multiplican exacto por redondeo de bomba (747.01). El humano confirmó el total de RD$750.00.",
+    "confianza": 0.9,
+    "proveedor": "ESTACION DE SERVICIOS H E NUEVO MILENIO S R L",
+    "tipo_gasto": {"codigo": "02", "nombre": "Gastos por Trabajos, Suministros y Servicios"},
+    "registro_adm": {"uuid": "6fa9b390-c62f-481f-a007-08def10be22b", "docid": "FP00001089", "fecha": "2026-08-03", "documento": "VendorBills", "reference": "B0100857686"},
+    "documento_adm": "VendorBills",
+    "precedente_ref": "agg:proveedor-cuentas.json#101830719"
+  },
+  "desenlace_adm": "Registrada como FP00001089 (VendorBills) tras 3 rondas de corrección del humano.",
+  "leccion": "El turno nuevo debe: (1) sospechar del RNC extraído cuando coincide con el RNC de la PROPIA empresa — en un recibo el RNC impreso suele ser el del cliente; (2) tratar cada dato corregido por el humano como fuente que PISA al dossier y re-verificar contra DGII con el dato nuevo (el NCF corregido pasó de NO VÁLIDO a VIGENTE); (3) conocer el patrón 'redondeo de bomba': en combustible manda el MONTO impreso de la línea, los galones van a la descripción; (4) agrupar los problemas en UNA pregunta enumerada en vez de gotearlos; (5) no rendirse en 'gasto no admitido' mientras haya datos por confirmar con el humano."
+}

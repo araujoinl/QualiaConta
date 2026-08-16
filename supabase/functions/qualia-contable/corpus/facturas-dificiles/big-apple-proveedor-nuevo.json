@@ -1,0 +1,40 @@
+{
+  "trabajo_id": "e626c239-7f4a-4f13-9c1a-12c1a90ee752",
+  "rama": "facturas-dificiles",
+  "resumen_humano": "Tintorería The Big Apple Cleaners, RD$2,320.91, proveedor completamente nuevo (no está en las 1,050 facturas históricas). Tres dificultades encadenadas: el preparador leyó precios unitarios fantasiosos (base items 4,807.88 vs base real 1,966.87 — el contable la reconstruyó desde el header: bruto 2,185.41 - descuento 10% + ITBIS 18%); el timbre e-CF no se pudo verificar (código de seguridad ilegible en la foto); y el REGISTRO falló porque el proveedor no existía en ADM y DGII no devolvió la razón social en ese momento — el contable se negó a inventar nombres y dejó el registro pendiente. En el reintento, el padrón sí resolvió la razón social oficial y se creó el proveedor y registró. Clasificación razonada por naturaleza (620.07 Servicios de Limpieza) sin ningún precedente.",
+  "estado_final": "registrada",
+  "aprobado_por": "C.Araujo",
+  "eventos": [
+    {"fecha": "2026-08-03T04:17:20Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. THE BIG APPLE CLEANERS, e-NCF E310000000469, RD$2,320.91, DGII: no verificable, sin duplicados."},
+    {"fecha": "2026-08-03T04:18:30Z", "autor": "contable", "tipo": "progreso", "texto": "Los items leídos por el preparador NO cuadran con el total del documento (base items 4,807.88 vs base real 1,966.87). Diferencia 2,841.01 sin patrón conocido. Verifico DGII y busco precedente antes de preguntar el desglose correcto."},
+    {"fecha": "2026-08-03T04:26:20Z", "autor": "contable", "tipo": "progreso", "texto": "Clasificación: 620.07 Servicios de Limpieza (tintorería/dry-clean). Tipo gasto 606 = 02. Sin precedente — proveedor nuevo (no en 1050 históricas), razonado por naturaleza del servicio. Aritmética del documento cuadra: bruto 2,185.41 - descuento 10% (218.54) = base 1,966.87 + ITBIS 354.04 = 2,320.91."},
+    {"fecha": "2026-08-03T05:13:41Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por C.Araujo"},
+    {"fecha": "2026-08-03T05:16:07Z", "autor": "contable", "tipo": "nota", "texto": "El script de registro falló: proveedor RNC 130277682 no existe en ADM y DGII no devolvió la razón social. No invento nombres. El registro queda pendiente de ese dato."},
+    {"fecha": "2026-08-03T14:45:44Z", "autor": "usuario", "tipo": "nota", "texto": "C.Araujo pidió revisar el documento de nuevo"},
+    {"fecha": "2026-08-03T14:48:08Z", "autor": "contable", "tipo": "progreso", "texto": "Revisión: el padrón RNC resuelve lo que faltó — razón social oficial THE BIG APPLE CLEANERS S R L (RNC 130277682, ACTIVO). La propuesta ya estaba aprobada; el único bloqueo era el nombre del proveedor para crearlo en ADM. Procedo a registrar."},
+    {"fecha": "2026-08-03T14:49:44Z", "autor": "contable", "tipo": "nota", "texto": "Registrada en ADM como FP00001082. Proveedor THE BIG APPLE CLEANERS S R L creado (RNC 130277682, padrón DGII ACTIVO). Adjunto subido. Libro escrito. La razón social salió del padrón RNC — fue el único bloqueo del intento anterior."}
+  ],
+  "propuesta_final": {
+    "ncf": "E310000000469",
+    "rnc": "130277682",
+    "dgii": {"estado": "no verificable", "motivo": "La consulta de timbre e-CF en DGII responde No fue encontrada la factura (e-CF) — el código de seguridad de 6 caracteres no se lee con claridad en la foto (la visión lo leyó diferente en dos pasadas)."},
+    "fecha": "2026-07-21",
+    "itbis": 354.04,
+    "monto": 2320.91,
+    "lineas": [
+      {"itbis": 354.04, "cuenta": "620.07", "precio": 1966.87, "cantidad": 1, "descripcion": "Servicio Dry-Clean (11 prendas: 5 camisas, 1 jean, 3 camisetas, 2 pantalones)", "cuenta_nombre": "Servicios de Limpieza", "grupo_impuesto": "ITBIS"}
+    ],
+    "metodo": "razonado",
+    "moneda": "DOP",
+    "detalle": "Servicio de tintorería (dry-clean) de 11 prendas. Total Bruto 2,185.41 con descuento 10% (218.54), base gravada 1,966.87 + ITBIS 18% (354.04) = 2,320.91. Aritmética cuadra. Clasificado en 620.07 por naturaleza. Sin precedente: proveedor nuevo no presente en las 1,050 facturas históricas. Timbre DGII no verificable — no se confirma ni se niega la autenticidad del e-NCF.",
+    "confianza": 0.85,
+    "proveedor": "THE BIG APPLE CLEANERS S R L",
+    "rnc_padron": {"rnc": "130277682", "estado": "ENCONTRADO", "razon_social": "THE BIG APPLE CLEANERS S R L", "actividad_economica": "LAVADO Y LIMPIEZA DE ARTICULOS DE TELA, CUERO Y/O DE PIEL, INCLUSO LA LIMPIEZA EN SECO", "estado_contribuyente": "ACTIVO", "facturador_electronico": "SI"},
+    "tipo_gasto": {"codigo": "02", "nombre": "Gastos por Trabajos, Suministros y Servicios"},
+    "registro_adm": {"uuid": "64225058-fa65-4cd6-98a0-08def10be22b", "docid": "FP00001082", "fecha": "2026-08-03", "documento": "VendorBills", "reference": "E310000000469"},
+    "documento_adm": "VendorBills",
+    "precedente_ref": null
+  },
+  "desenlace_adm": "Registrada como FP00001082 en el segundo intento, con el proveedor creado desde la razón social del padrón DGII.",
+  "leccion": "El turno nuevo debe: (1) cuando los items extraídos no cuadran contra el total, reconstruir la aritmética desde el header del documento (bruto - descuento + ITBIS) en vez de confiar en los renglones de la visión; (2) clasificar proveedores nuevos por naturaleza del servicio, citando la actividad económica del padrón como sostén; (3) ante un dato faltante para registrar (razón social), NUNCA inventarlo — dejar el registro pendiente con el motivo exacto, y en el reintento agotar primero las fuentes oficiales (padrón); (4) separar 'propuesta aprobada' de 'registro completado': la aprobación sobrevive al fallo técnico del registro y el reintento no necesita re-aprobación."
+}

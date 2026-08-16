@@ -1,0 +1,27 @@
+{
+  "trabajo_id": "d658f02a-f6d7-4e7e-9ccd-2519f3c56aa0",
+  "rama": "correcciones",
+  "resumen_humano": "La propuesta hermana del Caso #1: el contable extendió a la transferencia de RD$90,000 de Formax el mismo tratamiento aprobado para la de RD$180,000 (BankCharges crédito a 220.06, 'ver Caso #1'). C.Araujo la RECHAZÓ y del rechazo salió la corrección del criterio C-002: un depósito de un cliente no es un crédito bancario (la contraparte es el inquilino, no el banco) y además esa transferencia YA estaba conciliada contra la factura FCC00000286 — era renta, no garantía. C-002 quedó reescrito: mientras el rol de ADM no habilite un documento de entrada de tercero, estas operaciones las registra un humano y el contable pregunta. El mejor ejemplo del histórico de un rechazo que legisla.",
+  "estado_final": "rechazada",
+  "aprobado_por": null,
+  "eventos": [
+    {"fecha": "2026-08-07T21:31:06Z", "autor": "contable", "tipo": "nota", "texto": "Rechazada por decisión de C.Araujo (2026-08-07). Un depósito de un cliente no es un crédito bancario: la contraparte es el inquilino, no el banco, así que BankCharges es el documento equivocado — queda archivado bajo Bancos → Cargos Bancarios, donde esa plata no es lo que el módulo dice que es. Además esta transferencia de RD$90,000 ya está conciliada contra la factura FCC00000286. C-002 quedó corregido: mientras el rol de ADM no habilite un documento de entrada de tercero, estas operaciones las registra un humano y el contable pregunta."}
+  ],
+  "propuesta_final": {
+    "monto": 90000,
+    "lineas": [
+      {"cuenta": "101.04", "debito": 90000, "credito": 0, "descripcion": "Deposito en garantia renta nave — Formax Corp (Caso #1)", "cuenta_nombre": "Banco Ingresos 801"},
+      {"cuenta": "220.06", "debito": 0, "credito": 90000, "descripcion": "Deposito en garantia renta nave — Formax Corp (Caso #1)", "cuenta_nombre": "Depositos en Garantia por Renta (Anticipo)"}
+    ],
+    "metodo": "razonado",
+    "moneda": "DOP",
+    "caso_id": "9fcee995-f136-4d1f-a149-2f814534912d",
+    "detalle": "Deposito en garantia de renta de nave industrial cobrado por adelantado. Mismo tratamiento que el deposito de RD$180,000: BankCharges credito, debito banco 101.04, credito pasivo 220.06. ITBIS incluido. Ver Caso #1.",
+    "confianza": 0.9,
+    "direccion": "credito",
+    "banco_tx_id": "4832a272-6a67-40cb-a914-295f59ebea00",
+    "documento_adm": "BankCharges"
+  },
+  "desenlace_adm": "Sin registro. El movimiento ya estaba conciliado contra FCC00000286 (era renta facturada, no garantía). El rechazo produjo la enmienda del criterio C-002.",
+  "leccion": "El turno nuevo debe: (1) NO extender por analogía el tratamiento de una transferencia a su hermana sin verificar primero la conciliación existente — un movimiento ya casado contra una factura no se re-registra; (2) 'mismo cliente, mismo día' no implica 'misma naturaleza' (una era garantía, la otra renta); (3) cuando el vehículo disponible desnaturaliza la operación (cobro de cliente archivado como cargo bancario), la salida ratificada es preguntar/derivar al humano, no forzar el documento — esa es la letra vigente de C-002; (4) un rechazo CON motivo se destila a criterio y se cita en adelante; contrastar con el rechazo mudo del anticipo ISR, del que no se aprende nada."
+}

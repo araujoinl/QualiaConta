@@ -1,0 +1,40 @@
+{
+  "trabajo_id": "c7f15266-10da-445a-a4a0-6ce697234680",
+  "rama": "facturas-dificiles",
+  "resumen_humano": "Factura mensual de Claro (CODETEL) con DOS trampas clásicas de telecom: el 'Total por Pagar' del PDF (RD$6,310.42) incluye RD$127.86 de arrastre de facturaciones anteriores que NO son de esta e-CF — el monto real de la factura es el 'Total del Mes' (RD$6,182.56); y el documento tiene dos fechas (encabezado 'Agosto 04, 2026' vs firma digital 31-07-2026). El contable propuso bien el desglose (620.05 Comunicación + CDT 2% a 690.05 + ISC 10% a 620.09, precedente de 19/21 facturas), fue aprobada y registrada como FP00001131 — pero el humano la ANULÓ 'por corrección de la información'. El contable formó una hipótesis verificable (la fecha) y preguntó en vez de re-registrar adivinando. Sigue esperando_respuesta: caso abierto con pregunta pendiente.",
+  "estado_final": "esperando_respuesta",
+  "aprobado_por": "C.Araujo (registro luego anulado por él mismo)",
+  "eventos": [
+    {"fecha": "2026-08-06T18:26:41Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. archivo pdf, e-NCF E310016169496, RD$6,310.42, DGII: no verificable, padrón RNC: COMPANIA DOMINICANA DE TELEFONOS S A, sin duplicados."},
+    {"fecha": "2026-08-06T18:29:35Z", "autor": "contable", "tipo": "progreso", "texto": "Factura de Claro por RD$6,182.56 — telefonía e internet de julio. El timbre electrónico no verificó todavía en DGII (la factura se firmó hace 6 días), pero el RNC confirma que es Claro. Preparo la propuesta repartiendo entre comunicaciones, el ISC y la contribución telefónica (CDT), igual que las 21 facturas anteriores de este proveedor."},
+    {"fecha": "2026-08-06T18:33:23Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por C.Araujo"},
+    {"fecha": "2026-08-06T18:46:53Z", "autor": "usuario", "tipo": "nota", "texto": "C.Araujo anuló FP00001131 en ADM Cloud — Corrección de la Información"},
+    {"fecha": "2026-08-06T18:51:57Z", "autor": "contable", "tipo": "pregunta", "texto": "Anulaste FP00001131 por corrección y necesito saber qué dato re-registrar distinto. Mi sospecha es la fecha: el PDF dice 'Fecha de Factura: Agosto 04, 2026' en el encabezado pero lo di de alta con la fecha de firma digital (31-07-2026). Si es eso, lo reregistro con fecha 2026-08-04 y lo demás queda igual. ¿Es la fecha, o era otra la corrección?"}
+  ],
+  "propuesta_final": {
+    "ncf": "E310016169496",
+    "rnc": "101001577",
+    "fecha": "2026-07-31",
+    "itbis": 856.04,
+    "monto": 6182.56,
+    "lineas": [
+      {"itbis": 384.94, "cuenta": "620.05", "precio": 2138.55, "cantidad": 1, "descripcion": "Renta Otros Servicios", "cuenta_nombre": "Comunicación", "grupo_impuesto": "ITBIS"},
+      {"itbis": 341.31, "cuenta": "620.05", "precio": 1896.15, "cantidad": 1, "descripcion": "Renta Servicios De Datos", "cuenta_nombre": "Comunicación", "grupo_impuesto": "ITBIS"},
+      {"itbis": 100.58, "cuenta": "620.05", "precio": 558.76, "cantidad": 1, "descripcion": "Renta Mensual", "cuenta_nombre": "Comunicación", "grupo_impuesto": "ITBIS"},
+      {"itbis": 29.22, "cuenta": "620.05", "precio": 162.35, "cantidad": 1, "descripcion": "Llamadas A Celulares", "cuenta_nombre": "Comunicación", "grupo_impuesto": "ITBIS"},
+      {"itbis": 0, "cuenta": "690.05", "precio": 95.11, "cantidad": 1, "descripcion": "CDT - 2%", "cuenta_nombre": "Otros Impuestos", "grupo_impuesto": "Exento"},
+      {"itbis": 0, "cuenta": "620.09", "precio": 475.6, "cantidad": 1, "descripcion": "ISC - 10%", "cuenta_nombre": "Gasto de Impuesto Selectivo al consumo", "grupo_impuesto": "Exento"}
+    ],
+    "metodo": "precedente",
+    "moneda": "DOP",
+    "detalle": "Factura mensual de telecomunicaciones de Claro (CODETEL). El Total por Pagar del documento (RD$6,310.42) incluye RD$127.86 de arrastre (atraso) de facturaciones anteriores que NO corresponden a esta factura electrónica — el monto de ESTA e-CF es el Total del Mes: RD$6,182.56. Renta y consumo a 620.05 Comunicación (19 de 21 facturas históricas); CDT 2% a 690.05 y ISC 10% a 620.09, igual que el histórico. ITBIS 18% sobre base gravada de RD$4,755.81 = 856.04, cuadra. El arrastre de RD$127.86 queda pendiente: si lo pagan, va como BillPayments que cancela el saldo, no como gasto nuevo.",
+    "confianza": 0.92,
+    "proveedor": "COMPANIA DOMINICANA DE TELEFONOS S A",
+    "tipo_gasto": {"codigo": "02", "nombre": "Gastos por Trabajos, Suministros y Servicios"},
+    "registro_adm": {"uuid": "370ef9af-2c18-40ec-9b9c-08def3a3c707", "docid": "FP00001131", "fecha": "2026-08-06", "documento": "VendorBills", "reference": "E310016169496", "anulado_en": "2026-08-06"},
+    "documento_adm": "VendorBills",
+    "precedente_ref": "agg:proveedor-cuentas.json#101001577"
+  },
+  "desenlace_adm": "FP00001131 registrada y ANULADA por el humano el mismo día ('Corrección de la Información'). El contable formuló su hipótesis (fecha del encabezado 04/08 vs fecha de firma 31/07) y dejó la pregunta abierta. Sin re-registro al corte del corpus.",
+  "leccion": "El turno nuevo debe: (1) en facturas de telecom, registrar el 'Total del Mes' de la e-CF, no el 'Total por Pagar' — el arrastre de saldos anteriores no es gasto de esta factura y, si se paga, entra como BillPayments; (2) conocer la ambigüedad fecha-encabezado vs fecha-firma del e-CF y declarar cuál usó; (3) ante una anulación con motivo genérico, formular UNA hipótesis verificable a partir del propio documento y preguntarla con la salida ya lista ('si es eso, lo reregistro con fecha X'), en vez de re-registrar adivinando o quedarse mudo; (4) distinguir el desglose fiscal de telecom: ITBIS solo sobre la base gravada, CDT e ISC como renglones exentos a sus cuentas propias."
+}

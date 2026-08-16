@@ -1,0 +1,35 @@
+{
+  "trabajo_id": "aba5087f-b43b-4144-84af-c1164146a161",
+  "rama": "correcciones",
+  "resumen_humano": "Autorización de Pago DGII por anticipo ISR de julio 2026 (RD$96,892.24). El contable la clasificó bien tipológicamente: no es factura, no lleva NCF, va como Journal activo 150.02 contra pasivo 210.11, citando el precedente ED00000165 de abril. El humano la RECHAZÓ sin dar motivo. La respuesta del contable es el patrón correcto ante un rechazo mudo: descarta, confirma que no registró nada, NO lo guarda como criterio, y pide el porqué para no volver a proponer igual. Única factura rechazada del histórico — el corpus la necesita para probar que el turno no inventa el motivo del rechazo.",
+  "estado_final": "rechazada",
+  "aprobado_por": null,
+  "eventos": [
+    {"fecha": "2026-08-10T15:32:59Z", "autor": "contable", "tipo": "progreso", "texto": "Preparador: documento listo. archivo pdf, RD$96,892.24, DGII: no verificable, padrón RNC: BLACKBOX SRL, duplicados no verificados."},
+    {"fecha": "2026-08-10T15:35:54Z", "autor": "contable", "tipo": "progreso", "texto": "Esto no es una factura de proveedor: es la Autorización de Pago que emite la DGII por el anticipo del ISR del período julio 2026, por RD$96,892.24. No trae NCF porque es una obligación tributaria, no una compra. Ya encontré cómo se registró igual en abril (asiento ED00000165): el anticipo va al activo (150.02 Anticipos ISR) y la obligación al pasivo (210.11 Anticipos ISR por Pagar). Te armo la propuesta con ese mismo criterio."},
+    {"fecha": "2026-08-10T15:37:08Z", "autor": "contable", "tipo": "progreso", "texto": "Propuesta lista: anticipo ISR julio como asiento de diario, igual que en abril. Débito 150.02, crédito 210.11. No toca caja, no lleva ITBIS, no va al 606."},
+    {"fecha": "2026-08-10T16:51:10Z", "autor": "usuario", "tipo": "nota", "texto": "Rechazada por C.Araujo"},
+    {"fecha": "2026-08-10T16:51:51Z", "autor": "contable", "tipo": "nota", "texto": "Entendido, Carlos: descarto la propuesta del anticipo ISR (RD$96,892.24) y no la registro en ADM. No queda nada en el libro ni en la contabilidad. Como no explicaste el motivo, no lo guardo como criterio; si me decís por qué la bajaste —fecha, cuentas, tratamiento— lo anoto para no volver a proponértelo así."}
+  ],
+  "propuesta_final": {
+    "ncf": null,
+    "rnc": "131188648",
+    "dgii": {"estado": "no verificable", "motivo": "sin NCF: es una Autorización de Pago de la DGII por anticipo ISR, no un comprobante fiscal. No se consulta el timbre ni el padrón del NCF."},
+    "fecha": "2026-04-29",
+    "itbis": 0,
+    "monto": 96892.24,
+    "lineas": [
+      {"cuenta": "150.02", "debito": 96892.24, "credito": 0, "descripcion": "Anticipo ISR período 202607 — Autorización DGII 26046062758-5", "cuenta_nombre": "Anticipos ISR"},
+      {"cuenta": "210.11", "debito": 0, "credito": 96892.24, "descripcion": "Anticipo ISR período 202607 — Autorización DGII 26046062758-5", "cuenta_nombre": "Anticipos ISR por Pagar"}
+    ],
+    "metodo": "precedente",
+    "moneda": "DOP",
+    "detalle": "Autorización de Pago DGII (formulario IR-14) por el anticipo del ISR de julio 2026. No trae NCF: es obligación tributaria propia, no compra — el RNC impreso es el de BlackBox como contribuyente. El anticipo no es gasto: va al activo (se descuenta del ISR anual) y la obligación al pasivo, igual que ED00000165 de abril (RD$1,162,706.82). Documento ADM: Journals — devengo puro sin movimiento de caja. Cuando se pague, el débito bancario será otro documento que salda 210.11. Sin ITBIS ni 606.",
+    "confianza": 0.95,
+    "proveedor": "DIRECCION GENERAL DE IMPUESTOS INTERNOS",
+    "documento_adm": "Journals",
+    "precedente_ref": "ED00000165 (asiento de diario 2026-04-29, P/R Anticipos del periodo 2026-2027)"
+  },
+  "desenlace_adm": "Sin registro: rechazada por el humano sin motivo declarado. No se escribió libro ni criterio.",
+  "leccion": "El turno nuevo debe: (1) ante 'Rechazada' sin motivo: descartar la propuesta, confirmar explícitamente que nada quedó registrado ni en el libro, NO derivar criterio del rechazo, y pedir el motivo con opciones concretas (fecha, cuentas, tratamiento); (2) jamás re-proponer lo mismo sin nueva información; (3) el resto del razonamiento (documento tributario sin NCF → Journal activo/pasivo, no gasto, no 606) sigue siendo la clasificación tipológica correcta y debe reproducirse — lo que falló acá no fue la contabilidad sino algo que el humano no explicó; el turno no debe 'aprender' de un rechazo mudo."
+}

@@ -1,0 +1,37 @@
+{
+  "trabajo_id": "10926b4a-3237-4e87-9170-4ade92626788",
+  "rama": "criterios",
+  "resumen_humano": "Movimiento bancario 'AHORRO POR COMPRA' de RD$70.84 en la Visa 1877: un cashback de tarjeta de crédito, sin NCF, sin precedente en histórico ni memoria. El humano pidió registrarlo como ingreso; el contable razonó el asiento desde cero: débito 203.10 (reduce el pasivo de la tarjeta) contra crédito 701.01 Ingresos Menores, por Journals — no toca cuenta de banco, así que el candado de caja no aplica. Confianza honesta de 0.70 por ser razonado puro. Se registró como ED00000183 con Reference=banco_tx_id verificado por readback y quedó el criterio en el libro. Nota del desenlace: el documento fue luego eliminado de ADM por el humano (la lápida lo detectó), pero el criterio contable del libro quedó vigente.",
+  "estado_final": "registrada (el documento ADM fue eliminado después; ver desenlace_adm)",
+  "aprobado_por": "C.Araujo (aprobación en lote)",
+  "criterio_ratificado": "Cashback/reembolso de tarjeta de crédito (sin NCF): Journal de partida doble — débito a la cuenta pasivo de la tarjeta (203.x), crédito a 701.01 Ingresos Menores (ingreso no operacional). Sin ITBIS, no va al 606. Registrado en qualia_libro id 138, metodo 'razonado', aprobado C.Araujo.",
+  "eventos": [
+    {"fecha": "2026-08-04T09:03:57Z", "autor": "usuario", "tipo": "nota", "texto": "C.Araujo pidió registrar este movimiento del banco (ingreso)."},
+    {"fecha": "2026-08-04T09:04:46Z", "autor": "contable", "tipo": "progreso", "texto": "Sugerencia de ingreso (cashback Visa 1877). Sin precedente. Clasifico: débito 203.10 Tarjeta Corporativa 877, crédito 701.01 Ingresos Menores. Asiento Journals, sin NCF ni ITBIS."},
+    {"fecha": "2026-08-05T03:16:36Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por C.Araujo (aprobación en lote)"},
+    {"fecha": "2026-08-05T03:18:44Z", "autor": "contable", "tipo": "progreso", "texto": "Registro pendiente: Journals sin registro automático. No hay gemelo en ADM (186 journals revisados, ninguno con AHORRO POR COMPRA ni banco_tx_id 6126ab5e). Cuentas localizadas: 203.10 y 701.01. Procedo a registrar el asiento con Reference=banco_tx_id."},
+    {"fecha": "2026-08-05T03:19:11Z", "autor": "contable", "tipo": "nota", "texto": "Registrado en ADM: ED00000183 (Journals). Reference=banco_tx_id poblado y confirmado en readback. Libro de acción escrito. Estado: registrada."},
+    {"fecha": "2026-08-05T05:18:14Z", "autor": "contable", "tipo": "nota", "texto": "El documento ED00000183 ya no existe en ADM Cloud: fue eliminado. El trabajo queda sin registro."}
+  ],
+  "propuesta_final": {
+    "banco": "santacruz",
+    "fecha": "2026-08-01",
+    "monto": 70.84,
+    "accion": "registrar_ingreso",
+    "lineas": [
+      {"cuenta": "203.10", "debito": 70.84, "credito": 0, "descripcion": "AHORRO POR COMPRA — cashback Visa 1877", "cuenta_nombre": "Tarjeta Corporativa 877"},
+      {"cuenta": "701.01", "debito": 0, "credito": 70.84, "descripcion": "AHORRO POR COMPRA — cashback Visa 1877", "cuenta_nombre": "Ingresos Menores"}
+    ],
+    "metodo": "razonado",
+    "moneda": "DOP",
+    "detalle": "Cashback/reembolso de tarjeta de crédito (concepto AHORRO POR COMPRA). Sin precedente en histórico ni memoria. Asiento Journals de partida doble: débito a 203.10 (reduce el saldo del pasivo de la tarjeta) y crédito a 701.01 Ingresos Menores (ingreso no operacional). No hay NCF ni ITBIS. Método razonado por naturaleza del movimiento.",
+    "confianza": 0.7,
+    "direccion": "credito",
+    "banco_tx_id": "6126ab5e-a335-4ce1-9a86-fef13eb81eeb",
+    "cuenta_banco": "Visa 1877 RD$",
+    "registro_adm": {"uuid": "d02286de-cce2-44bb-3b06-08def10be22c", "docid": "ED00000183", "fecha": "2026-08-05", "documento": "Journals", "reference": "6126ab5e-a335-4ce1-9a86-fef13eb81eeb", "eliminado_en": "2026-08-05"},
+    "documento_adm": "Journals"
+  },
+  "desenlace_adm": "ED00000183 registrado con readback verificado y luego ELIMINADO de ADM por el humano (detectado por el barrido de lápidas dos horas después). El criterio del libro (qualia_libro id 138) quedó escrito y aprobado. El estado de la fila quedó 'registrada' — leer los eventos, no solo el estado.",
+  "leccion": "El turno nuevo debe: (1) resolver un movimiento sin precedente razonando la partida doble desde la naturaleza (cashback = menos deuda de tarjeta + ingreso no operacional), con confianza honesta ≤0.70; (2) elegir Journals sólo cuando NO toca cuenta de banco (la tarjeta es pasivo 203.x, el candado de caja no aplica); (3) antes de registrar un Journal, buscar gemelos por concepto y banco_tx_id, y poblar Reference=banco_tx_id con readback de confirmación; (4) asumir que ADM puede cambiar después del registro: la verdad final la dan las lápidas (verificar-registros), y un documento eliminado NO invalida el criterio contable ratificado en el libro."
+}

@@ -1,0 +1,34 @@
+{
+  "trabajo_id": "a9792d1d-da39-468b-b51d-1318f0528688",
+  "rama": "criterios",
+  "resumen_humano": "El desenlace del Caso #4 convertido en criterio: la compra de los locales J-11 y J-12 (RD$3,450,000) se re-registró como Journal ED00000184 en aplicación del dictamen C-007 — un inmueble se transfiere por acto de venta notarial, sin NCF ni ITBIS, y una VendorBills con RNC entraría al 606 por construcción, así que reemplaza a las FP00001152/FP00001153 anuladas. En el registro apareció y se resolvió una regla operativa de ADM que quedó ratificada: la cuenta 201 es AGRUPADORA y ADM no acepta afectarla directo — la deuda va a su subcuenta hoja 'Cuentas por Pagar Proveedores DOP'. El libro cita explícitamente C-007 como precedente_ref (qualia_libro id 277).",
+  "estado_final": "registrada",
+  "aprobado_por": "C.Araujo",
+  "criterio_ratificado": "C-007: compra de inmueble → Journal (acto notarial, sin NCF, sin ITBIS, no entra al 606), nunca VendorBills. Y regla ADM asociada: una cuenta de grupo (201) no se afecta directo — el asiento va a la subcuenta hoja. Registrado en qualia_libro id 277, metodo 'razonado', precedente_ref 'C-007'.",
+  "eventos": [
+    {"fecha": "2026-08-15T15:13:08Z", "autor": "usuario", "tipo": "nota", "texto": "Aprobada por C.Araujo"},
+    {"fecha": "2026-08-15T15:14:39Z", "autor": "contable", "tipo": "progreso", "texto": "Retomo la compra de los locales J-11 y J-12: quedó aprobada pero sin registro en ADM. Voy a crear la entrada de diario que pone los dos locales como propiedad y anota la deuda con el vendedor."},
+    {"fecha": "2026-08-15T15:17:49Z", "autor": "contable", "tipo": "progreso", "texto": "ADM no acepta anotar la deuda en la cuenta 201 directa: es una cuenta agrupadora y sólo recibe el total de sus subcuentas. La paso a su subcuenta hoja «Cuentas por Pagar Proveedores DOP», que es donde vive la deuda con proveedores; mismo monto y mismo concepto."},
+    {"fecha": "2026-08-15T15:19:33Z", "autor": "contable", "tipo": "nota", "texto": "Listo: la compra quedó registrada en ADM como entrada de diario ED00000184 — los dos locales como propiedad (RD$1,725,000 cada uno en sus cuentas de activo) y la deuda de RD$3,450,000 con el vendedor anotada. Detalle técnico: ADM no deja anotar la deuda directo en la 201 porque es agrupadora; usé su subcuenta. Sin factura ni reporte 606, como dictaminaron los contables."}
+  ],
+  "propuesta_final": {
+    "fecha": "2026-08-10",
+    "monto": 3450000.0,
+    "lineas": [
+      {"cuenta": "160.10", "debito": 1725000.0, "credito": 0, "descripcion": "Compra local comercial J-11, Plaza Paraiso del Mar", "cuenta_nombre": "Local Comercial J-11 - Plaza Paraiso del Mar"},
+      {"cuenta": "160.11", "debito": 1725000.0, "credito": 0, "descripcion": "Compra local comercial J-12, Plaza Paraiso del Mar", "cuenta_nombre": "Local Comercial J-12 - Plaza Paraiso del Mar"},
+      {"cuenta": "201", "debito": 0, "credito": 3450000.0, "cuenta_id": "66ee942e-b217-44ca-adc1-08dd30bcedb8", "descripcion": "Compra de los locales J-11 y J-12 a Nercido Melanio Vargas", "cuenta_nombre": "Cuentas por Pagar Proveedores DOP"}
+    ],
+    "metodo": "razonado",
+    "moneda": "DOP",
+    "caso_id": "0974746e-d12f-44a3-b9e6-08a59344464e",
+    "detalle": "Registro en ADM una Entrada de diario que pone los dos locales J-11 y J-12 como propiedad de la empresa, RD$1,725,000 cada uno, y deja anotada la deuda de RD$3,450,000 con el vendedor. No toca el banco, y no entra al reporte 606: la compra de un inmueble se hace por acto notarial, no por factura. Sostén: criterio C-007, dictamen de los contables — un inmueble se transfiere por acto de venta notarial, sin NCF ni ITBIS, y una VendorBills con RNC entra al 606 por construcción. Reemplaza a FP00001152/FP00001153, anuladas el 2026-08-15. Un solo documento porque es un solo acto de venta; cada local a su cuenta (160.10/160.11) contra 201. No toca caja: el candado journal_no_toca_caja no aplica. Ref PPDM-J11-J12. Caso #4.",
+    "confianza": 0.95,
+    "proveedor": "NERCIDO MELANIO VARGAS",
+    "registro_adm": {"uuid": "191935f1-e6bb-4bb9-06ca-08def8e89c1f", "docid": "ED00000184", "fecha": "2026-08-15", "documento": "Journals", "reference": "PPDM-J11-J12"},
+    "documento_adm": "Journals",
+    "nro_referencia": "PPDM-J11-J12"
+  },
+  "desenlace_adm": "Journal ED00000184 registrado (ref PPDM-J11-J12): 1,725,000 a 160.10 + 1,725,000 a 160.11 contra 3,450,000 en la hoja de la 201. Reemplazó a las VendorBills anuladas del Caso #4. Libro con precedente_ref C-007.",
+  "leccion": "El turno nuevo debe: (1) aplicar C-007 a toda compra de inmueble: Journal por acto notarial, sin NCF/ITBIS/606 — la elección del tipo de documento ES la decisión contable, no un detalle; (2) un solo acto de venta = un solo Journal, con cada activo en su propia cuenta para preservar el costo individual; (3) conocer la regla de cuentas agrupadoras de ADM: si el POST rechaza la cuenta de grupo, mover el renglón a la subcuenta hoja con el mismo monto y concepto, y DOCUMENTAR el cambio; (4) verificar que el candado journal_no_toca_caja no aplica (la contrapartida es CxP, no banco) y decirlo; (5) citar el criterio con su código (C-007) en el libro para que sea recuperable como precedente."
+}

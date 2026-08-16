@@ -1,0 +1,30 @@
+{
+  "trabajo_id": "682cb131-0f2c-4054-b820-f9cd4291717b",
+  "rama": "casos",
+  "resumen_humano": "Caso #3 · Transferencia recibida de Vargas Nercido Melanio, RD$34,000, que el humano identifica como dos depósitos de garantía de renta del Local J12-A. El contable la asienta como BankCharges en crédito (banco 101.04 contra pasivo 220.06) y el humano aprueba — pero DESPUÉS del cierre el propio contable marca que ese registro viola el C-002 corregido tras el rechazo de Formax-90k: cuando Journals está bloqueado por el candado de caja, la salida es abrir pregunta, no re-etiquetar como BankCharges en crédito. Es un buen caso porque el desenlace 'aprobado' convive con una auto-objeción de doctrina documentada en el mismo hilo.",
+  "estado_final": "aprobada",
+  "aprobado_por": "C.Araujo",
+  "eventos": [
+    {"fecha": "2026-08-11T06:31:42Z", "autor": "usuario", "tipo": "respuesta", "texto": "pago de dos depositos garantia renta Local J12-A"},
+    {"fecha": "2026-08-11T06:37:49Z", "autor": "contable", "tipo": "progreso", "texto": "Abrí el trabajo: depósito en garantía de RD$34,000 al pasivo 220.06."},
+    {"fecha": "2026-08-11T06:38:01Z", "autor": "contable", "tipo": "nota", "texto": "Entendido: la transferencia de RD$34,000 de Vargas Nercido Melanio son dos depósitos en garantía de renta del Local J12-A. No es ingreso — es plata ajena que se queda en pasivo hasta el desalojo o hasta que se aplique a renta/daños. Entrada al banco (101.04 Banco Ingresos 801) contra el pasivo de garantías (220.06). Va como BankCharges en crédito porque el movimiento nació en el banco y un cobro de tercero no entra por Journals (bloqueado por el candado de caja). El paso está abierto como propuesta."},
+    {"fecha": "2026-08-11T15:29:35Z", "autor": "usuario", "tipo": "nota", "texto": "Caso cerrado por C.Araujo: listo"},
+    {"fecha": "2026-08-11T15:34:08Z", "autor": "contable", "tipo": "nota", "texto": "Carlos, el caso quedó cerrado y el CB00000274 ya está en ADM. Pero tengo que marcarte algo antes de darlo por terminado: el depósito de Vargas se registró como BankCharges en crédito, y eso es justo lo que tu criterio C-002 prohíbe. Es el mismo patrón del CB00000258 de Formax — la garantía de un inquilino no es un crédito bancario, porque la contraparte es el cliente y no el banco. Cuando Journals está bloqueado por el candado de caja, C-002 dice que la salida es abrir pregunta, no re-etiquetar como BankCharges en crédito. El asiento contable está bien (débito 101.04, crédito 220.06)."}
+  ],
+  "propuesta_final": {
+    "filas": [
+      {
+        "foto": {"tipo": "externa", "fecha": "2026-08-10", "monto": 34000, "cuenta": "Ingresos", "estado": "Sin registro en ADM", "moneda": "DOP", "movimiento": "ingreso", "referencia": "15591445", "descripcion": "Transferencia Recibida de: TRANSFERENCIA RECIBIDA DE VARGAS NERCIDO MELANIO"},
+        "clave": "banco:f801721a-3a6a-43d3-8dbf-10ae54fe93c4",
+        "tx_id": "f801721a-3a6a-43d3-8dbf-10ae54fe93c4",
+        "origen": "banco",
+        "resumen": "10/08/26 · RD$34,000.00 · Transferencia Recibida de: TRANSFERENCIA RECIBIDA DE VARGAS NERCIDO MELANIO"
+      }
+    ],
+    "numero": 3,
+    "cerrado": {"en": "2026-08-11T15:29:35.039Z", "por": "C.Araujo", "nota": "listo"},
+    "mandado_en": "2026-08-11T06:31:42.529Z"
+  },
+  "desenlace_adm": "BankCharges CB00000274 registrado (débito 101.04, crédito 220.06). Libro razonado del 2026-08-11. La objeción C-002 quedó anotada en el hilo pero el documento se mantuvo.",
+  "leccion": "El turno nuevo debe: (1) consultar los criterios VIGENTES (con sus enmiendas — C-002 ya había sido corregido el 2026-08-07) ANTES de proponer, no descubrir el conflicto después del registro; (2) si el criterio prohíbe el vehículo disponible (BankCharges crédito para plata de un cliente) y el candado bloquea el correcto (Journals con banco), la salida es preguntar al humano ANTES de proponer; (3) si aun así detecta post-cierre una contradicción con doctrina, decirla con nombre de criterio y precedente, como hizo acá — la transparencia tardía es mejor que el silencio, pero la meta es la detección temprana."
+}

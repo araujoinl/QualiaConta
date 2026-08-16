@@ -1,0 +1,37 @@
+{
+  "trabajo_id": "8b04d475-761f-424c-be2b-688bc5aba619",
+  "rama": "casos",
+  "resumen_humano": "Caso #2 · Mtk Designs Srl. Un cliente pagó RD$7,552 por error el 31/07 y la empresa se los devolvió el 03/08; el banco tiene los dos movimientos y ADM ninguno, por eso la conciliación no cerraba. El contable propone DOS registros simétricos: entrada como pasivo a favor del cliente (220.06, no ingreso porque no se le vendió nada) y salida que cancela ese pasivo. Es el caso que dejó la lápida de protocolo: cada paso del caso es un TRABAJO aprobable, ninguno queda en prosa.",
+  "estado_final": "aprobada",
+  "aprobado_por": "C.Araujo",
+  "eventos": [
+    {"fecha": "2026-08-07T23:12:51Z", "autor": "usuario", "tipo": "respuesta", "texto": "Este cliente nos pagó por error y le devolvimos el dinero. Tenemos que hacer los ajustes para que se haga la conciliación y salga en sistema."},
+    {"fecha": "2026-08-07T23:27:01Z", "autor": "contable", "tipo": "progreso", "texto": "Analizado. Mtk Designs pagó RD$7,552 por error el 31/07 y se los devolvimos el 03/08. Ninguno de los dos movimientos está en ADM, por eso la conciliación no cierra. Voy a proponer los dos registros que reflejan la entrada y la salida."},
+    {"fecha": "2026-08-07T23:28:02Z", "autor": "contable", "tipo": "nota", "texto": "Te abrí dos pasos: 1) Reconocimiento del pago en error (31/07): entra al banco y se anota como pasivo a favor de Mtk Designs en la cuenta 220.06 — no es ingreso, porque no corresponde a nada que le hayamos vendido. 2) Devolución del pago por error (03/08): sale del banco y cancela ese mismo pasivo. Los dos van como BankCharges (crédito el primero porque entra plata...)."},
+    {"fecha": "2026-08-07T23:47:08Z", "autor": "usuario", "tipo": "nota", "texto": "Caso cerrado por C.Araujo: entrada y salida del pago por error"},
+    {"fecha": "2026-08-07T23:48:34Z", "autor": "contable", "tipo": "nota", "texto": "Caso cerrado, todo completo. Los dos movimientos están registrados en ADM — CB00000259 (entrada del 31/07) y CB00000260 (salida del 03/08) — y ambos tienen su entrada de libro escrita. La conciliación va a mostrar los RD$7,552 entrando y saliendo igual en el banco y en sistema."}
+  ],
+  "propuesta_final": {
+    "filas": [
+      {
+        "foto": {"tipo": "externa", "fecha": "2026-07-31", "monto": 7552, "cuenta": "Ingresos", "estado": "Devuelta 03/08/26", "moneda": "DOP", "movimiento": "ingreso", "referencia": "16029579", "descripcion": "Por Transferencia Ach-Ach Recibida: Mtk Designs Srl - Cot 900"},
+        "clave": "banco:e4f4a0ac-e708-4553-91dd-e5d06392753d",
+        "tx_id": "e4f4a0ac-e708-4553-91dd-e5d06392753d",
+        "origen": "banco",
+        "resumen": "31/07/26 · RD$7,552.00 · Por Transferencia Ach-Ach Recibida: Mtk Designs Srl - Cot 900"
+      },
+      {
+        "foto": {"tipo": "externa", "fecha": "2026-08-03", "monto": -7552, "cuenta": "Ingresos", "estado": "Devuelta 31/07/26", "moneda": "DOP", "movimiento": "egreso", "referencia": "15799605", "descripcion": "Por Transferencia Ach"},
+        "clave": "banco:ddd5dc02-f0d1-42fd-8b16-6e5b16f49b31",
+        "tx_id": "ddd5dc02-f0d1-42fd-8b16-6e5b16f49b31",
+        "origen": "banco",
+        "resumen": "03/08/26 · RD$-7,552.00 · Por Transferencia Ach"
+      }
+    ],
+    "numero": 2,
+    "cerrado": {"en": "2026-08-07T23:47:07.305Z", "por": "C.Araujo", "nota": "entrada y salida del pago por error"},
+    "mandado_en": "2026-08-07T23:12:51.504Z"
+  },
+  "desenlace_adm": "Dos BankCharges simétricos: CB00000259 (entrada 31/07, crédito) y CB00000260 (salida 03/08, débito), ambos con entrada de libro (metodo razonado, aprobado C.Araujo).",
+  "leccion": "El turno nuevo debe: (1) reconocer que un caso con dos movimientos bancarios espejo produce DOS trabajos hijos, cada uno con su botón de aprobación (tool abrir_trabajo) — esta es la lápida del Caso #2: ningún paso queda en prosa; (2) clasificar un cobro que no corresponde a una venta como pasivo (220.06), jamás como ingreso; (3) al cerrar, verificar que ambos documentos existen en ADM y reportar los DocID; (4) explicar el porqué en lenguaje llano al humano (el usuario no era contable)."
+}
