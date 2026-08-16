@@ -246,6 +246,15 @@ poke() {
   # payload IDÉNTICO colapsan en uno solo. Un re-aviso del mismo trabajo con el
   # mismo motivo se perdería en silencio, que es justo lo contrario de lo que un
   # reintento tiene que hacer. Variando el payload el aviso siempre entra.
+  # Con la nube dueña del análisis, el webhook local no existe (Hermes apagado)
+  # y avisarle sería escribir a un buzón muerto. Quién cubre cada motivo allá:
+  #   trabajo_nuevo     → el trigger de INSERT sobre qualia_trabajos
+  #   accion_usuario    → el trigger de eventos del humano
+  #   registro_pendiente/escribir_libro → los rescates 3 y 4 de qualia-barrido
+  if [ "${nube_analiza:-0}" = "1" ]; then
+    log "no aviso ($2 $1): el análisis lo maneja la nube"
+    return 0
+  fi
   local cuerpo="{\"trabajo_id\":\"$1\",\"motivo\":\"$2\"}"
   [ -n "${3:-}" ] && cuerpo="{\"trabajo_id\":\"$1\",\"motivo\":\"$2\",\"intento\":\"$3\"}"
   if curl -s -m 15 -X POST "$WEBHOOK" \
@@ -568,7 +577,28 @@ while [ "$corriendo" -eq 1 ]; do
     fi
   fi
 
-  # 1) trabajos nuevos
+    # ── ¿Quién es dueño del ANÁLISIS? ────────────────────────────────────────
+  #
+  # Desde la mudanza a la nube (2026-08-16) el análisis diario puede vivir allá.
+  # El claim tiene que tener UN SOLO dueño: si los dos reclaman, uno gana, el
+  # otro se queda mudo y el trabajo cuelga en 'analizando' hasta que un barrido
+  # lo suelte. Se lee de la vista qualia_modos (solo claves de modo; el bearer
+  # de los crons NO pasa por ahí).
+  #
+  # Cuando la nube es dueña, este poller NO reclama ni despierta a nadie para
+  # analizar — pero sigue haciendo lo suyo: registrar en ADM lo ya aprobado y
+  # sus barridos de rescate. Eso muere en F4, no acá.
+  nube_analiza=$(sql "select case when coalesce((select valor->>'modo' from qualia_modos where clave='modo:qualia-preparador' and empresa_id='$QUALIA_EMPRESA_ID'), (select valor->>'modo' from qualia_modos where clave='modo:qualia-preparador' and empresa_id is null), 'server') = 'nube' then 1 else 0 end")
+  if [ "${nube_analiza:-0}" = "1" ]; then
+    if [ "${aviso_nube:-0}" -eq 0 ]; then
+      log "el análisis lo maneja la nube: no reclamo ni despierto al contable (sigo registrando y barriendo)"
+      aviso_nube=1
+    fi
+  else
+    aviso_nube=0
+  fi
+
+# 1) trabajos nuevos
   #
   # CONTRAPRESIÓN antes de avisar. Cada aviso abre una sesión LLM en Hermes y
   # del otro lado no hay tope: subiendo varios documentos seguidos terminabas
@@ -607,6 +637,7 @@ while [ "$corriendo" -eq 1 ]; do
   # "sigue pendiente y el gateway estaba caído cuando avisé".
   while IFS='|' read -r id upd; do
     [ -z "$id" ] && continue
+    [ "${nube_analiza:-0}" = "1" ] && continue   # la nube es dueña del análisis
     (( cupo <= 0 )) && continue    # sin cupo: queda pendiente, lo toma el re-aviso
     ahora=$(date +%s)
     # Ya se lo despertó recién por su evento de usuario (bloque 2): no otra vez.
