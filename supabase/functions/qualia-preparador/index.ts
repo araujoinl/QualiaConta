@@ -53,7 +53,8 @@ import { BUCKET_CACHE, buscarDuplicados, gcCache, rutaCache } from './dedup.ts';
  *     esa visión la hacía el agente en sesión (§4.4 del plan).
  *   - La visión sale por _shared/llm.ts (cadena z.AI→OpenRouter, freno de
  *     cuota, registro en qualia_llm_uso) — nunca fetch directo.
- *   - HEIC no se convierte (no hay decodificador razonable en Deno): degrada a
+ *   - HEIC se convierte con el TRANSFORMADOR de Storage (no hay decodificador
+ *     razonable en Deno); si esa vía falla, degrada a
  *     metodo='ninguno' con nota, que era el mismo degradado del fuente cuando
  *     la conversión fallaba.
  *
@@ -301,6 +302,42 @@ async function rncEmpresa(ctx: Ctx): Promise<string> {
   return /^\d{9}$|^\d{11}$/.test(rnc) ? rnc : '';
 }
 
+/**
+ * HEIC → JPEG por el transformador de imágenes de Storage (`render/image`).
+ * Es la única vía que entra en los límites del worker: la conversión ocurre
+ * del lado de Storage y acá solo llega el JPEG ya hecho. `width` acota el
+ * tamaño para no pasarse del tope de visión.
+ */
+async function heicAJpeg(ctx: Ctx): Promise<Uint8Array | null> {
+  const path = ctx.fila.archivo_path;
+  if (!path) return null;
+  const base = Deno.env.get('SUPABASE_URL') ?? '';
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  if (!base || !key) return null;
+  const url = `${base}/storage/v1/render/image/authenticated/${BUCKET_DOCS}/${
+    path.split('/').map(encodeURIComponent).join('/')
+  }?width=1800&quality=82`;
+  try {
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!r.ok) {
+      ctx.log(`transformador de Storage: HTTP ${r.status}`);
+      await r.body?.cancel();
+      return null;
+    }
+    const buf = new Uint8Array(await r.arrayBuffer());
+    // Sello JPEG: si el transformador devolvió otra cosa, mejor degradar.
+    if (buf.length < 1000 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+    ctx.log(`HEIC convertido por Storage (${Math.floor(buf.length / 1024)} KB)`);
+    return buf;
+  } catch (e) {
+    ctx.log(`transformador de Storage fallo: ${e instanceof Error ? e.name : 'error'}`);
+    return null;
+  }
+}
+
 // ─────────────────────────── poke al proponedor ──────────────────────────────
 
 /**
@@ -502,10 +539,19 @@ async function preparar(ctx: Ctx): Promise<void> {
     }
     case 'imagen': {
       if (esHeic) {
-        // Sin decodificador HEIC en la nube: mismo degradado que el fuente
-        // cuando la conversión fallaba.
-        anotar('conversion HEIC no disponible en la nube; sin vision en el prep');
-        extr = fragNinguno('HEIC sin convertir; el agente convierte y decide');
+        // HEIC (fotos de iPhone, 1 de cada 3 documentos): ni el decodificador
+        // WASM entra en el límite de cómputo ni z.AI acepta el formato crudo
+        // (medido 2026-08-16: WORKER_RESOURCE_LIMIT y error 1210). Lo resuelve
+        // el TRANSFORMADOR de Storage, que sirve el mismo objeto ya convertido
+        // a JPEG — misma nube, sin pasar por el navegador ni por el server.
+        const jpeg = await heicAJpeg(ctx);
+        if (!jpeg) {
+          anotar('HEIC: la conversion del transformador de Storage fallo; sin vision en el prep');
+          extr = fragNinguno('HEIC sin convertir; el turno decide con el documento a la vista');
+          break;
+        }
+        await insertarEvento(ctx, 'progreso', '⚙️ Preparador: leyendo la foto…');
+        extr = await visionSobre(`data:image/jpeg;base64,${aBase64(jpeg)}`, { convertido_de_heic: true });
         break;
       }
       if (bytes.length > MAX_BYTES_VISION) {
@@ -751,7 +797,7 @@ async function preparar(ctx: Ctx): Promise<void> {
       bytes: bytes.length,
       sha256: sha,
       tipo,
-      convertido_de_heic: false,
+      convertido_de_heic: esHeic && extr.metodo !== 'ninguno',
     },
     extraccion: extr,
     dgii,

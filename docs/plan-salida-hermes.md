@@ -663,14 +663,16 @@ ninguna de las tres la habría encontrado una revisión de código:
    Corregido: el poke lleva un **sello de frescura** (`dossier_en`) y el
    proponedor reintenta con backoff hasta ver esa versión; el cache del dossier
    va con `cacheControl: '0'`.
-3. **HEIC no se puede leer en la nube — regresión real contra el server.** Las
-   fotos de iPhone son 4 de 12 del lote. Medido hoy: el decodificador WASM
-   revienta el límite de cómputo (`WORKER_RESOURCE_LIMIT`) y z.AI rechaza el
-   formato crudo (error 1210). El server las convertía con pillow-heif. La
-   degradación es limpia (va al turno con el motivo escrito), pero **es
-   bloqueante del cutover de F2**: se cierra convirtiendo HEIC→JPEG en el
-   navegador al subir (trabajo en la web de Labs_Inv, mismo lugar donde el plan
-   ya proponía rasterizar) o con un puente temporal en el server.
+3. **HEIC (fotos de iPhone, 4 de 12 del lote) — detectado y RESUELTO el mismo
+   día.** Primero se midió el callejón: el decodificador WASM revienta el
+   límite de cómputo (`WORKER_RESOURCE_LIMIT`) y z.AI rechaza el formato crudo
+   (error 1210) — o sea, ni convertir en la function ni mandarlo tal cual. La
+   salida NO fue el navegador ni un puente en el server: **el transformador de
+   imágenes que Storage ya trae** (`render/image`) sirve el mismo objeto
+   convertido a JPEG, del lado del servidor de Storage, y la function solo
+   recibe el resultado. Verificado sobre las 4 facturas HEIC del lote: NCF y
+   montos **idénticos al server**, cero errores de prep. Queda como la vía
+   oficial (`heicAJpeg` en el preparador) con degradación limpia si falla.
 
 Lo que el backtest CONFIRMÓ que funciona, punta a punta: PDF con capa de texto
 (extracción, QR del e-CF, DGII), visión sobre fotos jpg/png, el dedup contra la
