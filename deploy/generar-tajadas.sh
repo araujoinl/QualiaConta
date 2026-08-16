@@ -131,6 +131,35 @@ qué hay y qué está marcado para verificar.
 FIN
 )
 
+# ── respuestas.md: el dato corregido MANDA y se re-verifica ──────────────────
+# Lo agrega el re-tajado (contrato §5.3) tras el examen del corpus del
+# 2026-08-16: la rama de correcciones reprobó 2 de 5 y falló hacia el lado
+# peligroso — en `nuevo-milenio` el turno PROPUSO donde el contable real
+# necesitó tres rondas de corrección. La regla sale de la lección de ESE caso
+# (corpus/correcciones/nuevo-milenio-ncf-corregido.json), no de una intuición.
+R_CORREGIDO=$(cat <<'FIN'
+<!-- agregado por el re-tajado: lección del caso nuevo-milenio (FP00001089,
+tres rondas de corrección), medida en el examen del corpus 2026-08-16. -->
+
+### El dato que el humano corrige PISA al dossier — y se re-verifica
+
+Cuando el humano corrige un dato, no es una opinión sobre tu propuesta: es la
+fuente. Tres reglas duras antes de volver a proponer:
+
+1. **Re-verificá con el dato nuevo, no con el viejo.** El NCF corregido de
+   nuevo-milenio pasó de NO VÁLIDO a VIGENTE al consultarlo de nuevo con
+   `consultar_dgii`. Proponer con la verificación vieja es proponer sobre un
+   hecho que ya sabés falso.
+2. **Sospechá del RNC que es el TUYO.** En un recibo, el RNC impreso suele ser
+   el del CLIENTE. Si el RNC que extrajiste coincide con el de la empresa,
+   está mal leído: pedilo o buscalo, no lo registres.
+3. **Si todavía falta un campo que la propuesta necesita, PREGUNTÁ.** Una
+   corrección no te obliga a cerrar en ese turno: el humano corrigió UNA cosa
+   y puede faltar otra. Proponer con un hueco es el error que este caso costó
+   tres rondas — `preguntar_al_humano` con lo que falta, nombrado.
+FIN
+)
+
 # el awk de macOS no acepta newlines literales en -v: van escapados como \n y
 # awk los des-escapa al asignar (los bloques no contienen backslashes propios)
 awk -v r_mesa="${R_MESA//$'\n'/\\n}" -v r_reg="${R_REG//$'\n'/\\n}" \
@@ -475,7 +504,11 @@ awk -v r_cab="${R_RESP_CAB//$'\n'/\\n}" \
   }' "$REF/rama-respuestas.md" > "$TRESP" \
   || { rm -f "$TRESP"; die "la re-tajada de rama-respuestas.md falló — ver arriba"; }
 
-emitir respuestas.md < "$TRESP"
+{
+  cat "$TRESP"
+  echo
+  printf '%s\n' "$R_CORREGIDO"
+} | emitir respuestas.md
 rm -f "$TRESP"
 
 # ── facturas.md: las dos mitades re-tajadas y concatenadas ───────────────────

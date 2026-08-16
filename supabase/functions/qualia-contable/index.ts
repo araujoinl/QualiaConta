@@ -87,8 +87,13 @@ import { ejecutar, ESQUEMAS_TOOLS, TOOLS_CIERRE } from './tools.ts';
 // corrija, que es información, no fallo.
 const ESQUEMA_POR_NOMBRE = new Map(ESQUEMAS_TOOLS.map((e) => [e.function.name, e]));
 
-// ── Números del contrato §4 (a calibrar con el corpus, no a adivinar) ───────
-const N_ITERACIONES = 8;
+// ── Números del contrato §4 — CALIBRADOS con el corpus (2026-08-16) ─────────
+// 8 era la propuesta de diseño y el examen la midió: el caso `cashback` gastó
+// las 8 en consultas legítimas (banco, ADM, precedente, plan) y murió SIN
+// cerrar — un turno que no cierra es peor que uno lento. 14 deja aire para los
+// casos de varias consultas sin acercarse al deadline blando (el corte real lo
+// pone DEADLINE_MS, que es el que protege del wall clock).
+const N_ITERACIONES = 14;
 // Deadline BLANDO propio, medido al entrar a cada iteración: la plataforma mata
 // a los ~400s de wall clock sin señal atrapable, y morir mudo pierde el turno.
 const DEADLINE_MS = 300_000;

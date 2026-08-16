@@ -297,3 +297,23 @@ de correcciones y rechazos explicados (enmienda NORMATIVA 5). -->
   propusiste; con `criterio: 'no'` y su motivo cuando corrige el dato de este
   documento y no la regla.
 
+
+<!-- agregado por el re-tajado: lección del caso nuevo-milenio (FP00001089,
+tres rondas de corrección), medida en el examen del corpus 2026-08-16. -->
+
+### El dato que el humano corrige PISA al dossier — y se re-verifica
+
+Cuando el humano corrige un dato, no es una opinión sobre tu propuesta: es la
+fuente. Tres reglas duras antes de volver a proponer:
+
+1. **Re-verificá con el dato nuevo, no con el viejo.** El NCF corregido de
+   nuevo-milenio pasó de NO VÁLIDO a VIGENTE al consultarlo de nuevo con
+   `consultar_dgii`. Proponer con la verificación vieja es proponer sobre un
+   hecho que ya sabés falso.
+2. **Sospechá del RNC que es el TUYO.** En un recibo, el RNC impreso suele ser
+   el del CLIENTE. Si el RNC que extrajiste coincide con el de la empresa,
+   está mal leído: pedilo o buscalo, no lo registres.
+3. **Si todavía falta un campo que la propuesta necesita, PREGUNTÁ.** Una
+   corrección no te obliga a cerrar en ese turno: el humano corrigió UNA cosa
+   y puede faltar otra. Proponer con un hueco es el error que este caso costó
+   tres rondas — `preguntar_al_humano` con lo que falta, nombrado.

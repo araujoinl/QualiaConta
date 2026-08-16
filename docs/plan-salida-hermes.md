@@ -717,6 +717,21 @@ facturas variadas** (sin HEIC pendiente) reemplaza a los 7 días de calendario.
 Criterio de cutover de F3, con esto medido: facturas y criterios en verde;
 **correcciones y el tope de iteraciones son trabajo pendiente**, no detalles.
 
+### Primera vuelta de correcciones (mismo día): una anduvo, la otra no
+
+- **El tope de iteraciones: RESUELTO.** 8 → 14 (el corte real lo pone el
+  deadline de 300s, no el contador). `cashback` pasó de "no cerró" a cerrar…
+  proponiendo `BankCharges` donde el real fue `Journals`. Sigue reprobado, pero
+  ahora el fallo es CONTABLE y medible, no un turno que se apaga mudo.
+- **La rama de correcciones: NO se arregla con doctrina.** Se agregó al manual
+  la lección literal del caso nuevo-milenio (el dato corregido pisa al dossier
+  y se re-verifica; sospechar del RNC que es el propio; si falta un campo,
+  preguntar). Re-examen: `nuevo-milenio` SIGUE proponiendo donde debía
+  preguntar, y `suena-inversor` movió de `marcar_error` a `responder` sin
+  llegar a la propuesta. Conclusión honesta: el problema no es que le falte la
+  regla escrita — es cómo el turno decide CERRAR. Queda como el trabajo de
+  fondo de F3, con el corpus como banco de pruebas.
+
 ## 6. Qué se reescribe del SPEC (en sesión de enmienda, no de pasada)
 
 | Decisión | Cambio | Por qué |
