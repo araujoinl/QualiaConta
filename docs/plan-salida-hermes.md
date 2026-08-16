@@ -402,6 +402,54 @@ schema/functions pasa por la skill `supabase` y deja su migración en el repo.
 gap dimensionado, y las 6 mediciones tienen número. **Rollback:** nada que
 revertir.
 
+### Resultados de F0 (corrida 2026-08-16) — F0 CERRADA
+
+1. **z.AI desde la IP de Supabase: verde.** Texto HTTP 200 en 2,4s (ojo: la
+   cuenta ya sirve glm-5.3 aunque se pida glm-5.2 — actualizar el selector);
+   visión glm-4.6v transcribió una factura real perfecta en 6,1s; y
+   **OpenRouter en visión, probado por primera vez: funciona**, transcripción
+   idéntica, ~US$0,0007 por página. El plan B es real.
+2. **Gap-analysis (5 agentes sobre el código desplegado):** compras ~20%
+   (admcloud-registrar-compra registra VendorReceptions de importación, NO la
+   VendorBill de gasto con NCF), pagos ~30-35% (el pago fiscal en nube SUPERA
+   al script; BillPayments a proveedores = 0), cargos/transferencias/asientos
+   ~0% directo con ~30% de maquinaria reutilizable (catálogo cuenta→UUID,
+   cuadre con absorción — superior al script), conciliación: conciliar-entradas
+   **100% cubierto y superado**; lápidas 50% (3 de 7 tipos, sin batch).
+   Consecuencia: en F4 el registrador se ESCRIBE en su mayoría, no se orquesta.
+3. **Seguridad de la flota (verificado contra el código):** las 10 functions de
+   escritura usan service_role, CERO verifican el caller (la anon key entra),
+   `admcloud-update-item` es escritura arbitraria sin lista blanca,
+   `anular-registro` acepta el rastro de auditoría desde el body, y el único
+   kill-switch (`activo`) NO se chequea en las que mueven dinero. Las
+   precondiciones de §11.2 quedan confirmadas con nombres y apellidos.
+4. **PDF: resuelto ENTERO en Deno, sin navegador.** Contra el PDF real más
+   pesado (3,1MB/33 páginas): extracción de texto 162-300ms con 33/33 NCFs,
+   partir una página 104ms, raster pdfium-WASM 187ms, y **jsQR decodificó el QR
+   de un e-CF real** (URL ConsultaTimbre completa con FechaFirma) en <1s total.
+   El plan A del navegador queda innecesario; los canales no-web quedan
+   cubiertos.
+5. **Cadena comprobantes-pdf: migra entera.** El insumo ya nace en Storage (el
+   colector lo sube antes que nada); adjuntar necesita ~10 líneas en
+   `admcloud-adjuntar` (modo bucket/path); partir probado en 4. Hallazgo
+   colateral: el PDF de período del 2º RNC (131985203) es COPIA byte a byte del
+   1º — el export del banco exporta la búsqueda activa; hoy inocuo, pero esa
+   empresa no tiene papel propio.
+6. **Cuota del turno nuevo, medida:** dossier real ~600 tokens (no 3.500);
+   turno con tajada tipo router ~11k de entrada por iteración vs ~17,7k fijos +
+   contexto creciente de Hermes. La baja de §2.1 se sostiene SOLO manteniendo
+   el servido por tajadas y tools gordas — meter la rama completa empata.
+7. **Trigger pg_net → function: verde.** Bearer generado DENTRO de la base
+   (`qualia_config`, nunca pasó por un log), function con auth propia (401 a
+   bearer inválido o ausente), pokes observables en `net._http_response` — y el
+   patrón ya corre en producción en el proyecto (monitor-servicios).
+
+Infra creada y aplicada (migraciones `20260816000100` y `...0200`, registradas
+por MCP): `qualia_config`, `qualia_llm_uso`, `qualia_sombra`, RLS sin policies
++ revoke a anon/authenticated, modo global = `server`. Functions de spike
+(`qualia-spike`, `qualia-spike-pdf`, `qualia-poke-echo`) quedan desplegadas
+como referencia y se retiran al cerrar F1.
+
 ### F1 — Sugeridores, salud y barrido (riesgo bajo: detectores idempotentes)
 
 `qualia-sugerencias`, `qualia-salud` y `qualia-barrido` por `pg_cron`;
@@ -421,6 +469,36 @@ también nace el **cron de cuadre 1:1** (precondición de F4).
 **Terminado cuando:** 7 días de sugerencias equivalentes a la semana previa,
 lápidas en sombra sin diferencias, y semáforo verde. **Rollback:** re-habilitar
 el cron de Hermes (un comando).
+
+### Estado de F1 (2026-08-16) — ENCENDIDA EN SOMBRA
+
+Construida por 5 constructores + 5 revisores adversariales (todas las piezas
+aprobadas con notas; las violaciones media se corrigieron: 429 de ritmo ahora
+conmuta a OpenRouter, `??` vs `or` de Python en strings vacíos, parser
+estricto de asignación, coalesce en detalles). Desplegado y verificado en
+vivo:
+
+- `qualia-barrido` (pg_cron `*/2`): los 4 rescates corrieron contra la cola
+  real — 0 candidatos (el poller del server está al día, coherente).
+- `qualia-sugerencias` (pg_cron `4,34`): multiempresa por `qualia_activa`; los
+  5 detectores corrieron sin errores contra los espejos y el mapa reales y
+  dieron **0 sugerencias nuevas — la equivalencia esperada**: las 5 llaves de
+  reclamo reconocen todo lo que Hermes ya sembró.
+- `qualia-salud` (pg_cron `12:00 UTC`): reporte completo en sombra (cola 42
+  trabajos, huérfanos 0, libro 283/0 sin ref).
+- Bearer de crons: nace en la base (`gen_random_bytes` en la migración), las
+  functions lo validan leyéndolo — jamás pasó por un log, un .env ni un deploy.
+- Espejos jsonl en el bucket privado `qualia-espejos` (los del server, frescos
+  de la corrida 05:20) y `mapa-cuentas.yaml` vivo sembrado en `qualia_config`
+  directo desde el server (los números de cuenta no viajaron por el chat).
+- Deploy por CLI (`supabase functions deploy --use-api`) con el layout
+  estándar `_shared/`; `deno check` en verde.
+
+Pendiente del cierre de F1 (además de los 7 días de comparación): el **puente
+de espejos** — `mesa/refrescar-precedentes.sh` sube los 6 jsonl al bucket y
+renueva la marca `refresco_precedentes` al terminar (parche listo en el repo,
+viaja con el próximo push al server); el port de las **lápidas** batch con su
+sombra propia; y `verificar-registros`/`adjuntar-comprobantes` del crontab.
 
 ### F2 — Preparador + proponedor (el camino de la factura nueva)
 

@@ -45,3 +45,4 @@ empresas/*/mesa-cache/
 # Mapa real de cuentas bancarias: numeros de cuenta reales, fuera de git
 # (mismo patron que banks.json del colector).
 mapa-cuentas.yaml
+supabase/.temp/

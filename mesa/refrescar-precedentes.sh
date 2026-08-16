@@ -173,4 +173,38 @@ resumen=$(printf '{"vendor_bills":{"nuevas":%s,"total":%s},"vendors":{"nuevas":%
 if [ "$fallas" -eq 0 ]; then ok=true; else ok=false; fi
 "$AQUI/registrar-corrida.sh" precedentes "$INICIO" "$(date -u +%FT%TZ)" "$ok" "$fallas" "$resumen" "$CORRIDA"
 
+# ── Puente de espejos a la nube (F1, salida de Hermes) ───────────────────────
+# Los detectores serverless leen estos mismos jsonl del bucket privado
+# qualia-espejos; sin este paso la sombra trabaja con espejos viejos y
+# qualia-salud lo marca como congelado a las 48h. Solo en corrida verde.
+# TODO(F5): empresa hardcodeada como el resto del script — multiempresa lo
+# resuelve el port completo de este refrescador a function.
+if [ "$fallas" -eq 0 ]; then
+    NUBE_URL="https://uzvnluxxaekmaqnuocvo.supabase.co"
+    NUBE_KEY=$(grep -m1 '^SUPABASE_SERVICE_ROLE_KEY=' /home/codebox/colector-bancos/.env | cut -d= -f2- | tr -d '"')
+    NUBE_EMP="1de77ce6-ed98-4a96-8b1f-d8b902f11cd5"
+    NUBE_RAW="/home/codebox/qualiaconta/repo/empresas/blackbox/hermes/preentrenamiento/raw"
+    if [ -n "$NUBE_KEY" ]; then
+        subidas=0
+        for f in accounts.jsonl bank-transfers-detalle.jsonl vendor-bills-detalle.jsonl \
+                 vendors.jsonl bill-payments.jsonl account-payments.jsonl; do
+            [ -f "$NUBE_RAW/$f" ] || continue
+            code=$(curl -s -o /dev/null -w '%{http_code}' -m 120 -X POST \
+                "$NUBE_URL/storage/v1/object/qualia-espejos/espejo-adm/$NUBE_EMP/$f" \
+                -H "Authorization: Bearer $NUBE_KEY" -H 'x-upsert: true' \
+                -H 'Content-Type: application/octet-stream' --data-binary @"$NUBE_RAW/$f")
+            [ "$code" = "200" ] && subidas=$((subidas+1))
+        done
+        # La marca solo se renueva si TODOS subieron: una marca fresca con
+        # espejos viejos es el falso verde que qualia-salud existe para ver.
+        if [ "$subidas" -eq 6 ]; then
+            curl -s -o /dev/null -m 30 -X PATCH \
+                "$NUBE_URL/rest/v1/qualia_config?empresa_id=is.null&clave=eq.refresco_precedentes" \
+                -H "apikey: $NUBE_KEY" -H "Authorization: Bearer $NUBE_KEY" \
+                -H 'Content-Type: application/json' \
+                -d "{\"valor\": {\"en\": \"$(date -u +%FT%TZ)\"}, \"actualizado_por\": \"refrescar-precedentes.sh (puente de espejos)\"}"
+        fi
+    fi
+fi
+
 [ "$fallas" -eq 0 ]
