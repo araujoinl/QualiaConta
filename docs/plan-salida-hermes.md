@@ -31,12 +31,20 @@ Esto es lo primero que se revisa en cada fase: si algo de acá se movió, la fas
 está mal hecha.
 
 - **ADM Cloud es el libro oficial** y los límites viven en los permisos de ADM
-  (SPEC regla 5). OJO (corrección v2): el rol recortado real **hoy no está
-  puesto** — [plan-encendido-escritura.md](plan-encendido-escritura.md) §5
-  (re-sondeado 2026-08-14) documenta que `QualiaConta-Registro` nunca se creó,
-  los dos roles del `.env` apuntan a `Contabilidad Digital` y los `*/Void`
-  responden "permitido". Crearlo y sondearlo en verde es **precondición
-  bloqueante de F4** (§11.2), no un invariante que ya se tiene.
+  (SPEC regla 5). **Decisión del dueño (2026-08-16, v3): ROL ÚNICO.**
+  `QualiaConta-Registro` muere como concepto — no se crea ningún rol nuevo.
+  Fundamento: (a) la auditoría de ADM sigue al USUARIO, y el usuario API ya es
+  uno solo (verificado contra el `.env`: `ADMCLOUD_USER` = `ADMCLOUD_REG_USER`)
+  — todo lo de Qualia queda a un solo nombre; (b) **anular (Void) queda
+  ABIERTO**: deja rastro (`Void:true`, es lo que leen las lápidas), es el flujo
+  del botón de la mesa, y la regla «el agente jamás anula por su cuenta» vive
+  en el código (ni el turno ni el registrador tienen esa tool); (c) eliminar
+  sin rastro YA está negado por el rol (DELETEs → Unauthorized, sondado); (d)
+  la firma e-CF no es recortable por rol en ADM (decisión 2026-08-02) → su
+  candado es el default-deny en `_shared` (§4.6). Pendiente chico: el `.env`
+  tiene DOS valores de rol distintos (verificado 2026-08-16) — consolidar a
+  uno y correr las sondas §1.3 del plan-encendido en verde es la precondición
+  1 de F4 (§11.2), ahora sin ninguna pantalla de ADM de por medio.
 - **El bus `qualia_*` no se toca**: mismas tablas, misma máquina de estados,
   mismo claim atómico. Es la columna vertebral del diseño nuevo, no una víctima.
 - **La mesa web en Labs_Inv no cambia ni una línea.** Sigue escribiendo como
@@ -765,9 +773,11 @@ escenario contra el código real. Lo confirmado se integró arriba (marcado
 
 ### 11.2 Precondiciones bloqueantes de F4 (la escritura no se enciende sin esto)
 
-1. Rol recortado REAL en ADM (`QualiaConta-Registro`) creado por Carlos y
-   sondas del plan-encendido §1.3 en verde — hoy no existe y los `*/Void`
-   pasan.
+1. **Rol único consolidado y sondado** (decisión del dueño 2026-08-16, ver §1):
+   los dos valores de rol del `.env` pasan a uno solo, y las sondas del
+   plan-encendido §1.3 en verde contra ese rol (DELETEs negados, escalación
+   rebotada). Void queda abierto a propósito (rastro + botón de la mesa +
+   lápidas); la anulación autónoma se prohíbe en código, no en el rol.
 2. Default-deny de `electronicsign`/`removesign`/`*/void` portado a código en
    la nube (heredero del `approvals.deny`).
 3. Flota `admcloud-*` de escritura auditada: autorización caller→empresa en
