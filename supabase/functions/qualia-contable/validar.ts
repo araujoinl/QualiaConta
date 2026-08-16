@@ -116,6 +116,13 @@ export interface OpcionesValidacion {
    * compara y rechaza la contradicción.
    */
   dossier?: Dic | null;
+  /**
+   * RNC de la PROPIA empresa (qualia_config `empresa_rnc`). En un recibo el
+   * RNC impreso suele ser el del CLIENTE, así que un proveedor con nuestro
+   * propio RNC es siempre un dato mal leído — lección literal del caso
+   * nuevo-milenio, que costó tres rondas de corrección.
+   */
+  rncEmpresa?: string;
 }
 
 /**
@@ -296,6 +303,7 @@ export function validarPropuesta(
     p,
     lineas && !lineas.some((l) => l === null) ? (lineas as Dic[]) : null,
     dic(opciones.dossier ?? null),
+    String(opciones.rncEmpresa ?? ''),
   );
   errores.push(...suf.errores);
   avisos.push(...suf.avisos);
@@ -345,6 +353,7 @@ function huecosDeRegistro(
   p: Dic,
   filas: Dic[] | null,
   dossier: Dic | null,
+  rncEmpresa = '',
 ): Huecos {
   const errores: string[] = [];
   const avisos: string[] = [];
@@ -416,7 +425,7 @@ function huecosDeRegistro(
   switch (doc) {
     case 'VendorBills':
     case 'VendorCreditNotes':
-      huecosDeFactura(p, dossier, falta, errores, avisos, faltantes);
+      huecosDeFactura(p, dossier, falta, errores, avisos, faltantes, rncEmpresa);
       break;
     case 'BankCharges':
       huecosDeCargoBancario(p, filas, monto, falta, errores);
@@ -494,6 +503,7 @@ function huecosDeFactura(
   errores: string[],
   avisos: string[],
   faltantes: string[],
+  rncEmpresa = '',
 ): void {
   const proveedor = String(p.proveedor ?? '').trim();
   if (proveedor === '') {
@@ -511,6 +521,20 @@ function huecosDeFactura(
     } else {
       falta('rnc', `\`rnc\` ${rnc === '' ? 'ausente' : `'${String(p.rnc)}' (${rnc.length} dígitos)`}: el proveedor se busca por RNC exacto (9 u 11 dígitos), nunca por nombre. Sin uno válido el registrador ni busca ni crea el proveedor`);
     }
+  }
+
+  // El RNC del recibo es el del CLIENTE, no el del emisor: si coincide con el
+  // nuestro, se leyó el cuadro equivocado del papel. Registrarlo así crea (o
+  // busca) un proveedor que somos nosotros mismos. Lección del caso
+  // nuevo-milenio: el humano tuvo que corregirlo a mano después de tres
+  // rondas, y ninguna compuerta lo veía porque el objeto cuadraba perfecto.
+  const rncPropio = soloDigitos(rncEmpresa);
+  if (rncPropio !== '' && rnc !== '' && rnc === rncPropio) {
+    faltantes.push('rnc');
+    errores.push(
+      `\`rnc\` ${rnc} es el de NUESTRA propia empresa: en un recibo el RNC impreso suele ser el del cliente, así que ése no es el del emisor. ` +
+        `Buscá el RNC del proveedor en el documento; si no se lee, PREGUNTÁ — registrarlo así crea un proveedor que somos nosotros`,
+    );
   }
 
   // ADM frena un duplicado por DOS claves independientes —el NCF y la

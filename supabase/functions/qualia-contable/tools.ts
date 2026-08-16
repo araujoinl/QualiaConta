@@ -314,6 +314,31 @@ async function avisarProgreso(ctx: CtxTurno, args: Dic): Promise<ResultadoTool> 
  * catálogo, no una decisión. Sin catálogo alcanzable no rompe nada — la
  * compuerta deja aviso y el registrador cae a su default de siempre.
  */
+/**
+ * El RNC de la propia empresa, de qualia_config (`empresa_rnc`). Se cachea por
+ * proceso: no cambia en caliente y el cierre no debe pagar un SELECT por él.
+ */
+const cacheRncEmpresa = new Map<string, string>();
+async function rncDeLaEmpresa(ctx: CtxTurno): Promise<string> {
+  const previo = cacheRncEmpresa.get(ctx.empresaId);
+  if (previo !== undefined) return previo;
+  let rnc = '';
+  try {
+    const { data } = await ctx.db
+      .from('qualia_config')
+      .select('valor')
+      .eq('empresa_id', ctx.empresaId)
+      .eq('clave', 'empresa_rnc')
+      .single();
+    const v = data?.valor as { rnc?: unknown } | string | null | undefined;
+    rnc = typeof v === 'string' ? v : String((v as { rnc?: unknown })?.rnc ?? '');
+  } catch {
+    rnc = '';
+  }
+  cacheRncEmpresa.set(ctx.empresaId, rnc);
+  return rnc;
+}
+
 async function resolverTipoGasto(ctx: CtxTurno, propuesta: Dic): Promise<void> {
   const tg = propuesta?.tipo_gasto as Record<string, unknown> | undefined;
   if (!tg || typeof tg !== 'object') return;
@@ -351,6 +376,7 @@ async function proponer(ctx: CtxTurno, args: Dic): Promise<ResultadoTool> {
   const vPropuesta = validarPropuesta(propuesta, {
     hijoDeCaso: false,
     dossier: await dossierDelTurno(ctx),
+    rncEmpresa: await rncDeLaEmpresa(ctx),
   });
   const errores = [...vResumen.errores, ...vPropuesta.errores];
   const avisos = [...vResumen.avisos, ...vPropuesta.avisos];
@@ -665,6 +691,7 @@ async function abrirTrabajo(ctx: CtxTurno, args: Dic): Promise<ResultadoTool> {
   await resolverTipoGasto(ctx, propuesta as Dic);
   const vPropuesta = validarPropuesta(propuesta, {
     hijoDeCaso: true,
+    rncEmpresa: await rncDeLaEmpresa(ctx),
     dossier: await dossierDelTurno(ctx),
   });
   const errores = [...vResumen.errores, ...vPropuesta.errores];

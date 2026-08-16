@@ -678,6 +678,7 @@ function calificar(
 
   // ── Conducta ──
   let conductaOk = false;
+  let compararContenidoIgualmente = false;
   let conductaLeve = false;
   if (cierre && esperada) {
     switch (esperada) {
@@ -699,8 +700,18 @@ function calificar(
           aciertos.push('preguntó, y el caso dice que había que preguntar');
           ojoHumano.push('la sustancia de la pregunta (¿es la misma duda que el contable real dejó abierta?)');
         } else if (cierre.tool === 'proponer') {
-          severo = true;
-          fallos.push('propuso donde el contable real probó que faltaban datos y había que preguntar');
+          // NO es falla automática. El histórico probó que el contable de
+          // entonces necesitó preguntar; si el de ahora llegó al MISMO
+          // documento que terminó registrado, resolvió en menos rondas y eso
+          // es mejor, no peor. Lo decide el contenido, abajo: si la propuesta
+          // no coincide con el desenlace, ahí sí reprueba —y con el motivo
+          // correcto, que es haber propuesto mal, no haber propuesto.
+          // (Caso nuevo-milenio, 2026-08-16: el turno propuso exacto lo
+          // registrado —NCF corregido re-verificado en DGII incluido— y el
+          // calificador lo reprobaba por no repetir las tres rondas.)
+          conductaOk = true;
+          compararContenidoIgualmente = true;
+          aciertos.push('propuso donde el histórico preguntó: se compara contra el desenlace real');
         } else {
           fallos.push(`cerró con ${cierre.tool} donde el histórico pedía preguntar`);
         }
@@ -776,7 +787,7 @@ function calificar(
   let contenidoComparable = false;
   let fallaCore = false;
   let fallasMenores = 0;
-  if (cierre?.tool === 'proponer' && esperada === 'proponer' && finalBendecida) {
+  if (cierre?.tool === 'proponer' && (esperada === 'proponer' || compararContenidoIgualmente) && finalBendecida) {
     const propuesta = propuestaDeArgs(cierre.args);
 
     if (docFinal) {
