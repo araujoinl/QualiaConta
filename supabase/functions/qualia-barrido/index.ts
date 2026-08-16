@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { sb, modo } from '../_shared/db.ts';
-import { autorizado } from '../_shared/auth.ts';
+import { autorizado, bearerCron } from '../_shared/auth.ts';
 import { registrarSombra } from '../_shared/sombra.ts';
 
 /**
@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
     }
 
     const funcionesUrl = Deno.env.get('QUALIA_FUNCTIONS_URL') ?? '';
-    const bearer = Deno.env.get('QUALIA_CRON_BEARER') ?? '';
+    const bearer = await bearerCron(); // env o base: el secreto no viaja al deploy
 
     // La exclusion va ANTES del lote, como en el poller (su not-exists vivia
     // en el SQL): una fila excluida no le come el turno a una elegible.

@@ -40,3 +40,23 @@ export async function autorizado(req: Request): Promise<boolean> {
   }
   return presentado === cacheBearer.valor;
 }
+
+/**
+ * El bearer de los crons, para que una function PIDA a otra (el barrido
+ * despertando al preparador o al turno). Mismo orden que `autorizado`: el env
+ * manda si existe, si no sale de la base — así el secreto no necesita estar
+ * en el deploy. Devuelve '' si no hay ninguno, y el caller degrada suave.
+ */
+export async function bearerCron(): Promise<string> {
+  const env = Deno.env.get('QUALIA_CRON_BEARER');
+  if (env) return env;
+  const { data, error } = await sb()
+    .from('qualia_config')
+    .select('valor')
+    .is('empresa_id', null)
+    .eq('clave', 'cron_bearer')
+    .single();
+  if (error || !data) return '';
+  const valor = (data.valor as { bearer?: string }).bearer;
+  return typeof valor === 'string' ? valor : '';
+}
