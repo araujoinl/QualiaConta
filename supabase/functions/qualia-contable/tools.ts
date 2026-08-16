@@ -31,10 +31,20 @@ import {
 } from './tipos.ts';
 import { EventoNuevo, filaFresca, frenoDeEscritura, insertarEventos, moverEstado } from './bus.ts';
 import { ArgsLeerAdm, leerAdm, TIPOS_DOC } from './adm.ts';
-import { ArgsBanco, ArgsDgii, ArgsDossier, consultarBanco, consultarDgii, dossierCompleto } from './consultas.ts';
+import {
+  ArgsBanco,
+  ArgsDgii,
+  ArgsDossier,
+  consultarBanco,
+  consultarDgii,
+  dossierCompleto,
+  dossierDelTurno,
+  bajarJson,
+} from './consultas.ts';
 import { ArgsBuscarPrecedente, buscarPrecedente } from './precedentes.ts';
 import { ArgsLibro, escribirLibro } from './libro.ts';
 import { validarPropuesta, validarResumen } from './validar.ts';
+import { rutaAggTiposGasto } from './espejos.ts';
 import { NUCLEO } from './nucleo.ts';
 
 type Dic = Record<string, unknown>;
@@ -85,13 +95,46 @@ function eventosDe(valor: unknown, tipoPorDefecto: 'progreso' | 'nota' | 'pregun
   return salida;
 }
 
-/** Los errores de validación vuelven al MODELO para que corrija, no revientan. */
-function rechazo(errores: string[], avisos: string[] = []): ResultadoTool {
+/**
+ * Los errores de validación vuelven al MODELO para que corrija, no revientan.
+ *
+ * `faltantes` es la mitad nueva (2026-08-16): cuando lo que falla son CAMPOS
+ * —no la forma ni la aritmética—, el resultado los nombra uno por uno y dice
+ * que el camino es `preguntar_al_humano` por ESOS campos. Sin nombrarlos, el
+ * único feedback determinista que el turno recibía era «el objeto no cuadra»,
+ * y la respuesta aprendida a eso es rellenar el molde hasta que cuadre.
+ */
+function rechazo(errores: string[], avisos: string[] = [], faltantes: string[] = []): ResultadoTool {
+  const huecos = [...new Set(faltantes)];
+  // Cada hueco empuja UN error y UN faltante (el helper `falta()` de validar.ts
+  // y los tres sitios que los empujan de a pares), así que la resta cuenta los
+  // errores que NO son de campos: forma, catálogo, aritmética. Elegir el mensaje
+  // sólo por `huecos.length > 0` daba el diagnóstico equivocado cuando fallaban
+  // las dos cosas — «faltan datos, no forma» sobre un cuadre que no cierra manda
+  // al turno a buscar un campo mientras el problema es que las cuentas no dan.
+  const otros = Math.max(0, errores.length - faltantes.length);
+  const partes: string[] = [];
+  if (huecos.length > 0) {
+    partes.push(
+      `faltan CAMPOS: ${huecos.join(', ')}. Si podés obtenerlos de una fuente (el documento, ADM, DGII, el banco), traelos y volvé a llamar. ` +
+        'Si NO podés, la salida es preguntar_al_humano nombrando exactamente esos campos y qué hace falta para llenarlos — inventarlos o deducirlos para que la validación pase es el desvío que esta compuerta existe para frenar',
+    );
+  }
+  if (otros > 0) {
+    partes.push(
+      huecos.length > 0
+        ? `y además hay ${otros} problema(s) que NO son de campos (forma, catálogo o aritmética): ésos se corrigen en la propuesta, y si la aritmética no da, el dato leído está mal — volvé al papel`
+        : 'corregí y volvé a llamar. Si el problema es que el hecho no entra en ningún documento de ADM, la salida es preguntar_al_humano, no forzar el molde',
+    );
+  }
   return {
     error: 'la propuesta no pasó las validaciones; NADA se escribió',
     problemas: errores,
+    campos_faltantes: huecos.length > 0 ? huecos : undefined,
     avisos: avisos.length > 0 ? avisos : undefined,
-    instruccion: 'corregí y volvé a llamar. Si el problema es que el hecho no entra en ningún documento de ADM, la salida es preguntar_al_humano, no forzar el molde',
+    instruccion: partes.length > 0
+      ? partes.join(' — ')
+      : 'corregí y volvé a llamar. Si el problema es que el hecho no entra en ningún documento de ADM, la salida es preguntar_al_humano, no forzar el molde',
   };
 }
 
@@ -265,6 +308,28 @@ async function avisarProgreso(ctx: CtxTurno, args: Dic): Promise<ResultadoTool> 
   return { ok: true, evento: 'progreso' };
 }
 
+/**
+ * Completa `tipo_gasto.adm_id` desde el catálogo 606 de la empresa cuando el
+ * modelo trajo el código pero no el GUID. Determinista: es una traducción de
+ * catálogo, no una decisión. Sin catálogo alcanzable no rompe nada — la
+ * compuerta deja aviso y el registrador cae a su default de siempre.
+ */
+async function resolverTipoGasto(ctx: CtxTurno, propuesta: Dic): Promise<void> {
+  const tg = propuesta?.tipo_gasto as Record<string, unknown> | undefined;
+  if (!tg || typeof tg !== 'object') return;
+  const codigo = String(tg.codigo ?? '').trim();
+  const admId = String(tg.adm_id ?? '').trim();
+  if (codigo === '' || admId !== '') return;
+  try {
+    const cat = await bajarJson(ctx, rutaAggTiposGasto(ctx.empresaId));
+    const fila = cat?.[codigo] as Record<string, unknown> | undefined;
+    const guid = String(fila?.adm_id ?? '').trim();
+    if (guid !== '') tg.adm_id = guid;
+  } catch {
+    // catálogo ausente o ilegible: el aviso de la compuerta lo dice
+  }
+}
+
 async function proponer(ctx: CtxTurno, args: Dic): Promise<ResultadoTool> {
   const fila = await filaFresca(ctx);
   if (fila.tipo === 'caso') {
@@ -279,9 +344,17 @@ async function proponer(ctx: CtxTurno, args: Dic): Promise<ResultadoTool> {
   if (!propuesta) return rechazo(['`propuesta` tiene que ser un objeto jsonb']);
 
   const vResumen = validarResumen(resumen);
-  const vPropuesta = validarPropuesta(propuesta, { hijoDeCaso: false });
+  // El dossier del preparador viaja a la compuerta: es contra su ficha de DGII
+  // que se contrasta el eje fiscal de la propuesta. Una descarga del cache por
+  // cierre de turno, y sólo en el cierre.
+  await resolverTipoGasto(ctx, propuesta as Dic);
+  const vPropuesta = validarPropuesta(propuesta, {
+    hijoDeCaso: false,
+    dossier: await dossierDelTurno(ctx),
+  });
   const errores = [...vResumen.errores, ...vPropuesta.errores];
   const avisos = [...vResumen.avisos, ...vPropuesta.avisos];
+  const faltantes = [...vResumen.faltantes, ...vPropuesta.faltantes];
 
   // El turno NO registra en ADM (contrato §6.1): un registro_adm nuevo en la
   // propuesta sería evidencia fabricada, y el CHECK de la base lo tomaría por
@@ -297,7 +370,7 @@ async function proponer(ctx: CtxTurno, args: Dic): Promise<ResultadoTool> {
   if ('cerrado' in propuesta) {
     errores.push('`propuesta.cerrado` es de la web: cerrar es del humano');
   }
-  if (errores.length > 0) return rechazo(errores, avisos);
+  if (errores.length > 0) return rechazo(errores, avisos, faltantes);
 
   let eventos: EventoNuevo[];
   try {
@@ -586,9 +659,20 @@ async function abrirTrabajo(ctx: CtxTurno, args: Dic): Promise<ResultadoTool> {
   if (!propuesta) return rechazo(['`propuesta` tiene que ser un objeto jsonb']);
 
   const vResumen = validarResumen(resumen);
-  const vPropuesta = validarPropuesta(propuesta, { hijoDeCaso: true });
+  // El dossier del CASO: si el paso nace de un papel, su verificación fiscal
+  // está ahí y vale lo mismo que en `proponer`; si el caso no tiene dossier, la
+  // compuerta no compara nada (ausencia no es contradicción).
+  await resolverTipoGasto(ctx, propuesta as Dic);
+  const vPropuesta = validarPropuesta(propuesta, {
+    hijoDeCaso: true,
+    dossier: await dossierDelTurno(ctx),
+  });
   const errores = [...vResumen.errores, ...vPropuesta.errores];
   const avisos = [...vResumen.avisos, ...vPropuesta.avisos];
+  // La compuerta vale igual acá: un paso del caso nace en `propuesta`, va al
+  // mismo botón y lo registra el MISMO script. La lápida es del caso Formax —
+  // el paso de 90k salió sin `fecha` y el humano lo rechazó.
+  const faltantes = [...vResumen.faltantes, ...vPropuesta.faltantes];
 
   if ('registro_adm' in propuesta) {
     errores.push('`registro_adm` no lo escribe el turno: nace cuando la pieza que registra lo genere');
@@ -614,8 +698,9 @@ async function abrirTrabajo(ctx: CtxTurno, args: Dic): Promise<ResultadoTool> {
       'falta `banco_tx_id`: este paso resuelve un movimiento del banco del caso y sin él la misma plata se cuenta dos veces. ' +
         `Los movimientos del caso son: ${filasBanco.map((f) => `${f.tx_id} (${f.resumen ?? ''})`).join(' · ')}`,
     );
+    faltantes.push('banco_tx_id');
   }
-  if (errores.length > 0) return rechazo(errores, avisos);
+  if (errores.length > 0) return rechazo(errores, avisos, faltantes);
 
   const propuestaHija: Dic = { ...propuesta, caso_id: ctx.trabajoId };
   const freno = await frenoDeEscritura(ctx, 'abrir_trabajo', {
@@ -845,6 +930,60 @@ const objeto = (properties: Dic, required: string[] = []): Dic => ({
 
 const texto = (description: string): Dic => ({ type: 'string', description });
 
+/**
+ * El jsonb de la propuesta, UNO para `proponer` y `abrir_trabajo`: los dos
+ * paran en la MISMA compuerta (`validarPropuesta`) y los registra el mismo
+ * script, así que declarar los campos en uno y dejar el otro con
+ * `{type:'object'}` suelto era pedirle al turno que adivine en la rama de casos
+ * lo que en la otra le viene dictado.
+ *
+ * `required` lleva sólo lo que TODO documento necesita. `lineas` quedó afuera a
+ * propósito: BillPayments se registra sin ellas —su registrador no lee
+ * `p["lineas"]`— y pedirlas en el schema empujaba a inventar un asiento que
+ * nadie va a leer. Los condicionales por documento (asignacion, cuenta_numero,
+ * banco_id, direccion, tipo_gasto.adm_id…) los dice la compuerta al rechazar,
+ * con el motivo; repetirlos acá se re-paga en cada iteración.
+ */
+const PROPUESTA_SCHEMA = (description: string): Dic => ({
+  type: 'object',
+  description,
+  properties: {
+    documento_adm: texto('VendorBills | VendorCreditNotes | BankCharges | BankBankTransfers | BillPayments | AccountPayments | Journals'),
+    fecha: texto('AAAA-MM-DD, la del documento'),
+    moneda: texto('DOP | USD…'),
+    monto: { type: 'number', description: 'el total del documento (en Journals, la suma de los débitos)' },
+    itbis: { type: 'number' },
+    proveedor: texto('en factura: el nombre del emisor'),
+    rnc: texto('en factura: 9 u 11 dígitos'),
+    ncf: texto('el comprobante, si el papel lo trae'),
+    numero_factura_suplidor: texto('la referencia del papel; obligatoria si NO hay ncf'),
+    dgii: { type: 'object', description: 'la verificación TAL CUAL vino de consultar_dgii o del dossier', additionalProperties: true },
+    rnc_padron: { type: 'object', description: 'el padrón, cuando el comprobante no verifica', additionalProperties: true },
+    tipo_gasto: {
+      type: 'object',
+      description: 'el 606 de la cabecera, UNO por documento',
+      properties: {
+        codigo: texto('01..11'),
+        nombre: texto('el del catálogo'),
+        adm_id: texto('el GUID del tipo de gasto en ADM: es lo que viaja al POST, y sin él se registra el 02'),
+      },
+      required: ['codigo', 'nombre'],
+      additionalProperties: true,
+    },
+    lineas: { type: 'array', description: 'items {descripcion,cantidad,precio,itbis,cuenta,cuenta_nombre} o partida doble {cuenta,cuenta_nombre,descripcion,debito,credito}. BillPayments va sin ellas', items: { type: 'object', additionalProperties: true } },
+    direccion: { type: 'string', enum: ['cargo', 'credito'], description: 'en BankCharges, obligatoria: cargo = salió plata, credito = entró' },
+    banco_tx_id: texto('el movimiento del banco que este documento resuelve'),
+    cuenta_numero: texto('en BillPayments: el número de la cuenta o tarjeta de la que sale el pago'),
+    banco_id: texto('en AccountPayments: el GUID de la cuenta de caja en ADM'),
+    asignacion: { type: 'object', description: 'en BillPayments: {facturas:[{docid, monto}]}, la(s) factura(s) que cierra', additionalProperties: true },
+    metodo: { type: 'string', enum: ['precedente', 'script', 'razonado'] },
+    precedente_ref: texto('obligatorio si metodo != razonado'),
+    detalle: texto('los dos pisos: explicación y «Sostén:»'),
+  },
+  required: ['documento_adm', 'fecha', 'moneda', 'detalle'],
+  additionalProperties: true,
+});
+
 const EVENTOS_SCHEMA = (description: string): Dic => ({
   type: 'array',
   description,
@@ -951,15 +1090,11 @@ export const ESQUEMAS_TOOLS: EsquemaTool[] = [
   // ── cierre (una sola por invocación) ─────────────────────────────────────
   tool(
     'proponer',
-    'CIERRA el turno dejando la fila en propuesta. Valida ANTES de escribir: documento_adm del catálogo, tipo_gasto 606 en factura, forma de lineas, cuadre contra monto (0,05), débitos = créditos y el «Sostén:» en asientos de conciliación. Si algo falla no se escribe NADA y te vuelve la lista para corregir.',
+    'CIERRA el turno dejando la fila en propuesta. Valida ANTES de escribir, y en DOS ejes: forma (catálogo, lineas, cuadre 0,05, débitos = créditos, «Sostén:») y SUFICIENCIA — los campos que el script de registro exige antes del POST, según el documento_adm elegido. Si falla no se escribe NADA y te vuelve la lista, con los campos faltantes por nombre: ésos no se deducen, se buscan o se preguntan.',
     objeto(
       {
         resumen: texto('el título de la tarjeta: sólo QUÉ ES, corto'),
-        propuesta: {
-          type: 'object',
-          description: 'el jsonb: proveedor, rnc, ncf, fecha, moneda, monto, itbis, dgii, tipo_gasto {codigo,nombre}, documento_adm, lineas[], metodo, precedente_ref, detalle en dos pisos, borrador_libro. Nada de cuenta_destino ni registro_adm.',
-          additionalProperties: true,
-        },
+        propuesta: PROPUESTA_SCHEMA('el jsonb del documento. Nada de cuenta_destino ni registro_adm.'),
         eventos: EVENTOS_SCHEMA('el cierre para el hilo: qué decidiste y por qué'),
       },
       ['resumen', 'propuesta', 'eventos'],
@@ -1017,11 +1152,11 @@ export const ESQUEMAS_TOOLS: EsquemaTool[] = [
     objeto(
       {
         resumen: texto('el título del paso: qué es, corto'),
-        propuesta: {
-          type: 'object',
-          description: 'documento_adm, direccion si nace en el banco, lineas[] con código y nombre exactos, monto, moneda, banco_tx_id, detalle en dos pisos con «Sostén:»',
-          additionalProperties: true,
-        },
+        // El MISMO schema que `proponer`: mismo jsonb, misma compuerta, mismo
+        // script que lo registra.
+        propuesta: PROPUESTA_SCHEMA(
+          'el jsonb del paso: mismo formato que en proponer, con banco_tx_id si resuelve un movimiento del banco del caso. El caso_id lo pone el sistema.',
+        ),
       },
       ['resumen', 'propuesta'],
     ),

@@ -24,3 +24,12 @@ export const rutaAggPlanCuentas = (empresaId: string) =>
 // El tipo de gasto del 606 es de la DGII y cruza TODAS las empresas (por RNC):
 // por eso vive bajo nucleo/ y no lleva empresa en la ruta.
 export const RUTA_AGG_TIPO_GASTO = 'nucleo/agg/rnc-tipo-gasto.json';
+
+/**
+ * Catálogo 606 de la empresa: código fiscal → ExpenseTypeID de ADM. Va por
+ * empresa y no en el núcleo porque el GUID es de la instancia de ADM, no de la
+ * DGII. Lo usa el cierre para RESOLVER `tipo_gasto.adm_id` en vez de pedírselo
+ * al modelo: es dato de catálogo, no juicio contable.
+ */
+export const rutaAggTiposGasto = (empresaId: string) =>
+  `espejo-adm/${empresaId}/agg/expense-types.json`;

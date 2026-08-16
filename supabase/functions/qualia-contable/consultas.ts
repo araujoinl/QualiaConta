@@ -60,7 +60,7 @@ async function bajarTexto(ctx: CtxTurno, ruta: string): Promise<string | null> {
   }
 }
 
-async function bajarJson(ctx: CtxTurno, ruta: string): Promise<Dic | null> {
+export async function bajarJson(ctx: CtxTurno, ruta: string): Promise<Dic | null> {
   const t = await bajarTexto(ctx, ruta);
   if (t === null) return null;
   try {
@@ -68,6 +68,18 @@ async function bajarJson(ctx: CtxTurno, ruta: string): Promise<Dic | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * El dossier del preparador tal cual está en el cache (o el del snapshot, en
+ * examen). Se exporta porque la compuerta de suficiencia lo necesita: es la
+ * única procedencia verificable de la verificación fiscal, y sin él
+ * `propuesta.dgii` es una frase que escribió el modelo. Devuelve null cuando no
+ * hay dossier — ausencia NO es contradicción, así que la compuerta no compara.
+ */
+export async function dossierDelTurno(ctx: CtxTurno): Promise<Dic | null> {
+  if (ctx.modo === 'examen') return dic(ctx.examen?.dossier ?? null);
+  return await bajarJson(ctx, rutaDossier(ctx.trabajoId));
 }
 
 // ── dossier_completo ────────────────────────────────────────────────────────
@@ -353,9 +365,7 @@ export async function consultarDgii(ctx: CtxTurno, args: ArgsDgii): Promise<Resu
   // El guard del contrato: la consulta SOLO existe para el hueco. El dossier
   // del preparador ya pagó esta llamada; repetirla quema segundos y a veces
   // devuelve peor información que la que ya está en la fila.
-  const dossier = ctx.modo === 'examen'
-    ? dic(ctx.examen?.dossier ?? null)
-    : await bajarJson(ctx, rutaDossier(ctx.trabajoId));
+  const dossier = await dossierDelTurno(ctx);
   const { hecho, ficha } = yaVerificado(dossier, modo);
   if (hecho) {
     return {
