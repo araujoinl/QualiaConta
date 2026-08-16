@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
     const modoDe = async (empresaId: string): Promise<Modo> => {
       let m = modos.get(empresaId);
       if (!m) {
-        m = await modo(empresaId);
+        m = await modo(empresaId, 'qualia-barrido');
         modos.set(empresaId, m);
       }
       return m;

@@ -32,22 +32,34 @@ const MODOS = new Set<string>(['server', 'sombra', 'nube']);
  * mismo criterio fail-safe que el kill-switch de F4 (§4.6, "ausencia o valor
  * inválido = no seguir con lo último").
  */
-export async function modo(empresaId: string | null): Promise<Modo> {
+export async function modo(empresaId: string | null, funcion?: string): Promise<Modo> {
+  // Interruptor POR FUNCIÓN con respaldo al global: `modo:<funcion>` gana sobre
+  // `modo`. Nació al apagar Hermes (2026-08-16): los detectores tenían que
+  // pasar a nube mientras el preparador y el proponedor seguían en sombra —
+  // el poller del server aún era el dueño del claim diario. Un solo flag
+  // global obligaba a mover todo junto, que es justo lo que un cutover por
+  // partes existe para evitar.
+  const claves = funcion ? [`modo:${funcion}`, 'modo'] : ['modo'];
   const { data, error } = await sb()
     .from('qualia_config')
-    .select('empresa_id, valor')
-    .eq('clave', 'modo');
+    .select('empresa_id, clave, valor')
+    .in('clave', claves);
   if (error || !data) {
     console.error(`modo(): qualia_config ilegible (${error?.message ?? 'sin datos'}); asumo server`);
     return 'server';
   }
   // El filtro por empresa se hace acá y no con .or() interpolado: empresa_id
   // viene del caller y así jamás viaja crudo dentro de un string de filtro.
-  const fila =
-    (empresaId ? data.find((f) => f.empresa_id === empresaId) : undefined) ??
-    data.find((f) => f.empresa_id === null);
-  const valor = (fila?.valor as { modo?: unknown } | null | undefined)?.modo;
-  return typeof valor === 'string' && MODOS.has(valor) ? (valor as Modo) : 'server';
+  // Orden de precedencia: (función, empresa) → (función, global) → (modo,
+  // empresa) → (modo, global).
+  for (const clave of claves) {
+    const deClave = data.filter((f) => f.clave === clave);
+    const fila = (empresaId ? deClave.find((f) => f.empresa_id === empresaId) : undefined) ??
+      deClave.find((f) => f.empresa_id === null);
+    const valor = (fila?.valor as { modo?: unknown } | null | undefined)?.modo;
+    if (typeof valor === 'string' && MODOS.has(valor)) return valor as Modo;
+  }
+  return 'server';
 }
 
 /**

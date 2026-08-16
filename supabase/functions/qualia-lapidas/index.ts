@@ -253,7 +253,7 @@ async function correrEmpresa(
   presupuesto: { restante: number },
   errores: string[],
 ): Promise<Record<string, unknown>> {
-  const m: Modo = await modo(empresaId);
+  const m: Modo = await modo(empresaId, 'qualia-lapidas');
   if (m === 'server') {
     // El cron del server sigue siendo el dueño: esta function no compite.
     return { modo: 'server', accion: 'ninguna' };

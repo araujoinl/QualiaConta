@@ -553,7 +553,7 @@ Deno.serve(async (req) => {
     // sistema entero, no una empresa — igual que los .sh, que corrían una vez
     // para todas. En 'server' no se hace NADA, ni siquiera leer estado: el cron
     // viejo del server sigue siendo el único dueño de los avisos.
-    const modoActual = await modo(null);
+    const modoActual = await modo(null, 'qualia-salud');
     if (modoActual === 'server') {
       return json({ modo: 'server', accion: 'ninguna' });
     }

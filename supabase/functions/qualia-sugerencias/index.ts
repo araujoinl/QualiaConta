@@ -112,7 +112,7 @@ async function correrEmpresa(
   empresaId: string,
   body: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  const m = await modo(empresaId);
+  const m = await modo(empresaId, 'qualia-sugerencias');
   if (m === 'server') {
     // El server sigue siendo el dueño: esta function no toca nada.
     return { empresa_id: empresaId, modo: 'server', accion: 'ninguna' };

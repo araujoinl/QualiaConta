@@ -128,7 +128,7 @@ async function atender(trabajoId: string, dossierEn: string | null = null): Prom
   // §4.6 del plan: empresa_id nace SIEMPRE de la fila que escribió la web,
   // jamás de la salida del LLM ni del documento.
   const empresaId = fila.empresa_id;
-  const m = await modo(empresaId);
+  const m = await modo(empresaId, 'qualia-proponedor');
   const base = { funcion: FUNCION, trabajo_id: trabajoId, empresa_id: empresaId, modo: m };
 
   if (m === 'server') {

@@ -945,7 +945,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, accion: 'ninguna', motivo: 'el trabajo no tiene archivo; nada que preparar' });
     }
 
-    const m = await modo(fila.empresa_id);
+    const m = await modo(fila.empresa_id, 'qualia-preparador');
     if (m === 'server') {
       // No tocar NADA: ni cache, ni eventos, ni sombra — el sidecar es el dueño.
       return json({ ok: true, modo: 'server', accion: 'ninguna' });
