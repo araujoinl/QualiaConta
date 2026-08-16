@@ -43,12 +43,14 @@ const TIMEOUT_OPENROUTER_MS = 90_000;
 // Misma lista que replay-skill.py y alerta-cuota.sh.
 const CODIGOS_DE_CUOTA = new Set(['1308', '1310']);
 
-// JAMÁS 'minimal': apaga el razonamiento, y el modo de falla de este agente no
-// es tardar — es inventar (FP00001120: una tasa de ITBIS que el papel nunca
-// dijo, despejada para que la aritmética cerrara). El tipo no lo admite y el
-// runtime lo corrige igual, porque JS no lee tipos.
-export type EsfuerzoRazonamiento = 'low' | 'medium' | 'high';
-const ESFUERZOS = new Set<string>(['low', 'medium', 'high']);
+// JAMÁS 'minimal' EN EL TURNO: apagar el razonamiento en un caso difícil
+// reabre inventar (FP00001120: una tasa de ITBIS que el papel nunca dijo,
+// despejada para que la aritmética cerrara). 'disabled' existe SOLO para la
+// clasificación determinista del proponedor — fiel a proponer-directo.py, que
+// llama con thinking apagado porque las compuertas validan ANTES y DESPUÉS de
+// la llamada; qualia-contable (F3) no debe usarlo nunca.
+export type EsfuerzoRazonamiento = 'low' | 'medium' | 'high' | 'disabled';
+const ESFUERZOS = new Set<string>(['low', 'medium', 'high', 'disabled']);
 
 export interface MensajeLLM {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -254,6 +256,10 @@ function armarCuerpo(
       // timeout o gastaba el tope en reasoning_content y entregaba content
       // vacío. Thinking APAGADO → respuesta directa en ~15s (medido 2026-08-02
       // con factura real, lección de preparar-trabajo.sh).
+      cuerpo.thinking = { type: 'disabled' };
+    } else if (esfuerzo === 'disabled') {
+      // La clasificación del proponedor: thinking apagado como en el fuente
+      // (proponer-directo.py llamar_modelo), con las compuertas como red.
       cuerpo.thinking = { type: 'disabled' };
     } else {
       cuerpo.reasoning_effort = esfuerzo;

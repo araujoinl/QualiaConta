@@ -523,6 +523,32 @@ deploy más al server, con sus tres puntas, y entra al alcance de F2.
 menor que la histórica y cero trabajos huérfanos (incluido el test del poke
 perdido). **Rollback:** flag de vuelta — el poller sigue instalado hasta F4.
 
+### Estado de F2 (2026-08-16) — SOMBRA ENCENDIDA, esperando tráfico real
+
+Construida por 2 constructores + 2 revisores adversariales (ambas piezas
+aprobadas con notas; corregido: GC del cache paginado con poda de 35 días e
+invocable sin NCF, y la clasificación con thinking APAGADO fiel al fuente —
+`reasoningEffort: 'disabled'` existe en `_shared/llm.ts` SOLO para esa llamada
+determinista; el turno de F3 tiene prohibido usarlo). Desplegado y verificado:
+
+- `qualia-preparador`: port bloque a bloque de preparar-trabajo.sh v3 (gates,
+  idempotencia por sha256, QR que pisa al texto, DGII con endpoints exactos,
+  visión vía llamarLLM). Cache en `qualia-espejos/dossier-cache/`.
+- `qualia-proponedor`: compuertas del fuente + prompt byte a byte + dedup de
+  sombra (una clasificación por trabajo, los re-pokes no re-pagan).
+- Trigger `qualia_trabajos_poke_preparador` en INSERT (migración
+  `20260816000500`) — el poke del poller, serverless; el perdido lo recoge el
+  barrido. `empresa_rnc` sembrado para el timbre e-CF.
+- Espejos completos: los 8 jsonl crudos + agg (proveedor-cuentas,
+  plan-cuentas) + memoria (proveedores.md) + núcleo (rnc-tipo-gasto). El
+  puente del refrescador los renueva a diario — **verificado en vivo**: la
+  corrida del server del 2026-08-16 15:42Z subió todo y renovó la marca sola.
+- Humo de plomería: preparador respeta el gate («no es pendiente; no toco
+  nada»), proponedor responde 424 `falta_preparador` sin dossier, ambos
+  resuelven modo sombra. Falta el humo con TRÁFICO real: la próxima factura
+  arrastrada dispara el trigger y deja su dossier + propuesta en sombra para
+  diffear contra lo que haga el server.
+
 ### F3 — El turno; apagón SOLO de Hermes (corregido en v2)
 
 **Corrección v2 de secuencia — el error más grave de v1**: el contenedor mesa

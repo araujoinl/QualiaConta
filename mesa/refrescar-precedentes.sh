@@ -184,20 +184,34 @@ if [ "$fallas" -eq 0 ]; then
     NUBE_KEY=$(grep -m1 '^SUPABASE_SERVICE_ROLE_KEY=' /home/codebox/colector-bancos/.env | cut -d= -f2- | tr -d '"')
     NUBE_EMP="1de77ce6-ed98-4a96-8b1f-d8b902f11cd5"
     NUBE_RAW="/home/codebox/qualiaconta/repo/empresas/blackbox/hermes/preentrenamiento/raw"
+    NUBE_AGG="/home/codebox/qualiaconta/repo/empresas/blackbox/hermes/preentrenamiento/agg"
+    NUBE_REPO="/home/codebox/qualiaconta/repo"
     if [ -n "$NUBE_KEY" ]; then
         subidas=0
-        for f in accounts.jsonl bank-transfers-detalle.jsonl vendor-bills-detalle.jsonl \
-                 vendors.jsonl bill-payments.jsonl account-payments.jsonl; do
-            [ -f "$NUBE_RAW/$f" ] || continue
+        esperadas=0
+        nube_sube() {
+            esperadas=$((esperadas+1))
+            [ -f "$1" ] || return 0
             code=$(curl -s -o /dev/null -w '%{http_code}' -m 120 -X POST \
-                "$NUBE_URL/storage/v1/object/qualia-espejos/espejo-adm/$NUBE_EMP/$f" \
+                "$NUBE_URL/storage/v1/object/qualia-espejos/$2" \
                 -H "Authorization: Bearer $NUBE_KEY" -H 'x-upsert: true' \
-                -H 'Content-Type: application/octet-stream' --data-binary @"$NUBE_RAW/$f")
+                -H 'Content-Type: application/octet-stream' --data-binary @"$1")
             [ "$code" = "200" ] && subidas=$((subidas+1))
+        }
+        for f in accounts.jsonl bank-transfers-detalle.jsonl vendor-bills-detalle.jsonl \
+                 vendors.jsonl bill-payments.jsonl account-payments.jsonl \
+                 bank-charges.jsonl bank-charges-detalle.jsonl; do
+            nube_sube "$NUBE_RAW/$f" "espejo-adm/$NUBE_EMP/$f"
         done
+        # Lo que el proponedor serverless necesita además de los crudos:
+        # el agg destilado, la memoria curada y el catálogo nacional del 606.
+        nube_sube "$NUBE_AGG/proveedor-cuentas.json" "espejo-adm/$NUBE_EMP/agg/proveedor-cuentas.json"
+        nube_sube "$NUBE_AGG/plan-cuentas.json" "espejo-adm/$NUBE_EMP/agg/plan-cuentas.json"
+        nube_sube "$NUBE_REPO/empresas/blackbox/hermes/memoria/proveedores.md" "espejo-adm/$NUBE_EMP/memoria/proveedores.md"
+        nube_sube "$NUBE_REPO/nucleo-contable/agg/rnc-tipo-gasto.json" "nucleo/agg/rnc-tipo-gasto.json"
         # La marca solo se renueva si TODOS subieron: una marca fresca con
         # espejos viejos es el falso verde que qualia-salud existe para ver.
-        if [ "$subidas" -eq 6 ]; then
+        if [ "$subidas" -eq "$esperadas" ]; then
             curl -s -o /dev/null -m 30 -X PATCH \
                 "$NUBE_URL/rest/v1/qualia_config?empresa_id=is.null&clave=eq.refresco_precedentes" \
                 -H "apikey: $NUBE_KEY" -H "Authorization: Bearer $NUBE_KEY" \
