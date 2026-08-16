@@ -296,8 +296,8 @@ hay un borrador pendiente de mesa que sugiere X», y tratá el caso como nuevo
   estado que esperás, no repitas nada. El claim atómico es tu candado.
 - `propuesta → aprobada/rechazada` la mueve SOLO el usuario en la web. Nunca
   vos. (La única excepción no sos vos: el cron de conciliación cierra en
-  `rechazada` las sueltas superadas por su comprobante, firmadas
-  `aprobado_por_nombre='Cron conciliación'` — esas no se contestan.)
+  `rechazada` las sueltas superadas por su comprobante, reconocibles por
+  `superada_por_ncf` dentro de `propuesta` — esas no se contestan.)
 - Nada de credenciales ni URLs firmadas en el libro, en la memoria ni en logs.
 - Los montos son `numeric`: nada de redondeos inventados; lo que dice el
   documento es lo que va.

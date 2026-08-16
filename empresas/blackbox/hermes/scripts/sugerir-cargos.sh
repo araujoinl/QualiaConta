@@ -533,10 +533,13 @@ PY
 # comprobante. Cerrarle la fila a otro carril con un motivo que no le aplica
 # no es de este script.
 #
-# aprobado_por_nombre lleva la firma del cron y aprobado_en la hora: son las
-# columnas que la web y los docs ya usan para "quién decidió" (SPEC decisión
-# 19), así el cierre automático se distingue del rechazo humano en todas las
-# superficies, no solo para quien sepa buscar las llaves en el jsonb.
+# La marca de "esto lo cerró el cron" vive SOLO dentro de `propuesta`
+# (motivo_rechazo / superada_por_ncf), y aprobado_por* quedan null. No es una
+# omisión: el grant por columna de qualiaconta_lector permite UPDATE
+# únicamente sobre estado/propuesta/resumen/error_detalle — las columnas de
+# identidad las escribe solo la web, justamente para que ningún agente pueda
+# firmar una decisión como si fuera un humano (SPEC §5: los límites viven en
+# los permisos, no en el prompt). Intentar setearlas da "permission denied".
 # min(ncf) elige determinístico cuando dos comprobantes vivos reclaman el
 # mismo movimiento. Idempotente: al pasar a 'rechazada' la fila sale del
 # WHERE y la corrida siguiente no la ve.
@@ -570,8 +573,6 @@ with superadas as (
 )
 update qualia_trabajos t
    set estado = 'rechazada',
-       aprobado_por_nombre = 'Cron conciliación',
-       aprobado_en = now(),
        propuesta = t.propuesta || jsonb_build_object(
          'motivo_rechazo', 'superada por comprobante ' || u.ncf,
          'superada_por_ncf', u.ncf)
