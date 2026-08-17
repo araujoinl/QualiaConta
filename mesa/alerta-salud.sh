@@ -60,26 +60,53 @@ fi
 # Idéntico al de la cuota: las credenciales se leen en un subshell y no se
 # imprimen ni viajan por la línea de comandos.
 avisar() {
-  local texto="$1" seguro rc
+  local tipo="$1" texto="$2" seguro destinos rc
   seguro=$(printf '%s' "$texto" | tr -d '\\"' | tr '\n' ' ')
+  destinos=$(destinatarios_de "$tipo")
   (
     set -a; . "$WSNOTIFY_ENV" 2>/dev/null || true; set +a
-    if [ -z "${WSNOTIFY_BASE_URL:-}" ] || [ -z "${WSNOTIFY_API_KEY:-}" ] || [ -z "${WSNOTIFY_OTP_DESTINO:-}" ]; then
+    if [ -z "${WSNOTIFY_BASE_URL:-}" ] || [ -z "${WSNOTIFY_API_KEY:-}" ]; then
       exit 2
     fi
-    curl -sS -m 15 -X POST "${WSNOTIFY_BASE_URL%/}/v1/messages" \
-      -H "Authorization: Bearer ${WSNOTIFY_API_KEY}" \
-      -H 'Content-Type: application/json' \
-      -d "{\"to\":\"${WSNOTIFY_OTP_DESTINO}\",\"sender\":\"QualiaConta\",\"text\":\"${seguro}\",\"priority\":\"high\",\"bypass_window\":true,\"origin\":\"trigger\"}" \
-      >/dev/null 2>&1
+    # Sin destinatarios en la fila cae al del .env: quedarse mudo porque alguien
+    # vació la lista es peor que avisarle al de siempre. Para NO recibir esto
+    # está el interruptor, que sí es una decisión explícita.
+    [ -z "$destinos" ] && destinos="${WSNOTIFY_OTP_DESTINO:-}"
+    [ -z "$destinos" ] && exit 2
+    for destino in $destinos; do
+      curl -sS -m 15 -X POST "${WSNOTIFY_BASE_URL%/}/v1/messages" \
+        -H "Authorization: Bearer ${WSNOTIFY_API_KEY}" \
+        -H 'Content-Type: application/json' \
+        -d "{\"to\":\"${destino}\",\"sender\":\"QualiaConta\",\"text\":\"${seguro}\",\"priority\":\"high\",\"bypass_window\":true,\"origin\":\"trigger\"}" \
+        >/dev/null 2>&1 || exit 3
+    done
   )
   rc=$?
   case "$rc" in
-    0) log "aviso enviado: $seguro" ;;
-    2) log "no puedo avisar: faltan WSNOTIFY_* en $WSNOTIFY_ENV" ;;
-    *) log "ERROR: no pude enviar el aviso (rc=$rc)" ;;
+    0) log "aviso enviado (${tipo}): $seguro" ;;
+    2) log "no puedo avisar: faltan WSNOTIFY_* en $WSNOTIFY_ENV o no hay destinatario" ;;
+    *) log "ERROR: no pude enviar el aviso ${tipo} (rc=$rc)" ;;
   esac
   return 0
+}
+
+# Interruptor por aviso. La fila de wsnotify_triggers es exactamente lo que el
+# usuario prende y apaga en Labs_Inv (WS Notify -> Triggers, sección
+# Contabilidad); antes de existir, apagar esto era entrar por ssh y comentar el
+# cron. Si la fila no se puede leer se manda IGUAL: un aviso perdido porque la
+# base no contestó es el silencio que este script existe para evitar.
+habilitado() {
+  local activo
+  activo=$(consulta "select coalesce(config->>'activo','true') from wsnotify_triggers where tipo='$1'")
+  case "$activo" in
+    false) return 1 ;;
+    '') log "no pude leer el interruptor de $1; mando igual" ; return 0 ;;
+    *) return 0 ;;
+  esac
+}
+
+destinatarios_de() {
+  consulta "select coalesce(string_agg(e.v, ' '), '') from wsnotify_triggers t left join lateral jsonb_array_elements_text(coalesce(t.config->'destinatarios','[]'::jsonb)) as e(v) on true where t.tipo='$1'"
 }
 
 nuevo_estado=$(mktemp) || exit 0
@@ -88,7 +115,7 @@ trap 'rm -f "$nuevo_estado"' EXIT
 # $1 = clave, $2 = si|no (roto), $3 = mensaje cuando se rompe,
 # $4 = mensaje cuando se arregla. Sólo habla en el cruce.
 revisar() {
-  local clave="$1" roto="$2" msg_roto="$3" msg_sano="$4" previo
+  local clave="$1" roto="$2" msg_roto="$3" msg_sano="$4" previo tipo
   previo=$(awk -F'\t' -v k="$clave" '$1==k {print $2}' "$ESTADO" 2>/dev/null)
   printf '%s\t%s\n' "$clave" "$roto" >>"$nuevo_estado"
 
@@ -99,8 +126,16 @@ revisar() {
     return 0
   fi
   [ "$previo" = "$roto" ] && return 0
-  if [ "$roto" = "si" ]; then avisar "$msg_roto"; else avisar "$msg_sano"; fi
   log "${clave}: ${previo} -> ${roto}"
+
+  # El estado ya avanzó arriba, así que apagar el aviso no acumula un grito para
+  # cuando se vuelva a prender: el cruce se registró aunque nadie lo escuche.
+  tipo="qualia_${clave}"
+  if ! habilitado "$tipo"; then
+    log "${clave}: aviso apagado desde Labs_Inv, no mando nada"
+    return 0
+  fi
+  if [ "$roto" = "si" ]; then avisar "$tipo" "$msg_roto"; else avisar "$tipo" "$msg_sano"; fi
 }
 
 consulta() {

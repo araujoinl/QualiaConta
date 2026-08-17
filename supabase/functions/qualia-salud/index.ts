@@ -111,41 +111,90 @@ function horaRd(iso: string): string {
 // Aviso por WhatsApp vía WsNotify — el mecanismo exacto de los .sh, con los
 // mismos secrets. bypass_window: el humano necesita saberlo AHORA, no en la
 // ventana de envío. La API key jamás se loggea.
-async function avisarWhatsApp(texto: string): Promise<'enviado' | 'sin_config' | 'error'> {
+async function avisarWhatsApp(
+  texto: string,
+  destinatarios: string[],
+): Promise<'enviado' | 'sin_config' | 'error'> {
   const base = Deno.env.get('WSNOTIFY_BASE_URL');
   const apiKey = Deno.env.get('WSNOTIFY_API_KEY');
-  const destino = Deno.env.get('WSNOTIFY_OTP_DESTINO');
-  if (!base || !apiKey || !destino) {
-    console.log('no puedo avisar: faltan WSNOTIFY_* en los secrets');
+  // Sin destinatarios en la fila cae al del secret: quedarse mudo porque alguien
+  // vació la lista es peor que avisarle al de siempre. Para NO recibir esto está
+  // el interruptor, que sí es una decisión explícita.
+  const porDefecto = Deno.env.get('WSNOTIFY_OTP_DESTINO');
+  const destinos = destinatarios.length ? destinatarios : (porDefecto ? [porDefecto] : []);
+  if (!base || !apiKey || destinos.length === 0) {
+    console.log('no puedo avisar: faltan WSNOTIFY_* en los secrets o no hay destinatario');
     return 'sin_config';
   }
-  try {
-    const res = await fetch(`${base.replace(/\/+$/, '')}/v1/messages`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to: destino,
-        sender: 'QualiaConta',
-        text: texto,
-        priority: 'high',
-        bypass_window: true,
-        origin: 'trigger',
-      }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!res.ok) {
-      console.log(`ERROR: no pude enviar el aviso (http ${res.status})`);
+  for (const destino of destinos) {
+    try {
+      const res = await fetch(`${base.replace(/\/+$/, '')}/v1/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: destino,
+          sender: 'QualiaConta',
+          text: texto,
+          priority: 'high',
+          bypass_window: true,
+          origin: 'trigger',
+        }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!res.ok) {
+        console.log(`ERROR: no pude enviar el aviso (http ${res.status})`);
+        return 'error';
+      }
+    } catch (e) {
+      console.log(`ERROR: no pude enviar el aviso (${(e as Error).message})`);
       return 'error';
     }
-    console.log(`aviso enviado: ${texto}`);
-    return 'enviado';
-  } catch (e) {
-    console.log(`ERROR: no pude enviar el aviso (${(e as Error).message})`);
-    return 'error';
   }
+  console.log(`aviso enviado: ${texto}`);
+  return 'enviado';
+}
+
+/** Interruptor de un aviso: la fila de wsnotify_triggers que el usuario prende y
+ *  apaga desde Labs_Inv (WS Notify -> Triggers, sección Contabilidad). */
+interface Interruptor {
+  activo: boolean;
+  destinatarios: string[];
+}
+
+/** Qué fila gobierna cada clave del vigía. Los cuatro chequeos de salud tienen
+ *  la suya; los de cuota —uno por empresa más el saldo— comparten una sola,
+ *  porque son la misma noticia contada desde dos lados. */
+function triggerDe(clave: string): string {
+  return esClaveCuota(clave) ? 'qualia_cuota_llm' : `qualia_${clave}`;
+}
+
+// Se leen de una vez al arrancar la corrida. Si la tabla no contesta se devuelve
+// el mapa vacío y todo queda ENCENDIDO: un aviso perdido porque la base falló es
+// justo el silencio que esta función existe para evitar.
+// deno-lint-ignore no-explicit-any
+async function leerInterruptores(supabase: any): Promise<Record<string, Interruptor>> {
+  const mapa: Record<string, Interruptor> = {};
+  const { data, error } = await supabase
+    .from('wsnotify_triggers')
+    .select('tipo, config')
+    .like('tipo', 'qualia\\_%');
+  if (error) {
+    console.log(`no pude leer los interruptores (${error.message}); mando igual`);
+    return mapa;
+  }
+  for (const fila of data ?? []) {
+    const config = (fila.config ?? {}) as Record<string, unknown>;
+    mapa[fila.tipo] = {
+      activo: config.activo !== false,
+      destinatarios: Array.isArray(config.destinatarios)
+        ? (config.destinatarios as unknown[]).map(String).filter(Boolean)
+        : [],
+    };
+  }
+  return mapa;
 }
 
 // PostgREST corta en ~1000 filas por default; sin esto un listado grande se
@@ -176,6 +225,7 @@ class Vigia {
   constructor(
     private previo: Record<string, string>,
     private modoActual: Modo,
+    private interruptores: Record<string, Interruptor>,
   ) {}
 
   async cruce(
@@ -195,10 +245,20 @@ class Vigia {
     if (antes === estado) return;
 
     const texto = textos[estado];
+    // El estado nuevo ya quedó guardado arriba, así que apagar el aviso no
+    // acumula un grito para cuando se vuelva a prender: el cruce se registró
+    // aunque nadie lo escuche. En sombra el gate vale igual, o el diff contra el
+    // server acusaría una diferencia que no existe (allá también está apagado).
+    const interruptor = this.interruptores[triggerDe(clave)];
+    if (texto && interruptor?.activo === false) {
+      console.log(`${clave}: ${antes} -> ${estado} (aviso apagado desde Labs_Inv)`);
+      this.avisos.push({ clave, de: antes, a: estado, via: 'apagado' });
+      return;
+    }
     if (texto) {
       const seguro = sanear(texto);
       if (this.modoActual === 'nube') {
-        const via = await avisarWhatsApp(seguro);
+        const via = await avisarWhatsApp(seguro, interruptor?.destinatarios ?? []);
         this.avisos.push({ clave, de: antes, a: estado, via });
       } else {
         // sombra: el aviso que MANDARÍA va a qualia_sombra. La clave de dedup
@@ -579,7 +639,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const v = new Vigia(previo, modoActual);
+    const v = new Vigia(previo, modoActual, await leerInterruptores(supabase));
     const salida: Record<string, unknown> = {};
 
     if (alcance === 'todo' || alcance === 'salud') {

@@ -34,6 +34,7 @@ WSNOTIFY_ENV="${WSNOTIFY_ENV:-/home/codebox/colector-bancos/.env}"
 EMPRESA_ENV="${QUALIA_EMPRESA_ENV:-/home/codebox/qualiaconta/repo/empresas/blackbox/.env}"
 SALDO_MINIMO="${OPENROUTER_SALDO_MINIMO:-3}"       # dólares
 LOG_MAX_BYTES="${QUALIA_CUOTA_LOG_MAX:-2097152}"   # 2 MiB y rota
+TRIGGER="qualia_cuota_llm"                         # su fila en wsnotify_triggers
 
 log() { printf '%s %s\n' "$(date -Is)" "$*" >>"$LOG" 2>/dev/null; }
 
@@ -52,28 +53,67 @@ fi
 # Aviso por WhatsApp vía WsNotify. Las credenciales se leen en un subshell y
 # nunca se imprimen ni se pasan por la línea de comandos.
 avisar() {
-  local texto="$1" seguro rc
+  local texto="$1" seguro destinos rc
+  # El gate va acá y no en cada cruce: el estado ya se guardó antes de llegar,
+  # así que apagar el aviso no acumula un grito para cuando se vuelva a prender.
+  if ! habilitado; then
+    log "aviso apagado desde Labs_Inv, no mando: $texto"
+    return 0
+  fi
   seguro=$(printf '%s' "$texto" | tr -d '\\"' | tr '\n' ' ')
+  destinos=$(destinatarios_de "$TRIGGER")
   (
     set -a; . "$WSNOTIFY_ENV" 2>/dev/null || true; set +a
-    if [ -z "${WSNOTIFY_BASE_URL:-}" ] || [ -z "${WSNOTIFY_API_KEY:-}" ] || [ -z "${WSNOTIFY_OTP_DESTINO:-}" ]; then
+    if [ -z "${WSNOTIFY_BASE_URL:-}" ] || [ -z "${WSNOTIFY_API_KEY:-}" ]; then
       exit 2
     fi
+    # Sin destinatarios en la fila cae al del .env: quedarse mudo porque alguien
+    # vació la lista es peor que avisarle al de siempre. Para NO recibir esto
+    # está el interruptor, que sí es una decisión explícita.
+    [ -z "$destinos" ] && destinos="${WSNOTIFY_OTP_DESTINO:-}"
+    [ -z "$destinos" ] && exit 2
     # bypass_window: el humano necesita saberlo AHORA, no en la ventana de
     # envío. Es transaccional, no marketing.
-    curl -sS -m 15 -X POST "${WSNOTIFY_BASE_URL%/}/v1/messages" \
-      -H "Authorization: Bearer ${WSNOTIFY_API_KEY}" \
-      -H 'Content-Type: application/json' \
-      -d "{\"to\":\"${WSNOTIFY_OTP_DESTINO}\",\"sender\":\"QualiaConta\",\"text\":\"${seguro}\",\"priority\":\"high\",\"bypass_window\":true,\"origin\":\"trigger\"}" \
-      >/dev/null 2>&1
+    for destino in $destinos; do
+      curl -sS -m 15 -X POST "${WSNOTIFY_BASE_URL%/}/v1/messages" \
+        -H "Authorization: Bearer ${WSNOTIFY_API_KEY}" \
+        -H 'Content-Type: application/json' \
+        -d "{\"to\":\"${destino}\",\"sender\":\"QualiaConta\",\"text\":\"${seguro}\",\"priority\":\"high\",\"bypass_window\":true,\"origin\":\"trigger\"}" \
+        >/dev/null 2>&1 || exit 3
+    done
   )
   rc=$?
   case "$rc" in
     0) log "aviso enviado: $seguro" ;;
-    2) log "no puedo avisar: faltan WSNOTIFY_* en $WSNOTIFY_ENV" ;;
+    2) log "no puedo avisar: faltan WSNOTIFY_* en $WSNOTIFY_ENV o no hay destinatario" ;;
     *) log "ERROR: no pude enviar el aviso (rc=$rc)" ;;
   esac
   return 0
+}
+
+# Estos dos hablan con la MISMA base que el resto del script, pero por su propio
+# helper: el docker exec de más abajo va entre comillas simples y no admite un
+# SQL con literales adentro. Este va entre dobles, así que sí.
+consulta() {
+  docker exec "$CONTENEDOR" sh -c "psql \"\$QUALIA_DSN\" -t -A -c \"$1\"" 2>/dev/null
+}
+
+# Interruptor. La fila de wsnotify_triggers es lo que el usuario prende y apaga
+# en Labs_Inv (WS Notify -> Triggers, sección Contabilidad). Si no se puede leer
+# se manda IGUAL: un tope de cuota que nadie ve porque la base no contestó es
+# justo el silencio que este script existe para evitar.
+habilitado() {
+  local activo
+  activo=$(consulta "select coalesce(config->>'activo','true') from wsnotify_triggers where tipo='$TRIGGER'")
+  case "$activo" in
+    false) return 1 ;;
+    '') log "no pude leer el interruptor de $TRIGGER; mando igual" ; return 0 ;;
+    *) return 0 ;;
+  esac
+}
+
+destinatarios_de() {
+  consulta "select coalesce(string_agg(e.v, ' '), '') from wsnotify_triggers t left join lateral jsonb_array_elements_text(coalesce(t.config->'destinatarios','[]'::jsonb)) as e(v) on true where t.tipo='$1'"
 }
 
 # Hora dominicana para el mensaje: el que lo recibe no piensa en UTC.
