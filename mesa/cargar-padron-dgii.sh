@@ -59,6 +59,12 @@ LOTE = 5000
 def subir(filas):
     if not filas:
         return 0
+    # El archivo de la DGII trae RNCs REPETIDOS y Postgres no puede tocar la
+    # misma fila dos veces en un solo ON CONFLICT ("cannot affect row a second
+    # time" → HTTP 500). Se deduplica por RNC dentro del lote, quedándose con
+    # la última aparición, que es la que el propio archivo deja como vigente.
+    unicas = {f["rnc"]: f for f in filas}
+    filas = list(unicas.values())
     cuerpo = json.dumps(filas).encode()
     req = urllib.request.Request(
         f"{url}/rest/v1/dgii_rnc?on_conflict=rnc",
