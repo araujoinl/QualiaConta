@@ -50,7 +50,7 @@ registrar "bajado ($(stat -c %s "$TMP/padron.zip") bytes)"
 # separados por barra, y se sube por lotes al endpoint REST con upsert (la
 # tabla tiene el RNC como llave, así que re-cargar es idempotente).
 NUBE_URL="$NUBE_URL" NUBE_KEY="$NUBE_KEY" python3 - "$TMP/padron.zip" <<'PY' >>"$LOG" 2>&1
-import io, json, os, sys, urllib.request, zipfile
+import io, json, os, sys, urllib.error, urllib.request, zipfile
 
 url = os.environ["NUBE_URL"]
 key = os.environ["NUBE_KEY"]
@@ -78,9 +78,16 @@ def subir(filas):
             "Prefer": "resolution=merge-duplicates,return=minimal",
         },
     )
-    with urllib.request.urlopen(req, timeout=180) as r:
-        if r.status >= 300:
-            raise RuntimeError(f"HTTP {r.status}")
+    try:
+        with urllib.request.urlopen(req, timeout=180) as r:
+            if r.status >= 300:
+                raise RuntimeError(f"HTTP {r.status}")
+    except urllib.error.HTTPError as e:
+        # El cuerpo del error es lo único que dice QUÉ pasó (PostgREST manda el
+        # mensaje de Postgres ahí). Sin esto, un fallo del lote se lee como un
+        # "HTTP 500" pelado y no hay por dónde agarrarlo.
+        detalle = e.read()[:400].decode(errors="replace")
+        raise RuntimeError(f"HTTP {e.code}: {detalle}") from None
     return len(filas)
 
 def limpio(v):
