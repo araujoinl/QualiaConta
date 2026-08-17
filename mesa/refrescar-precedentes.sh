@@ -162,7 +162,11 @@ fi
 #
 # Es determinista y sin red: relee el raw y reescribe los agregados.
 registrar "regenerando los agregados de la capa B (plan de cuentas y compañía)"
-if salida=$(hermes_py "$SCRIPTS/agregar-preentrenamiento.py" 2>&1); then
+# Las rutas van EXPLÍCITAS: este script tiene el /opt/data del contenedor como
+# default y sin Hermes ese directorio no existe.
+if salida=$(hermes_py "$SCRIPTS/agregar-preentrenamiento.py" \
+                --raw "$QUALIA_PREENTRENAMIENTO/raw" \
+                --out "$QUALIA_PREENTRENAMIENTO/agg" 2>&1); then
     echo "$salida" | volcar
 else
     registrar "ERROR regenerando la capa B:"
