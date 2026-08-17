@@ -241,11 +241,19 @@ if [ "$fallas" -eq 0 ]; then
         # La marca solo se renueva si TODOS subieron: una marca fresca con
         # espejos viejos es el falso verde que qualia-salud existe para ver.
         if [ "$subidas" -eq "$esperadas" ]; then
-            curl -s -o /dev/null -m 30 -X PATCH \
-                "$NUBE_URL/rest/v1/qualia_config?empresa_id=is.null&clave=eq.refresco_precedentes" \
-                -H "apikey: $NUBE_KEY" -H "Authorization: Bearer $NUBE_KEY" \
-                -H 'Content-Type: application/json' \
-                -d "{\"valor\": {\"en\": \"$(date -u +%FT%TZ)\"}, \"actualizado_por\": \"refrescar-precedentes.sh (puente de espejos)\"}"
+            AHORA=$(date -u +%FT%TZ)
+            # Las DOS marcas que vigila qualia-salud. `refresco_cuentas` es del
+            # espejo del plan de cuentas (accounts.jsonl), que esta misma
+            # corrida baja: sin renovarla, la salud avisaba "cuentas
+            # congeladas" a las 48h con el espejo fresco — un rojo falso, que
+            # es peor que no avisar.
+            for marca in refresco_precedentes refresco_cuentas; do
+                curl -s -o /dev/null -m 30 -X PATCH \
+                    "$NUBE_URL/rest/v1/qualia_config?empresa_id=is.null&clave=eq.$marca" \
+                    -H "apikey: $NUBE_KEY" -H "Authorization: Bearer $NUBE_KEY" \
+                    -H 'Content-Type: application/json' \
+                    -d "{\"valor\": {\"en\": \"$AHORA\"}, \"actualizado_por\": \"refrescar-precedentes.sh (puente de espejos)\"}"
+            done
         fi
     fi
 fi
