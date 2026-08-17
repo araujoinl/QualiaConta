@@ -150,6 +150,26 @@ else
     fallas=$((fallas + 1))
 fi
 
+# El PLAN DE CUENTAS y los demás agregados de la capa B.
+#
+# Faltaba: `accounts` se baja desde el 2026-08-14, pero NADIE regeneraba
+# `agg/plan-cuentas.json` a partir de él — lo escribe agregar-preentrenamiento.py,
+# que era una herramienta de destilado "de una sola vez" y nunca entró al
+# refresco. Resultado: el contable clasificaba contra el catálogo del 2026-08-02
+# mientras el espejo crudo estaba al día, y el síntoma es el peor de todos: no
+# falla, elige la cuenta más parecida. Lo cazó la alerta de salud el 2026-08-17
+# («cuentas congeladas», 54 horas) — una alerta que valió su costo.
+#
+# Es determinista y sin red: relee el raw y reescribe los agregados.
+registrar "regenerando los agregados de la capa B (plan de cuentas y compañía)"
+if salida=$(hermes_py "$SCRIPTS/agregar-preentrenamiento.py" 2>&1); then
+    echo "$salida" | volcar
+else
+    registrar "ERROR regenerando la capa B:"
+    echo "$salida" | volcar
+    fallas=$((fallas + 1))
+fi
+
 # El tipo de gasto del 606 no es de esta empresa sino de la DGII: se destila
 # aparte, por RNC, recorriendo TODAS las empresas que tengan historico. Corre en
 # el host y no en el contenedor porque escribe en nucleo-contable/, que adentro
