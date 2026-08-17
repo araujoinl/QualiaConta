@@ -68,6 +68,64 @@ export async function modo(empresaId: string | null, funcion?: string): Promise<
  * concurrencia son globales a propósito: la cuota de z.AI es por CUENTA, no por
  * empresa (medido en modelo-zai.md), así que un tope por empresa mentiría.
  */
+/**
+ * Un número de `qualia_config` resuelto por empresa con respaldo global:
+ * (clave, empresa) → (clave, global) → `porDefecto`. Acepta el jsonb como
+ * número pelado, `{"valor": n}` o `{"<clave>": n}` — la misma tolerancia que el
+ * freno de cuota, porque la forma exacta del jsonb de estas claves no quedó
+ * pactada en el contrato.
+ *
+ * Un valor ilegible NUNCA es motivo para seguir con otra cosa: se cae al
+ * default, que es el que el dueño autorizó por escrito.
+ */
+export async function configNumero(
+  empresaId: string | null,
+  clave: string,
+  porDefecto: number,
+): Promise<number> {
+  const { data, error } = await sb()
+    .from('qualia_config')
+    .select('empresa_id, valor')
+    .eq('clave', clave);
+  if (error || !data) return porDefecto;
+  // El filtro por empresa se hace acá y no con .or() interpolado: empresa_id
+  // viene del caller y así jamás viaja crudo dentro de un string de filtro.
+  const fila = (empresaId ? data.find((f) => f.empresa_id === empresaId) : undefined) ??
+    data.find((f) => f.empresa_id === null);
+  const v = fila?.valor;
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (v && typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    for (const k of ['valor', clave]) {
+      const n = o[k];
+      if (typeof n === 'number' && Number.isFinite(n)) return n;
+    }
+  }
+  return porDefecto;
+}
+
+/**
+ * El jsonb crudo de una clave de `qualia_config`, resuelto por empresa con
+ * respaldo global: (clave, empresa) → (clave, global) → null. Es `configNumero`
+ * para valores que NO son un número — el precedente de brecha de ITBIS
+ * (`brecha_itbis:<rnc>`) es un objeto y el caller lo valida con `leerPrecedente`.
+ *
+ * Base ilegible = null, y null significa «no hay». En el precedente eso es
+ * exactamente lo que corresponde: sin poder leerlo, se pregunta.
+ */
+export async function config(empresaId: string | null, clave: string): Promise<unknown | null> {
+  const { data, error } = await sb()
+    .from('qualia_config')
+    .select('empresa_id, valor')
+    .eq('clave', clave);
+  if (error || !data) return null;
+  // El filtro por empresa se hace acá y no con .or() interpolado: empresa_id
+  // viene del caller y así jamás viaja crudo dentro de un string de filtro.
+  const fila = (empresaId ? data.find((f) => f.empresa_id === empresaId) : undefined) ??
+    data.find((f) => f.empresa_id === null);
+  return fila?.valor ?? null;
+}
+
 export async function configGlobal(clave: string): Promise<unknown | null> {
   const { data, error } = await sb()
     .from('qualia_config')

@@ -146,7 +146,8 @@ const FUNCION = 'qualia-examen';
 const RAMAS = new Set(['casos', 'correcciones', 'criterios', 'facturas-dificiles']);
 
 // Las tools que cierran el turno según el contrato §2.3. abrir_trabajo,
-// rechazar_paso, proponer_criterio y escribir_libro escriben pero no cierran.
+// rechazar_paso, proponer_criterio, ratificar_brecha_itbis y escribir_libro
+// escriben pero no cierran.
 const CIERRES = new Set(['proponer', 'preguntar_al_humano', 'responder', 'marcar_error']);
 
 // El turno tiene deadline blando propio de ~300s (contrato §4); un solo caso

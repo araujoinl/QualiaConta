@@ -6,6 +6,8 @@
 // ajuste silencioso — despejar números para que la aritmética cierre es
 // exactamente el modo de falla (FP00001120) que este camino no puede tener.
 
+import { type DatosBrecha, textoDetalleBrecha } from '../_shared/brecha-itbis.ts';
+
 export type Dic = Record<string, unknown>;
 export type Camino = 'precedente' | 'multi';
 
@@ -266,7 +268,9 @@ export function compuertasDossier(
 
 // ── validación post-clasificador ────────────────────────────────────────────
 
-export interface Linea {
+// Alias de objeto y no `interface`: así el renglón entra tal cual en el
+// detector de brecha de ITBIS de `_shared`, que trabaja sobre el jsonb crudo.
+export type Linea = {
   descripcion: string;
   cantidad: number;
   precio: number;
@@ -274,7 +278,7 @@ export interface Linea {
   itbis: number;
   cuenta: string;
   cuenta_nombre: string;
-}
+};
 
 /**
  * Las validaciones que NO se le confían al modelo. Cada una es una compuerta:
@@ -371,6 +375,7 @@ export function armarPropuesta(
   tipoGasto: TipoGasto,
   modeloUsado: string,
   rnc: string,
+  brecha: DatosBrecha | null = null,
 ): { propuesta: Dic; resumen: string } {
   const itbisLineas = pyRoundN(lineas.reduce((s, l) => s + l.itbis, 0), 2);
   const cuentasUsadas = [...new Set(lineas.map((l) => l.cuenta))].sort();
@@ -394,6 +399,10 @@ export function armarPropuesta(
       'validado contra el histórico.';
   }
   detalle += ` Propuesto sin sesión LLM (proponedor v${VERSION}).`;
+  // ADM no tiene campo de nota en `VendorBills`: dentro del documento la brecha
+  // sólo queda escrita en el `Name` del renglón de ajuste. Acá, en el detalle,
+  // es donde la lee quien aprueba.
+  if (brecha) detalle += ` ${textoDetalleBrecha(brecha)}`;
 
   const p: Dic = {
     proveedor: (prov.nombre || extr.proveedor) ?? null,
@@ -411,6 +420,10 @@ export function armarPropuesta(
     detalle,
     proponedor: { version: VERSION, camino, modelo: modeloUsado },
   };
+  // Los cuatro números del criterio, con la misma forma con que C-008 anota
+  // `propuesta.conversion`: es el rastro que la mesa muestra y el que queda en
+  // la fila para siempre.
+  if (brecha) p.brecha_itbis = brecha;
   if (camino === 'precedente') p.precedente_ref = `agg:proveedor-cuentas.json#${rnc}`;
   if (extr.numero_factura_suplidor) p.numero_factura_suplidor = extr.numero_factura_suplidor;
 

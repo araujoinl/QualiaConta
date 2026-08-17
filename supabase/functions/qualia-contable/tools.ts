@@ -1,6 +1,7 @@
-// qualia-contable/tools.ts — las 15 tools del turno (docs/contrato-turno.md
-// §2-§3 con sus enmiendas normativas del 2026-08-16): los JSON schemas que
-// viajan a llamarLLM y la implementación de `ejecutar`.
+// qualia-contable/tools.ts — las 16 tools del turno (docs/contrato-turno.md
+// §2-§3 con sus enmiendas normativas del 2026-08-16, más
+// `ratificar_brecha_itbis` del 2026-08-17): los JSON schemas que viajan a
+// llamarLLM y la implementación de `ejecutar`.
 //
 // Las tres reglas que ordenan el archivo entero:
 //
@@ -43,7 +44,13 @@ import {
 } from './consultas.ts';
 import { ArgsBuscarPrecedente, buscarPrecedente } from './precedentes.ts';
 import { ArgsLibro, escribirLibro } from './libro.ts';
+import {
+  ArgsRatificarBrecha,
+  precedenteDeLaEmpresa,
+  ratificarBrechaItbis,
+} from './precedente-brecha.ts';
 import { validarPropuesta, validarResumen } from './validar.ts';
+import { CLAVE_TOPE_BRECHA, TASAS_LEGALES, TOPE_BRECHA_PCT_DEFAULT } from '../_shared/brecha-itbis.ts';
 import { rutaAggTiposGasto } from './espejos.ts';
 import { NUCLEO } from './nucleo.ts';
 
@@ -319,6 +326,43 @@ async function avisarProgreso(ctx: CtxTurno, args: Dic): Promise<ResultadoTool> 
  * proceso: no cambia en caliente y el cierre no debe pagar un SELECT por él.
  */
 const cacheRncEmpresa = new Map<string, string>();
+/**
+ * El tope de magnitud de la brecha de ITBIS (`tope_brecha_itbis_pct`), en % del
+ * total del papel. Se resuelve acá y viaja a la compuerta: `validarPropuesta` es
+ * síncrona a propósito —es una función pura sobre el jsonb— y salir a la base
+ * desde adentro la volvería otra cosa. Ilegible o ausente = el default del
+ * módulo, nunca una puerta más ancha.
+ */
+const cacheTopeBrecha = new Map<string, number>();
+async function topeBrechaDeLaEmpresa(ctx: CtxTurno): Promise<number> {
+  const previo = cacheTopeBrecha.get(ctx.empresaId);
+  if (previo !== undefined) return previo;
+  let tope = TOPE_BRECHA_PCT_DEFAULT;
+  try {
+    const { data } = await ctx.db
+      .from('qualia_config')
+      .select('empresa_id, valor')
+      .eq('clave', CLAVE_TOPE_BRECHA);
+    const fila = (data ?? []).find((f: Dic) => f.empresa_id === ctx.empresaId) ??
+      (data ?? []).find((f: Dic) => f.empresa_id === null);
+    const v = fila?.valor as unknown;
+    if (typeof v === 'number' && Number.isFinite(v)) tope = v;
+    else if (v && typeof v === 'object') {
+      for (const k of ['valor', CLAVE_TOPE_BRECHA]) {
+        const n = (v as Dic)[k];
+        if (typeof n === 'number' && Number.isFinite(n)) {
+          tope = n;
+          break;
+        }
+      }
+    }
+  } catch {
+    tope = TOPE_BRECHA_PCT_DEFAULT;
+  }
+  cacheTopeBrecha.set(ctx.empresaId, tope);
+  return tope;
+}
+
 async function rncDeLaEmpresa(ctx: CtxTurno): Promise<string> {
   const previo = cacheRncEmpresa.get(ctx.empresaId);
   if (previo !== undefined) return previo;
@@ -377,6 +421,12 @@ async function proponer(ctx: CtxTurno, args: Dic): Promise<ResultadoTool> {
     hijoDeCaso: false,
     dossier: await dossierDelTurno(ctx),
     rncEmpresa: await rncDeLaEmpresa(ctx),
+    topeBrechaPct: await topeBrechaDeLaEmpresa(ctx),
+    // El precedente del EMISOR de esta propuesta: lo único que autoriza a
+    // absorber una brecha de ITBIS sin preguntar. Se resuelve por llamada y sin
+    // cache porque el propio turno puede haberlo creado hace dos iteraciones
+    // (`ratificar_brecha_itbis`).
+    precedenteBrecha: await precedenteDeLaEmpresa(ctx, (propuesta as Dic).rnc),
   });
   const errores = [...vResumen.errores, ...vPropuesta.errores];
   const avisos = [...vResumen.avisos, ...vPropuesta.avisos];
@@ -693,6 +743,8 @@ async function abrirTrabajo(ctx: CtxTurno, args: Dic): Promise<ResultadoTool> {
     hijoDeCaso: true,
     rncEmpresa: await rncDeLaEmpresa(ctx),
     dossier: await dossierDelTurno(ctx),
+    topeBrechaPct: await topeBrechaDeLaEmpresa(ctx),
+    precedenteBrecha: await precedenteDeLaEmpresa(ctx, (propuesta as Dic).rnc),
   });
   const errores = [...vResumen.errores, ...vPropuesta.errores];
   const avisos = [...vResumen.avisos, ...vPropuesta.avisos];
@@ -932,7 +984,7 @@ async function proponerCriterio(ctx: CtxTurno, args: Dic): Promise<ResultadoTool
   };
 }
 
-// ════════════════════════════════════════════════════════════ los 15 schemas
+// ════════════════════════════════════════════════════════════ los 16 schemas
 
 interface EsquemaTool {
   type: 'function';
@@ -1215,6 +1267,24 @@ export const ESQUEMAS_TOOLS: EsquemaTool[] = [
     ),
   ),
 
+  // ── la brecha de ITBIS ───────────────────────────────────────────────────
+  tool(
+    'ratificar_brecha_itbis',
+    'El humano contestó que SE ABSORBE la brecha de ITBIS de este emisor: deja el precedente (qualia_config `brecha_itbis:<rnc>`) y su entrada de libro. La tasa la dice ÉL en su respuesta — deducirla del documento es circular y ya salió al revés una vez. El RNC y quién ratifica los toma el sistema de la fila. No cierra el turno: después volvé a llamar a `proponer`. Sin respuesta suya posterior a tu pregunta, la tool no escribe.',
+    objeto(
+      {
+        tasa: {
+          type: 'number',
+          enum: [...TASAS_LEGALES],
+          description: 'la tasa a la que ESTE emisor factura, según el humano',
+        },
+        motivo: texto('por qué, con sus palabras (p. ej. «su POS embebe ISC en las bebidas»)'),
+        nota: texto('lo que queda escrito en el hilo'),
+      },
+      ['tasa', 'motivo', 'nota'],
+    ),
+  ),
+
   // ── el libro ─────────────────────────────────────────────────────────────
   tool(
     'escribir_libro',
@@ -1297,6 +1367,8 @@ export async function ejecutar(
       return await rechazarPaso(ctx, a);
     case 'proponer_criterio':
       return await proponerCriterio(ctx, a);
+    case 'ratificar_brecha_itbis':
+      return await ratificarBrechaItbis(ctx, a as ArgsRatificarBrecha);
     case 'escribir_libro':
       return await escribirLibro(ctx, a as ArgsLibro);
     default:

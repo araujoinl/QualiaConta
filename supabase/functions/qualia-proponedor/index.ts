@@ -31,7 +31,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
  * Body (POST, JSON): { trabajo_id: uuid }
  */
 
-import { modo, sb } from '../_shared/db.ts';
+import { config, configNumero, modo, sb } from '../_shared/db.ts';
 import { autorizado, bearerCron } from '../_shared/auth.ts';
 import { registrarSombra } from '../_shared/sombra.ts';
 import {
@@ -66,6 +66,16 @@ import {
   VERSION,
 } from './compuertas.ts';
 import { clasificar, promptClasificacion } from './clasificacion.ts';
+import {
+  CLAVE_TOPE_BRECHA,
+  clavePrecedenteBrecha,
+  type DatosBrecha,
+  evaluarBrechaItbis,
+  leerPrecedente,
+  type LineaItems,
+  textoNotaBrecha,
+  TOPE_BRECHA_PCT_DEFAULT,
+} from '../_shared/brecha-itbis.ts';
 
 const FUNCION = 'qualia-proponedor';
 
@@ -284,13 +294,55 @@ async function atender(trabajoId: string, dossierEn: string | null = null): Prom
     let propuesta: Dic;
     let resumen: string;
     let conf: number;
+    let brecha: DatosBrecha | null = null;
     try {
       const propina = numeroF(extr.propina);
       const prompt = promptClasificacion(extr, prov, camino, memoria, propina, texto);
       const { datos, modeloUsado } = await clasificar(empresaId, prompt);
       const v = validarLineas(datos, prov, extr, nombres, camino);
       conf = v.conf;
-      const armada = armarPropuesta(extr, prov, v.lineas, conf, camino, tipoGasto, modeloUsado, rnc);
+
+      // ── la brecha de ITBIS, en dos tiempos (libro 2026-08-17) ────────────
+      //
+      // El clasificador reparte el ITBIS impreso entre los renglones, pero ADM
+      // no acepta ese monto: lo recalcula desde el grupo de impuesto. Cuando el
+      // emisor facturó de MENOS —el POS de GUAN LAN, dos facturas paradas por
+      // lo mismo— el papel y ADM dejan de coincidir.
+      //
+      // Acá NO se decide la tasa. Si hay precedente ratificado para el RNC, se
+      // absorbe a la tasa que el precedente declara; si no lo hay, esto degrada
+      // a turno con los números puestos, y el turno le pregunta al humano. Un
+      // proponedor determinista eligiendo entre 16% y 18% es exactamente lo que
+      // la FP00001063 probó que sale al revés.
+      let lineas = v.lineas;
+      const fallo = evaluarBrechaItbis({
+        documento: 'VendorBills',
+        lineas: lineas as LineaItems[],
+        monto: numeroF(extr.monto) ?? NaN,
+        itbis: numeroF(extr.itbis),
+        rnc,
+        precedente: leerPrecedente(await config(empresaId, clavePrecedenteBrecha(rnc)), rnc),
+        // El ancho de la puerta lo fija el dueño en la base, no un deploy: una
+        // brecha grande es humano aunque haya precedente.
+        topePct: await configNumero(empresaId, CLAVE_TOPE_BRECHA, TOPE_BRECHA_PCT_DEFAULT),
+      });
+      if (fallo.estado === 'avisar') {
+        // Los números y la pregunta viajan en clasificacion.json, que el turno
+        // lee entero en `dossier_completo`: sin esto el turno tendría que
+        // rehacer la aritmética para preguntar lo mismo.
+        salidaDebug.brecha_itbis = fallo.numeros;
+        salidaDebug.brecha_pregunta = fallo.texto;
+        throw new NoPropone(
+          `ITBIS contra la tasa (pregunta ${fallo.pregunta}): ${fallo.motivo}. ` +
+            'Esto NO se absorbe: preguntale al humano con los números y las dos salidas',
+        );
+      }
+      if (fallo.estado === 'absorbida') {
+        lineas = fallo.lineas as typeof v.lineas;
+        brecha = fallo.brecha;
+      }
+
+      const armada = armarPropuesta(extr, prov, lineas, conf, camino, tipoGasto, modeloUsado, rnc, brecha);
       propuesta = armada.propuesta;
       resumen = armada.resumen;
     } catch (e) {
@@ -308,6 +360,7 @@ async function atender(trabajoId: string, dossierEn: string | null = null): Prom
         propone: true,
         resumen,
         propuesta,
+        brecha_itbis: brecha,
       });
       return json({ ...base, accion: 'propuso_sombra', camino, resumen });
     }
@@ -316,9 +369,15 @@ async function atender(trabajoId: string, dossierEn: string | null = null): Prom
       camino === 'precedente' ? 'precedente' : 'reparto entre cuentas conocidas'
     }): ${resumen}. Renglones validados contra el histórico del proveedor; ` +
       `confianza ${conf.toFixed(2)}. Revisá el desglose y aprobá o corregí.`;
-    await escribirPropuesta(trabajoId, empresaId, propuesta, resumen, evento);
-    await subirClasificacion(trabajoId, { ...salidaDebug, propone: true });
-    return json({ ...base, accion: 'propuso', camino, resumen });
+    // El aviso al dueño: es lo que vuelve a esto automático-CON-TESTIGO en vez
+    // de automático a ciegas. Va como evento aparte y de tipo `nota` para que no
+    // se pierda entre los progresos del hilo.
+    const aviso = brecha
+      ? textoNotaBrecha(brecha, propuesta.moneda === 'USD' ? 'US$' : 'RD$')
+      : null;
+    await escribirPropuesta(trabajoId, empresaId, propuesta, resumen, evento, brecha, aviso);
+    await subirClasificacion(trabajoId, { ...salidaDebug, propone: true, brecha_itbis: brecha });
+    return json({ ...base, accion: 'propuso', camino, resumen, brecha_itbis: brecha });
   } catch (e) {
     if (!(e instanceof NoPropone)) throw e;
     // El NO_PROPONE del fuente (exit 3): que lo vea la sesión. La fila no se
@@ -397,6 +456,8 @@ async function escribirPropuesta(
   propuesta: Dic,
   resumen: string,
   evento: string,
+  brecha: DatosBrecha | null = null,
+  aviso: string | null = null,
 ): Promise<void> {
   const { data, error } = await sb()
     .from('qualia_trabajos')
@@ -411,9 +472,19 @@ async function escribirPropuesta(
     // cambió de manos a mitad del claim y acá no se pisa nada.
     throw new Error('la fila cambio de estado a mitad del claim: no escribo');
   }
-  const { error: errEvento } = await sb()
-    .from('qualia_eventos')
-    .insert({ trabajo_id: trabajoId, autor: 'contable', tipo: 'progreso', contenido: evento });
+  const eventos: Dic[] = [
+    { trabajo_id: trabajoId, autor: 'contable', tipo: 'progreso', contenido: evento },
+  ];
+  if (aviso && brecha) {
+    eventos.push({
+      trabajo_id: trabajoId,
+      autor: 'contable',
+      tipo: 'nota',
+      contenido: aviso,
+      datos: { brecha_itbis: brecha },
+    });
+  }
+  const { error: errEvento } = await sb().from('qualia_eventos').insert(eventos);
   if (errEvento) {
     // La propuesta (la sustancia) ya quedó escrita; el fuente moría acá con
     // el mismo efecto observable. El retry no duplica: el claim ya no matchea.

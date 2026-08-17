@@ -764,6 +764,13 @@ function toolsDeRama(rama: Rama, conProgreso: boolean): string[] {
         'responder',
         'marcar_error',
         'proponer_criterio',
+        // Sólo acá: su guard exige voz del humano POSTERIOR a la pregunta, y
+        // esa rama es justamente la que se abre cuando el humano contestó. En
+        // facturas reventaría siempre, y una tool que siempre revienta no se
+        // ofrece.
+        // 'ratificar_brecha_itbis' NO se sirve: su consumidor —la absorción
+        // automática— está apagado (ver ABSORCION_AUTOMATICA_HABILITADA). Una
+        // tool que escribe precedentes que nadie aplica es superficie de más.
         'escribir_libro',
       ];
   }

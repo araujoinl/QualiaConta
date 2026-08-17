@@ -12,6 +12,16 @@
 
 import { RE_UUID, round2, soloDigitos } from './tipos.ts';
 import { TIPOS_DOC } from './adm.ts';
+import {
+  clavePrecedenteBrecha,
+  evaluarBrechaItbis,
+  type LineaItems,
+  MOTIVO_SIN_ITBIS,
+  NOMBRE_RENGLON_AJUSTE,
+  type PrecedenteBrecha,
+  textoDetalleBrecha,
+  TOPE_BRECHA_PCT_DEFAULT,
+} from '../_shared/brecha-itbis.ts';
 
 type Dic = Record<string, unknown>;
 
@@ -123,6 +133,22 @@ export interface OpcionesValidacion {
    * nuevo-milenio, que costó tres rondas de corrección.
    */
   rncEmpresa?: string;
+  /**
+   * Tope de magnitud de la brecha de ITBIS, en % del total del papel
+   * (`qualia_config` `tope_brecha_itbis_pct`, decisión del dueño 2026-08-17).
+   * Lo resuelve el caller —acá no se sale a la base— y ausente vale el default
+   * del módulo: la compuerta nunca absorbe más de lo autorizado por no poder
+   * leer un flag.
+   */
+  topeBrechaPct?: number;
+  /**
+   * El precedente ratificado del EMISOR de esta propuesta (`qualia_config`
+   * clave `brecha_itbis:<rnc>`), ya leído por el caller. Es lo ÚNICO que
+   * autoriza a absorber una brecha de ITBIS sin preguntar, y su tasa es la que
+   * se usa: acá no se deduce ninguna. Ausente = no hay precedente = la salida
+   * es `preguntar_al_humano`.
+   */
+  precedenteBrecha?: PrecedenteBrecha | null;
 }
 
 /**
@@ -214,7 +240,10 @@ export function validarPropuesta(
   } else if (doc !== '' && !sinLineas) {
     const filas = lineas as Dic[];
     if (DOC_ITEMS.has(doc)) {
-      errores.push(...validarItems(filas, doc, p));
+      errores.push(...validarItems(filas, doc, p, {
+        topeBrechaPct: opciones.topeBrechaPct ?? TOPE_BRECHA_PCT_DEFAULT,
+        precedenteBrecha: opciones.precedenteBrecha ?? null,
+      }));
     } else {
       errores.push(...validarPartidaDoble(filas));
     }
@@ -755,8 +784,13 @@ function huecosDeCargoBancario(
   }
 }
 
+interface OpcionesBrecha {
+  topeBrechaPct: number;
+  precedenteBrecha: PrecedenteBrecha | null;
+}
+
 /** Renglones estilo item: los de VendorBills y VendorCreditNotes. */
-function validarItems(filas: Dic[], doc: string, p: Dic): string[] {
+function validarItems(filas: Dic[], doc: string, p: Dic, brecha: OpcionesBrecha): string[] {
   const errores: string[] = [];
   filas.forEach((l, i) => {
     const n = i + 1;
@@ -812,7 +846,138 @@ function validarItems(filas: Dic[], doc: string, p: Dic): string[] {
         'El ITBIS no se prorratea: cada renglón lleva el suyo, y un exento que sale de una resta es señal de tasa mal despejada (FP00001120)',
     );
   }
+
+  errores.push(...validarBrechaItbis(filas, doc, p, brecha));
   return errores;
+}
+
+/**
+ * Lo que ADM va a COBRAR contra lo que el papel dice, antes de que un humano
+ * apruebe nada.
+ *
+ * Hasta el 2026-08-17 esto se descubría en el registro —`verificar_cuadre` del
+ * registrador— y ahí la única salida era borrar el documento: pasó dos veces con
+ * el mismo restaurante (FP00001063 y la B0100000600), las dos con la misma
+ * diferencia de 69,79, y las dos veces la factura quedó parada. La compuerta
+ * frena antes.
+ *
+ * Y frena en DOS tiempos: sin precedente ratificado del emisor manda preguntar
+ * —con los números y las dos salidas—, y sólo con precedente dicta el reparto.
+ * La compuerta nunca le dice al turno «elegí la tasa»: esa es la circularidad
+ * que la reformulación del 2026-08-17 vino a matar.
+ */
+function validarBrechaItbis(filas: Dic[], doc: string, p: Dic, opciones: OpcionesBrecha): string[] {
+  const errores: string[] = [];
+  const monto = numeroDe(p.monto);
+  const itbis = numeroDe(p.itbis);
+  if (monto === null) return errores; // ya lo dijo el cuadre
+
+  const rnc = soloDigitos(p.rnc);
+  let fallo;
+  try {
+    fallo = evaluarBrechaItbis({
+      documento: doc,
+      lineas: filas as LineaItems[],
+      monto,
+      itbis,
+      rnc,
+      precedente: opciones.precedenteBrecha,
+      topePct: opciones.topeBrechaPct,
+    });
+  } catch {
+    return errores; // renglones no representables: lo dicen las otras compuertas
+  }
+
+  const declarada = dic(p.brecha_itbis);
+  // Por el MOTIVO y no por el principio del texto: el renglón de ajuste nuevo
+  // lo lleva al frente, y un renglón DEL PAPEL que quedó sin ITBIS lo lleva
+  // antes de su propia descripción. Los dos son la misma marca.
+  const tieneAjuste = filas.some((l) => String(l.descripcion ?? '').includes(MOTIVO_SIN_ITBIS));
+
+  if (fallo.estado === 'avisar') {
+    // El turno NO propone esta factura: pregunta. Y la pregunta va con los
+    // números y con las dos salidas nombradas — una pregunta sin salidas deja
+    // la factura parada, que es como terminaron la FP00001063 y la B0100000600.
+    const n = fallo.numeros;
+    errores.push(
+      `el ITBIS del papel no se sostiene contra ninguna tasa legal (pregunta ${fallo.pregunta} del criterio ` +
+        `del 2026-08-17): ${fallo.motivo}. NO se absorbe, NO se despeja y NO elijas vos la tasa: por el papel ` +
+        'una factura al 16% del art. 343 y una al 18% con ISC embebido son indistinguibles. ' +
+        'La salida es `preguntar_al_humano` ofreciéndole las DOS: (A) absorber —y ahí decime a qué tasa factura ' +
+        'este emisor— o (B) reclamar comprobante corregido. Copiá esta pregunta tal cual, que ya trae los ' +
+        `números:\n«${fallo.texto}»` +
+        (n
+          ? `\nY el evento \`nota\` lleva los números en \`datos.brecha_itbis\`: ${
+            JSON.stringify({
+              rnc: n.rnc,
+              itbis_impreso: n.itbis_impreso,
+              base_gravada: n.base_gravada,
+              tasa_efectiva: n.tasa_efectiva,
+              escenarios: n.escenarios,
+            })
+          }`
+          : '') +
+        (rnc !== ''
+          ? `\nSi el humano YA te contestó que absorbés: primero \`ratificar_brecha_itbis\` (deja el precedente ` +
+            `de este emisor en qualia_config \`${clavePrecedenteBrecha(rnc)}\` y su entrada de libro) y recién ` +
+            'después volvé a llamar a `proponer`.'
+          : ''),
+    );
+    return errores;
+  }
+
+  if (fallo.estado === 'absorbida') {
+    const b = fallo.brecha;
+    const receta = fallo.lineas.length <= 20 ? ` Renglones exactos: ${JSON.stringify(fallo.lineas)}.` : '';
+    errores.push(
+      `ADM no acepta el ITBIS por monto: con estos renglones cobraría ${b.itbis_esperado.toFixed(2)} de ITBIS ` +
+        `y el papel dice ${b.itbis_impreso.toFixed(2)} — el emisor facturó ${b.brecha.toFixed(2)} de MENOS. ` +
+        'El ITBIS que se registra es el IMPRESO (libro 2026-08-17): no lo recalcules ni cambies el total. ' +
+        `Partí la base al ${b.tasa.toFixed(0)}% —la que ${b.precedente.ratificado_por} ratificó para este ` +
+        `emisor, no una que deduzcas—: ${b.base_gravada.toFixed(2)} gravados y ${b.base_sin_gravar.toFixed(2)} ` +
+        `sin ITBIS en las MISMAS cuentas (${b.renglones_ajuste.map((r) => r.cuenta).join(', ')}), nunca ` +
+        `rotulado exento. Ningún renglón del papel se borra ni se funde: el que pierde el ITBIS entero se queda ` +
+        `con su monto y su nombre, y el sobrante que no tiene renglón propio va en uno nuevo ` +
+        `«${NOMBRE_RENGLON_AJUSTE}».${receta} ` +
+        'Y la propuesta lleva `brecha_itbis` con los números y el aviso al humano en un evento `nota`',
+      );
+    // El rastro se pide por el CAMPO, no por una palabra del `detalle`: buscar
+    // «facturó» ahí adentro ataba el reintento a una tilde y a una redacción
+    // que nadie prometió. `brecha_itbis` es el contrato (los cuatro números,
+    // como C-008 anota `conversion`); el detalle se pide por separado y en
+    // llano, sin que su texto decida si la propuesta pasa.
+    if (!brechaCompleta(declarada)) {
+      errores.push(
+        'falta `brecha_itbis` con los números del criterio (itbis_impreso, itbis_esperado, brecha, ' +
+          `base_sin_gravar, tasa): sin ese campo el ajuste queda sin explicación en la fila. ` +
+          `Y el \`detalle\` lo dice en llano: «${textoDetalleBrecha(b)}»`,
+      );
+    }
+    return errores;
+  }
+
+  // Ya cuadra. Sólo queda que lo declarado y lo escrito no se contradigan: una
+  // `brecha_itbis` sin su renglón de ajuste sería un rastro que no corresponde a
+  // ningún número del documento.
+  if (declarada && !tieneAjuste) {
+    errores.push(
+      '`brecha_itbis` declarada pero no hay renglón de ajuste en `lineas[]`: o falta el renglón, o la brecha no existe y sobra el rastro',
+    );
+  }
+  if (tieneAjuste && !brechaCompleta(declarada)) {
+    errores.push(
+      'hay un renglón de ajuste de ITBIS y falta `brecha_itbis` con los cuatro números (itbis_impreso, itbis_esperado, brecha, base_sin_gravar): sin eso el ajuste queda sin explicación en la fila',
+    );
+  }
+  return errores;
+}
+
+/** Los números del criterio están y son números: un `brecha_itbis` a medias es
+ * un rastro que no explica nada, y por eso no cuenta como declarado. */
+function brechaCompleta(b: Dic | null): boolean {
+  if (!b) return false;
+  return ['itbis_impreso', 'itbis_esperado', 'brecha', 'base_sin_gravar', 'tasa']
+    .every((k) => numeroDe(b[k]) !== null);
 }
 
 /** Partida doble: Journals, BankCharges, BankBankTransfers, pagos. */

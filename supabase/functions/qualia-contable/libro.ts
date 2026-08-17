@@ -32,7 +32,7 @@ const MAX_SUFIJOS = 5;
 const dic = (v: unknown): Dic | null =>
   v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Dic) : null;
 
-function slug(texto: string, tope = 40): string {
+export function slug(texto: string, tope = 40): string {
   const s = texto
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -158,6 +158,71 @@ async function crearEnGit(nombreBase: string, entrada: string, mensaje: string):
   return { ref_git: null, nombre: null, error: `los ${MAX_SUFIJOS} nombres candidatos ya existen en el libro` };
 }
 
+// ── el orden de escritura, para todo el que escriba libro ───────────────────
+
+export interface EntradaLibro {
+  /**
+   * El trabajo que esta entrada cierra, o null cuando la entrada NO cierra un
+   * trabajo (el precedente de brecha de ITBIS: nace de una respuesta del humano
+   * sobre una factura que sigue viva y que después tendrá su propia entrada).
+   *
+   * No es un detalle: el barrido de «registrada sin libro» marca cerrado por la
+   * EXISTENCIA de una fila con ese `trabajo_id`, así que colgarle el precedente
+   * al trabajo le robaría al documento su entrada de verdad.
+   */
+  trabajoId: string | null;
+  entrada: string;
+  nombreBase: string;
+  mensajeCommit: string;
+  metodo: string;
+  precedenteRef: string | null;
+  aprobadoPor: string;
+}
+
+/**
+ * El orden FIJO del plan §4.5: (1) fila en `qualia_libro`, (2) archivo NUEVO en
+ * git, (3) `ref_git` en la fila. La tabla es la fuente del retry — nunca se
+ * re-crea el archivo a ciegas.
+ */
+export async function guardarEntrada(
+  ctx: CtxTurno,
+  e: EntradaLibro,
+): Promise<{ libro_id: unknown; ref_git: string | null; pendiente_git: boolean; aviso: string | null }> {
+  const { data: inserta, error: eIns } = await ctx.db
+    .from('qualia_libro')
+    .insert({
+      empresa_id: ctx.empresaId,
+      trabajo_id: e.trabajoId,
+      entrada: e.entrada,
+      metodo: e.metodo,
+      precedente_ref: e.precedenteRef,
+      aprobado_por_nombre: e.aprobadoPor,
+      ref_git: null, // = pendiente_git
+    })
+    .select('id')
+    .single();
+  if (eIns || !inserta) {
+    throw new ErrorGuard(`no pude insertar la entrada en qualia_libro: ${eIns?.message ?? 'sin fila'}`);
+  }
+
+  const git = await crearEnGit(e.nombreBase, e.entrada, e.mensajeCommit);
+  if (git.ref_git) {
+    const { error: eUpd } = await ctx.db
+      .from('qualia_libro')
+      .update({ ref_git: git.ref_git })
+      .eq('id', inserta.id);
+    if (eUpd) {
+      console.error(`libro ${inserta.id}: archivo creado pero ref_git no se guardó (${eUpd.message})`);
+    }
+  }
+  return {
+    libro_id: inserta.id,
+    ref_git: git.ref_git,
+    pendiente_git: git.ref_git === null,
+    aviso: git.error,
+  };
+}
+
 // ── la tool ─────────────────────────────────────────────────────────────────
 
 export interface ArgsLibro {
@@ -278,55 +343,23 @@ export async function escribirLibro(ctx: CtxTurno, args: ArgsLibro): Promise<Res
   });
   if (freno) return freno;
 
-  // (1) la tabla primero: es la fuente del retry.
-  const { data: inserta, error: eIns } = await ctx.db
-    .from('qualia_libro')
-    .insert({
-      empresa_id: ctx.empresaId,
-      trabajo_id: ctx.trabajoId,
-      entrada,
-      metodo: propuesta.metodo ?? (esCriterio ? 'criterio' : 'razonado'),
-      precedente_ref: propuesta.precedente_ref ?? null,
-      aprobado_por_nombre: aprobo,
-      ref_git: null, // = pendiente_git
-    })
-    .select('id')
-    .single();
-  if (eIns || !inserta) {
-    throw new ErrorGuard(`no pude insertar la entrada en qualia_libro: ${eIns?.message ?? 'sin fila'}`);
-  }
-
-  // (2) el archivo en git.
-  const git = await crearEnGit(
-    nombreBase,
+  const guardada = await guardarEntrada(ctx, {
+    trabajoId: ctx.trabajoId,
     entrada,
-    `libro(${esCriterio ? 'criterio' : docid}): ${titulo.slice(0, 60)}`,
-  );
-
-  // (3) el ref, si el archivo nació.
-  if (git.ref_git) {
-    const { error: eUpd } = await ctx.db
-      .from('qualia_libro')
-      .update({ ref_git: git.ref_git })
-      .eq('id', inserta.id);
-    if (eUpd) {
-      console.error(`libro ${inserta.id}: archivo creado pero ref_git no se guardó (${eUpd.message})`);
-    }
-  }
+    nombreBase,
+    mensajeCommit: `libro(${esCriterio ? 'criterio' : docid}): ${titulo.slice(0, 60)}`,
+    metodo: String(propuesta.metodo ?? (esCriterio ? 'criterio' : 'razonado')),
+    precedenteRef: (propuesta.precedente_ref as string | null | undefined) ?? null,
+    aprobadoPor: aprobo,
+  });
 
   await insertarEventos(ctx, ctx.trabajoId, [{
     tipo: 'progreso',
-    contenido: git.ref_git
-      ? `📖 Entrada del libro escrita: ${git.ref_git}`
+    contenido: guardada.ref_git
+      ? `📖 Entrada del libro escrita: ${guardada.ref_git}`
       : '📖 Entrada del libro guardada en la mesa; el archivo en git queda pendiente',
-    datos: { libro_id: inserta.id, ref_git: git.ref_git },
+    datos: { libro_id: guardada.libro_id, ref_git: guardada.ref_git },
   }]);
 
-  return {
-    ok: true,
-    libro_id: inserta.id,
-    ref_git: git.ref_git,
-    pendiente_git: git.ref_git === null,
-    aviso: git.error,
-  };
+  return { ok: true, ...guardada };
 }
