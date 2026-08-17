@@ -1388,7 +1388,7 @@ Deno.serve(async (req) => {
     // daría VENCIDO siempre.
     const updPreClaim = String(fila.updated_at ?? '');
 
-    const m: ModoTurno = await modo(empresaId);
+    const m: ModoTurno = await modo(empresaId, 'qualia-contable');
     const base = { funcion: FUNCION, trabajo_id: trabajoId, empresa_id: empresaId, modo: m };
     if (m === 'server') return json({ ok: true, ...base, accion: 'ninguna' });
 
