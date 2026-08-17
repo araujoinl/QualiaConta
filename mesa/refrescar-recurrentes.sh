@@ -31,8 +31,20 @@
 
 set -uo pipefail
 
-CONTENEDOR=qualiaconta-blackbox
-SCRIPTS=/opt/data/memoria/scripts
+# ── Sin gateway: los extractores corren en el HOST ───────────────────────────
+# Hermes se apagó el 2026-08-17 y con él murió el `docker exec`. Los scripts no
+# necesitaban el contenedor: necesitaban su .env y su ruta de datos, que son de
+# la EMPRESA y viven en el server. `hermes_py` reemplaza al exec — misma
+# invocación, mismo resultado, sin contenedor.
+REPO_EMPRESA="${QUALIA_REPO_EMPRESA:-/home/codebox/qualiaconta/repo/empresas/blackbox}"
+SCRIPTS="$REPO_EMPRESA/hermes/memoria/scripts"
+export QUALIA_PREENTRENAMIENTO="${QUALIA_PREENTRENAMIENTO:-$REPO_EMPRESA/hermes/preentrenamiento}"
+
+hermes_py() {
+    # El .env de la empresa trae las credenciales de ADM y el DSN del banco.
+    # Se lee acá y no se exporta al resto del script más de lo necesario.
+    ( set -a; . "$REPO_EMPRESA/.env"; set +a; python3 "$@" )
+}
 LOG=/home/codebox/qualia-recurrentes.log
 TOPE_LOG=$((2 * 1024 * 1024))
 # Cuándo se revisó por última vez si algo se anuló. Es un archivo vacío: lo único
@@ -53,14 +65,14 @@ fi
 
 registrar() { echo "$(date -u +%FT%TZ) $*" >>"$LOG"; }
 
-if ! docker ps --format '{{.Names}}' | grep -qx "$CONTENEDOR"; then
-    registrar "ERROR: el contenedor $CONTENEDOR no está corriendo"
+if [ ! -f "$REPO_EMPRESA/.env" ]; then
+    registrar "ERROR: falta $REPO_EMPRESA/.env (credenciales de ADM)"
     exit 1
 fi
 
 # --desde fuerza el modo delta: re-pagina el listado y agrega sólo los IDs que no
 # estaban. El detalle ya bajado no se vuelve a pedir.
-if ! salida=$(docker exec "$CONTENEDOR" python3 "$SCRIPTS/extraer-adm.py" \
+if ! salida=$(hermes_py "$SCRIPTS/extraer-adm.py" \
                   --solo vendor-bills --desde "$(date -u +%F)" 2>&1); then
     registrar "ERROR bajando vendor-bills:"
     echo "$salida" | sed "s/^/  /" >>"$LOG"
@@ -86,7 +98,7 @@ fi
 # que un dato viejo es no volver a mirar a nadie.
 if [ ! -f "$MARCADOR_ANULACIONES" ] || [ -n "$(find "$MARCADOR_ANULACIONES" -mmin +55 2>/dev/null)" ]; then
     DESDE_REFRESCO=$(date -u -d "$(date -u +%Y-%m-01) -1 month" +%F)
-    if salida=$(docker exec "$CONTENEDOR" python3 "$SCRIPTS/extraer-adm.py" \
+    if salida=$(hermes_py "$SCRIPTS/extraer-adm.py" \
                     --solo vendor-bills --refrescar-desde "$DESDE_REFRESCO" 2>&1); then
         touch "$MARCADOR_ANULACIONES"
         # Igual que la bajada: sólo se escribe si algo cambió de verdad.
@@ -99,15 +111,10 @@ if [ ! -f "$MARCADOR_ANULACIONES" ] || [ -n "$(find "$MARCADOR_ANULACIONES" -mmi
     fi
 fi
 
-# El detector es silencioso cuando no hay nada que cambiar, así que su salida se
-# registra tal cual: si escribió algo, pasó algo.
-if resultado=$(docker exec "$CONTENEDOR" /opt/data/scripts/sugerir-recurrentes.sh 2>&1); then
-    [ -n "$resultado" ] && registrar "$resultado"
-else
-    registrar "ERROR en sugerir-recurrentes:"
-    echo "$resultado" | sed "s/^/  /" >>"$LOG"
-    exit 1
-fi
+# El DETECTOR ya no corre acá: desde el apagón de Hermes (2026-08-17) vive en
+# la nube, dentro de qualia-sugerencias, con su propio cron. Este script quedó
+# haciendo lo único que sigue siendo suyo — refrescar el espejo que el detector
+# consulta. Correrlo también acá sembraría la misma sugerencia dos veces.
 
 # Anticipo ISR: NO se sugiere por acá. El flujo vive en la banda de impuestos
 # de Labs_Inv (calendarioFiscal clave 'anticipo'), con el gesto doble de subir

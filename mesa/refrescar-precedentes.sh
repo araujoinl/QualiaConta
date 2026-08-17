@@ -16,8 +16,20 @@
 
 set -uo pipefail
 
-CONTENEDOR=qualiaconta-blackbox
-SCRIPTS=/opt/data/memoria/scripts
+# ── Sin gateway: los extractores corren en el HOST ───────────────────────────
+# Hermes se apagó el 2026-08-17 y con él murió el `docker exec`. Los scripts no
+# necesitaban el contenedor: necesitaban su .env y su ruta de datos, que son de
+# la EMPRESA y viven en el server. `hermes_py` reemplaza al exec — misma
+# invocación, mismo resultado, sin contenedor.
+REPO_EMPRESA="${QUALIA_REPO_EMPRESA:-/home/codebox/qualiaconta/repo/empresas/blackbox}"
+SCRIPTS="$REPO_EMPRESA/hermes/memoria/scripts"
+export QUALIA_PREENTRENAMIENTO="${QUALIA_PREENTRENAMIENTO:-$REPO_EMPRESA/hermes/preentrenamiento}"
+
+hermes_py() {
+    # El .env de la empresa trae las credenciales de ADM y el DSN del banco.
+    # Se lee acá y no se exporta al resto del script más de lo necesario.
+    ( set -a; . "$REPO_EMPRESA/.env"; set +a; python3 "$@" )
+}
 LOG=/home/codebox/qualia-precedentes.log
 TOPE_LOG=$((2 * 1024 * 1024))
 AQUI=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -64,8 +76,8 @@ if ! flock -w 600 9; then
     exit 1
 fi
 
-if ! docker ps --format '{{.Names}}' | grep -qx "$CONTENEDOR"; then
-    registrar "ERROR: el contenedor $CONTENEDOR no esta corriendo, no refresco nada"
+if [ ! -f "$REPO_EMPRESA/.env" ]; then
+    registrar "ERROR: falta $REPO_EMPRESA/.env (credenciales de ADM), no refresco nada"
     "$AQUI/registrar-corrida.sh" precedentes "$INICIO" "$(date -u +%FT%TZ)" false 1 '{}' "$CORRIDA"
     exit 1
 fi
@@ -100,7 +112,7 @@ fallas=0
 # peor de todos: no falla, elige la más parecida.
 for recurso in vendor-bills vendors bank-transfers bill-payments account-payments accounts; do
     registrar "bajando $recurso (delta)"
-    if salida=$(docker exec "$CONTENEDOR" python3 "$SCRIPTS/extraer-adm.py" \
+    if salida=$(hermes_py "$SCRIPTS/extraer-adm.py" \
                     --solo "$recurso" --desde "$DESDE" 2>&1); then
         echo "$salida" | volcar
     else
@@ -113,7 +125,7 @@ done
 # Se destila igual aunque una bajada falle: mejor una libreta con lo que si
 # llego que ninguna. Pero el exit code lo refleja.
 registrar "destilando la cuenta contable (de esta empresa)"
-if salida=$(docker exec "$CONTENEDOR" python3 "$SCRIPTS/generar-proveedor-cuentas.py" 2>&1); then
+if salida=$(hermes_py "$SCRIPTS/generar-proveedor-cuentas.py" 2>&1); then
     echo "$salida" | volcar
 else
     registrar "ERROR destilando cuentas:"

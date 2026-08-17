@@ -64,7 +64,10 @@ import urllib.request
 # ======================================================================
 
 BASE_API = "https://api.admcloud.net/api"
-BASE_DIR = "/opt/data/preentrenamiento"
+# La ruta del gateway sigue siendo el default para no romper nada que lo
+# invoque de adentro; con Hermes apagado (2026-08-17) los refrescadores lo
+# corren en el HOST y le pasan la ruta del repo por esta variable.
+BASE_DIR = os.environ.get("QUALIA_PREENTRENAMIENTO", "/opt/data/preentrenamiento")
 
 THROTTLE_SEG = 1.0        # ~1 req/s contra la API
 REINTENTOS_5XX = 5        # backoff exponencial solo ante 5xx / error de red
