@@ -27,8 +27,25 @@ export QUALIA_PREENTRENAMIENTO="${QUALIA_PREENTRENAMIENTO:-$REPO_EMPRESA/hermes/
 
 hermes_py() {
     # El .env de la empresa trae las credenciales de ADM y el DSN del banco.
-    # Se lee acá y no se exporta al resto del script más de lo necesario.
-    ( set -a; . "$REPO_EMPRESA/.env"; set +a; python3 "$@" )
+    # Se parsea a mano, NO con `.`: docker env_file no evalúa el archivo, y un
+    # valor con espacios (ADMCLOUD_ROLE="Contabilidad Digital") hacía que bash
+    # intentara ejecutar la segunda palabra como comando. Mismo criterio que
+    # docker: clave=valor literal, sin expansión.
+    (
+        while IFS= read -r linea || [ -n "$linea" ]; do
+            case "$linea" in ''|'#'*|*[!A-Za-z0-9_]*=*) ;; esac
+            case "$linea" in ''|'#'*) continue ;; esac
+            case "$linea" in *=*) ;; *) continue ;; esac
+            clave=${linea%%=*}
+            valor=${linea#*=}
+            case "$valor" in
+                \"*\") valor=${valor#\"}; valor=${valor%\"} ;;
+                \'*\') valor=${valor#\'}; valor=${valor%\'} ;;
+            esac
+            export "$clave=$valor"
+        done < "$REPO_EMPRESA/.env"
+        python3 "$@"
+    )
 }
 LOG=/home/codebox/qualia-precedentes.log
 TOPE_LOG=$((2 * 1024 * 1024))
