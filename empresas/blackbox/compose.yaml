@@ -10,65 +10,82 @@
 # Fijado en Hermes v0.19.0, commit 14abd64.
 
 services:
-  contable:
-    # Imagen propia: Hermes + cliente de Postgres (ver deploy/Dockerfile).
-    image: qualiaconta:local
-    container_name: qualiaconta-${EMPRESA}
-    restart: unless-stopped
-    env_file: .env
+  # ─────────────────────────────────────────────────────────────────────────
+  # RETIRADO el 2026-08-17: el gateway de Hermes se apagó y se eliminó.
+  #
+  # Su trabajo vive en la nube desde ese día: los 5 detectores en
+  # qualia-sugerencias, el análisis en qualia-preparador + qualia-proponedor, y
+  # los casos difíciles en qualia-contable. El interruptor está en
+  # qualia_config (`modo:<funcion>`); volver todo a 'server' NO revive esto —
+  # el contenedor ya no existe.
+  #
+  # Queda comentado y no borrado a propósito: es la receta exacta de cómo
+  # corría, y el kit para revivirlo (imagen + volumen + config + crons) está
+  # fuera del server, en ~/Rescate-Hermes-2026-08-17 de la máquina de Carlos.
+  #
+  # El servicio `mesa` de abajo SIGUE VIVO: es el que registra en ADM lo que el
+  # humano aprueba. Ese es el próximo tramo (F4).
+  # ─────────────────────────────────────────────────────────────────────────
+#   contable:
+#     # Imagen propia: Hermes + cliente de Postgres (ver deploy/Dockerfile).
+#     image: qualiaconta:local
+#     container_name: qualiaconta-${EMPRESA}
+#     restart: unless-stopped
+#     env_file: .env
+#
+#     # Sin esto el contenedor arranca `hermes` a secas — el agente interactivo —
+#     # y nunca se conecta a Telegram. `gateway` es el proceso que atiende los
+#     # mensajes.
+#     command: gateway
+#
+#     # Red del host, como trae Hermes de fábrica. Lo intenté aislado y no
+#     # funciona: Supabase resuelve sólo a IPv6 y la red puente de Docker no lo
+#     # enruta, así que el contable no podía llegar al banco. El puerto del panel
+#     # se resuelve con una variable por empresa; el IPv6 no se resuelve de otra
+#     # forma sin tocar el demonio de Docker, que pide sudo.
+#     #
+#     # El panel sigue escuchando sólo en 127.0.0.1, así que no queda expuesto en
+#     # la LAN. Para entrar: túnel ssh contra el puerto de esa empresa.
+#     network_mode: host
+#
+#     volumes:
+#       # Estado del contable: memoria, skills, libro de acción.
+#       # Es la carpeta del repo, así el libro de acción queda en git solo.
+#       - ./hermes:/opt/data
+#       # Núcleo DGII compartido, SÓLO LECTURA. Ninguna empresa escribe en él.
+#       - ../../nucleo-contable:/nucleo-contable:ro
+#       # Skills del contable, compartidas por todas las empresas. Van en una
+#       # subcarpeta para no pisar las 70 que Hermes trae de fábrica.
+#       - ../../skills:/opt/data/skills/qualiaconta:ro
+#       # Mapa de cuentas bancarias, sólo lectura.
+#       - ../../mapa-cuentas.yaml:/mapa-cuentas.yaml:ro
+#       # Workdir compartido con el sidecar 'mesa': el preparador deja ahí el
+#       # documento bajado y el dossier, y el contable los encuentra en su ruta
+#       # de siempre (/tmp/mesa/<id>/...) sin re-descargar nada.
+#       - ./mesa-cache:/tmp/mesa
+#
+#     environment:
+#       # Dueño de los archivos que cree el contenedor: el usuario del host,
+#       # para que el libro de acción quede legible y commiteable desde afuera.
+#       HERMES_UID: "1000"
+#       HERMES_GID: "1000"
+#       # Puerto del panel, distinto por empresa para que no choquen.
+#       API_SERVER_PORT: ${PUERTO_PANEL:-8642}
+#
+#     # Sin puertos publicados: sale hacia Telegram, ADM Cloud y el modelo.
+#     # Nadie entra. No necesita proxy ni túnel.
+#     #
+#     # Para entrar al panel de Hermes cuando haga falta, túnel por ssh:
+#     #   ssh -L 8642:localhost:8642 codebox
+#     # y publicar el puerto sólo en loopback en esta empresa:
+#     #   ports: ["127.0.0.1:8642:8642"]
+#
+#   # Poller de la mesa de trabajo: vigila la cola qualia_* en la Supabase de
+#   # Labs_Inv y despierta al contable por el webhook local cuando hay trabajo.
+#   # Sin LLM: solo psql + curl (misma imagen, ya los trae). Red de host para
+#   # alcanzar el panel del gateway en 127.0.0.1 y el IPv6 de Supabase.
+#   # Contrato completo: docs/mesa-de-trabajo.md
 
-    # Sin esto el contenedor arranca `hermes` a secas — el agente interactivo —
-    # y nunca se conecta a Telegram. `gateway` es el proceso que atiende los
-    # mensajes.
-    command: gateway
-
-    # Red del host, como trae Hermes de fábrica. Lo intenté aislado y no
-    # funciona: Supabase resuelve sólo a IPv6 y la red puente de Docker no lo
-    # enruta, así que el contable no podía llegar al banco. El puerto del panel
-    # se resuelve con una variable por empresa; el IPv6 no se resuelve de otra
-    # forma sin tocar el demonio de Docker, que pide sudo.
-    #
-    # El panel sigue escuchando sólo en 127.0.0.1, así que no queda expuesto en
-    # la LAN. Para entrar: túnel ssh contra el puerto de esa empresa.
-    network_mode: host
-
-    volumes:
-      # Estado del contable: memoria, skills, libro de acción.
-      # Es la carpeta del repo, así el libro de acción queda en git solo.
-      - ./hermes:/opt/data
-      # Núcleo DGII compartido, SÓLO LECTURA. Ninguna empresa escribe en él.
-      - ../../nucleo-contable:/nucleo-contable:ro
-      # Skills del contable, compartidas por todas las empresas. Van en una
-      # subcarpeta para no pisar las 70 que Hermes trae de fábrica.
-      - ../../skills:/opt/data/skills/qualiaconta:ro
-      # Mapa de cuentas bancarias, sólo lectura.
-      - ../../mapa-cuentas.yaml:/mapa-cuentas.yaml:ro
-      # Workdir compartido con el sidecar 'mesa': el preparador deja ahí el
-      # documento bajado y el dossier, y el contable los encuentra en su ruta
-      # de siempre (/tmp/mesa/<id>/...) sin re-descargar nada.
-      - ./mesa-cache:/tmp/mesa
-
-    environment:
-      # Dueño de los archivos que cree el contenedor: el usuario del host,
-      # para que el libro de acción quede legible y commiteable desde afuera.
-      HERMES_UID: "1000"
-      HERMES_GID: "1000"
-      # Puerto del panel, distinto por empresa para que no choquen.
-      API_SERVER_PORT: ${PUERTO_PANEL:-8642}
-
-    # Sin puertos publicados: sale hacia Telegram, ADM Cloud y el modelo.
-    # Nadie entra. No necesita proxy ni túnel.
-    #
-    # Para entrar al panel de Hermes cuando haga falta, túnel por ssh:
-    #   ssh -L 8642:localhost:8642 codebox
-    # y publicar el puerto sólo en loopback en esta empresa:
-    #   ports: ["127.0.0.1:8642:8642"]
-
-  # Poller de la mesa de trabajo: vigila la cola qualia_* en la Supabase de
-  # Labs_Inv y despierta al contable por el webhook local cuando hay trabajo.
-  # Sin LLM: solo psql + curl (misma imagen, ya los trae). Red de host para
-  # alcanzar el panel del gateway en 127.0.0.1 y el IPv6 de Supabase.
-  # Contrato completo: docs/mesa-de-trabajo.md
   mesa:
     image: qualiaconta:local
     container_name: qualiaconta-mesa-${EMPRESA}
