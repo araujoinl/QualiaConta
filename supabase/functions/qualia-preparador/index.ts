@@ -192,6 +192,17 @@ async function insertarEvento(ctx: Ctx, tipo: string, contenido: string): Promis
 }
 
 /**
+ * Un CHECK del avance: una línea corta por paso terminado, para que desde la
+ * mesa se vea progresar en vez de quedarse mirando "leyendo la foto…" sin
+ * saber si avanza o murió (pedido de Carlos 2026-08-17, el mismo día en que un
+ * worker murió mudo en el paso del QR y no había forma de verlo desde la web).
+ * Falla suave: un check que no se puede escribir no frena el prep.
+ */
+async function check(ctx: Ctx, texto: string): Promise<void> {
+  await insertarEvento(ctx, 'progreso', `✅ ${texto}`);
+}
+
+/**
  * ÚNICO caso en que el prep toca el estado (bloque 2 del fuente). El guard
  * `estado='pendiente'` respeta el claim: si alguien tomó el trabajo entre
  * medio, acá no se escribe nada. En sombra NO SE HACE: se registra en la
@@ -308,7 +319,7 @@ async function rncEmpresa(ctx: Ctx): Promise<string> {
  * del lado de Storage y acá solo llega el JPEG ya hecho. `width` acota el
  * tamaño para no pasarse del tope de visión.
  */
-async function heicAJpeg(ctx: Ctx): Promise<Uint8Array | null> {
+async function heicAJpeg(ctx: Ctx, ancho = 1800): Promise<Uint8Array | null> {
   const path = ctx.fila.archivo_path;
   if (!path) return null;
   const base = Deno.env.get('SUPABASE_URL') ?? '';
@@ -316,7 +327,7 @@ async function heicAJpeg(ctx: Ctx): Promise<Uint8Array | null> {
   if (!base || !key) return null;
   const url = `${base}/storage/v1/render/image/authenticated/${BUCKET_DOCS}/${
     path.split('/').map(encodeURIComponent).join('/')
-  }?width=1800&quality=82`;
+  }?width=${ancho}&quality=82`;
   try {
     const r = await fetch(url, {
       headers: { Authorization: `Bearer ${key}` },
@@ -330,7 +341,7 @@ async function heicAJpeg(ctx: Ctx): Promise<Uint8Array | null> {
     const buf = new Uint8Array(await r.arrayBuffer());
     // Sello JPEG: si el transformador devolvió otra cosa, mejor degradar.
     if (buf.length < 1000 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
-    ctx.log(`HEIC convertido por Storage (${Math.floor(buf.length / 1024)} KB)`);
+    ctx.log(`imagen servida por el transformador de Storage a ${ancho}px (${Math.floor(buf.length / 1024)} KB)`);
     return buf;
   } catch (e) {
     ctx.log(`transformador de Storage fallo: ${e instanceof Error ? e.name : 'error'}`);
@@ -574,7 +585,23 @@ async function preparar(ctx: Ctx): Promise<void> {
           : ext === 'jpeg'
           ? 'jpg'
           : ext;
-        const pagina = await decodificarImagen(bytes, extDecode);
+        // Una foto de teléfono (12MP) NO se decodifica acá: 2,3 MB de JPEG son
+        // ~48 MB en RGBA y el worker MUERE sin dejar error — el trabajo queda
+        // colgado en "leyendo la foto" y nadie se entera (IMG_9824.JPG,
+        // 2026-08-17, dos veces). Se le pide a Storage la misma imagen ya
+        // reducida: la conversión ocurre allá y acá llega algo que entra.
+        let paraQr = bytes;
+        if (bytes.length > 1_200_000) {
+          const chica = await heicAJpeg(ctx, 1400);
+          if (chica) {
+            paraQr = chica;
+            log(`QR: uso la version reducida (${Math.floor(chica.length / 1024)} KB)`);
+          } else {
+            anotar('QR: no pude reducir la imagen; se omite la lectura del QR');
+            break;
+          }
+        }
+        const pagina = await decodificarImagen(paraQr, extDecode);
         if (pagina) paginas = [pagina];
         else anotar(`QR: sin decodificador para ${extDecode || 'ese formato'} en la nube`);
       } catch {
@@ -618,6 +645,32 @@ async function preparar(ctx: Ctx): Promise<void> {
   if (!/^(B\d{10}|E\d{12})$/.test(NCF)) NCF = '';
   let RNC = texted('rnc');
   if (!/^(\d{9}|\d{11})$/.test(RNC)) RNC = '';
+
+  // Checks de lectura: primero QUÉ se pudo leer del papel. Van separados
+  // porque cada uno puede fallar solo, y saber cuál falló es media
+  // resolución del caso.
+  const metodoLeido = String(extr.metodo ?? 'ninguno');
+  await check(
+    ctx,
+    metodoLeido === 'ninguno'
+      ? 'Lectura del documento: no se pudo extraer texto'
+      : `Documento leído (${metodoLeido === 'unpdf' ? 'texto del PDF' : metodoLeido.startsWith('vision') ? 'visión sobre la imagen' : metodoLeido})`,
+  );
+  const proveedorLeido = texted('proveedor');
+  await check(
+    ctx,
+    proveedorLeido
+      ? `Proveedor: ${proveedorLeido.slice(0, 60)}${RNC ? ` (RNC ${RNC})` : ' — sin RNC legible'}`
+      : 'Proveedor: no se pudo leer del documento',
+  );
+  await check(
+    ctx,
+    NCF
+      ? `Comprobante ${NCF} — ${NCF.startsWith('E') ? 'e-CF (electrónico)' : 'NCF impreso'} tipo ${NCF.slice(1, 3)}`
+      : texted('ncf')
+      ? `Comprobante ilegible (leí "${texted('ncf').slice(0, 16)}")`
+      : 'Sin comprobante fiscal en el documento',
+  );
 
   // Número propio del suplidor (el `Reference` de ADM, no el NCF). Formato
   // libre entre proveedores: solo se acota largo y juego de caracteres.
@@ -737,6 +790,11 @@ async function preparar(ctx: Ctx): Promise<void> {
 
   // ── 6b. Padrón de RNC: de quién es el RNC del emisor ─────────────────────
   // Pregunta distinta a la del bloque 6 (¿el comprobante vale?) y por eso vive
+  await check(
+    ctx,
+    `DGII: ${String((dgii as Record<string, unknown>).estado ?? 'no verificable')}`,
+  );
+
   // en su propia clave del dossier. Corre SIEMPRE que haya RNC: el contraste
   // "razón social de DGII contra el proveedor que leí" lo necesita, y es el
   // fallback que rescata al e-CF sin código de seguridad legible.

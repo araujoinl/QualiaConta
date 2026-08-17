@@ -71,23 +71,36 @@ export async function rasterizarPdf(bytes: Uint8Array): Promise<PaginaRGBA[]> {
 export async function decodificarImagen(bytes: Uint8Array, ext: string): Promise<PaginaRGBA | null> {
   if (ext === 'jpg' || ext === 'jpeg') {
     const jpeg = await import('npm:jpeg-js@0.4.4');
+    // 128 MB, no 220: el isolate entero tiene 256 MB y si el decoder se pasa
+    // preferimos que TIRE (lo agarra el caller y sigue sin QR) antes de que la
+    // plataforma mate al worker sin dejar rastro — que es lo que pasó con
+    // IMG_9824.JPG el 2026-08-17: la visión ya había respondido y el trabajo
+    // quedó colgado en "leyendo la foto" sin error en ningún lado.
     const img = jpeg.decode(bytes, {
       useTArray: true,
       maxResolutionInMP: 30,
-      maxMemoryUsageInMB: 220,
+      maxMemoryUsageInMB: 128,
     });
     let { width, height } = img;
     let data = new Uint8ClampedArray(img.data.buffer, img.data.byteOffset, img.data.byteLength);
-    // jsQR sobre una foto de iPhone completa (12MP+) quema el tope de CPU de
-    // la plataforma: se muestrea 1 de cada 2 píxeles — el QR de un e-CF
-    // sobrevive de sobra a la mitad de resolución.
-    while (width * height > 6_000_000) {
-      const w2 = Math.floor(width / 2);
-      const h2 = Math.floor(height / 2);
+    // jsQR sobre una foto de iPhone completa (12MP+) quema el tope de CPU y de
+    // memoria: se sub-muestrea a <=2MP. El QR de un e-CF ocupa una porción
+    // grande del papel y sobrevive de sobra.
+    //
+    // El factor se calcula UNA vez y se copia en UNA pasada: el bucle anterior
+    // halvaba de a poco y en cada vuelta sostenía el buffer viejo y el nuevo a
+    // la vez — con 12MP eso es 48 MB + 12 MB de pico, encima del decoder.
+    const TOPE_PX = 2_000_000;
+    if (width * height > TOPE_PX) {
+      let factor = 2;
+      while ((width / factor) * (height / factor) > TOPE_PX) factor++;
+      const w2 = Math.floor(width / factor);
+      const h2 = Math.floor(height / factor);
       const d2 = new Uint8ClampedArray(w2 * h2 * 4);
       for (let y = 0; y < h2; y++) {
+        const filaOrigen = y * factor * width;
         for (let x = 0; x < w2; x++) {
-          const desde = (y * 2 * width + x * 2) * 4;
+          const desde = (filaOrigen + x * factor) * 4;
           const hacia = (y * w2 + x) * 4;
           d2[hacia] = data[desde];
           d2[hacia + 1] = data[desde + 1];

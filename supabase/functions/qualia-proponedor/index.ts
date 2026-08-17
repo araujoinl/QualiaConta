@@ -32,7 +32,7 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
  */
 
 import { modo, sb } from '../_shared/db.ts';
-import { autorizado } from '../_shared/auth.ts';
+import { autorizado, bearerCron } from '../_shared/auth.ts';
 import { registrarSombra } from '../_shared/sombra.ts';
 import {
   descargarJson,
@@ -68,6 +68,40 @@ import {
 import { clasificar, promptClasificacion } from './clasificacion.ts';
 
 const FUNCION = 'qualia-proponedor';
+
+/**
+ * Cuando el camino determinista no alcanza, el trabajo es del TURNO — y hay
+ * que despertarlo. En el server ese poke lo daba el poller contra el webhook
+ * de Hermes; con Hermes apagado (2026-08-17) nadie lo hacía y el trabajo
+ * quedaba en 'pendiente' con su clasificacion.json escrito y sin dueño.
+ * Falla suave: el rescate de qualia-barrido vuelve a mirarlo.
+ */
+async function pokeContable(trabajoId: string, motivo: string): Promise<void> {
+  const base = Deno.env.get('QUALIA_FUNCTIONS_URL') ??
+    `${Deno.env.get('SUPABASE_URL') ?? ''}/functions/v1`;
+  const bearer = await bearerCron();
+  if (!base || !bearer) {
+    console.log(`${FUNCION}: sin URL o bearer para despertar al contable`);
+    return;
+  }
+  try {
+    const r = await fetch(`${base}/qualia-contable`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${bearer}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        trabajo_id: trabajoId,
+        motivo: 'trabajo_nuevo',
+        degradado_por: motivo.slice(0, 120),
+        intento: String(Math.floor(Date.now() / 1000)),
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    await r.body?.cancel();
+    if (!r.ok) console.log(`${FUNCION}: poke al contable HTTP ${r.status}`);
+  } catch (e) {
+    console.log(`${FUNCION}: poke al contable fallo (${e instanceof Error ? e.name : 'error'})`);
+  }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -303,6 +337,8 @@ async function atender(trabajoId: string, dossierEn: string | null = null): Prom
       // nube: el rastro para la sesión que herede el trabajo (cortesía, no
       // contrato — port de clasificacion.json en /tmp/mesa/<id>/).
       await subirClasificacion(trabajoId, salida);
+      // El trabajo pasa al turno: sin este aviso queda huérfano.
+      await pokeContable(trabajoId, motivos.join('; '));
     }
     return json({ ...base, accion: 'no_propone', motivos });
   }
