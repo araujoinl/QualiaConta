@@ -116,6 +116,34 @@ function porEmpresa<T extends { empresa_id: string }>(filas: T[]): Map<string, T
   return grupos;
 }
 
+/**
+ * Despierta al turno para una fila que quedó sin dueño. Se usa cuando el
+ * registro en ADM se NIEGA: el script del server rechaza el documento y, sin
+ * Hermes, nadie más se entera. Falla suave — el próximo barrido reintenta.
+ */
+async function pokearContable(trabajoId: string, motivo: string): Promise<boolean> {
+  const base = Deno.env.get('QUALIA_FUNCTIONS_URL') ??
+    `${Deno.env.get('SUPABASE_URL') ?? ''}/functions/v1`;
+  const bearer = await bearerCron();
+  if (!base || !bearer) return false;
+  try {
+    const r = await fetch(`${base}/qualia-contable`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${bearer}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        trabajo_id: trabajoId,
+        motivo,
+        intento: String(Math.floor(Date.now() / 1000)),
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    await r.body?.cancel();
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ ok: false, error: 'Metodo no permitido' }, 405);
   if (!(await autorizado(req))) return json({ ok: false, error: 'No autorizado' }, 401);
@@ -388,6 +416,8 @@ Deno.serve(async (req) => {
     const registro = {
       candidatos: 0,
       sombra: 0,
+      pokes_ok: 0,
+      pokes_fallidos: 0,
       detectadas: [] as Array<{ trabajo_id: string; empresa_id: string; edad_min: number; espera_min: number }>,
     };
 
@@ -429,6 +459,19 @@ Deno.serve(async (req) => {
             espera_s: esperaS,
             accion: 'reintentar_registro_adm', // lo que hace el poller hoy; en la nube recien en F4
           })) registro.sombra++;
+        } else if (esperaS > 0 && edadS >= esperaS) {
+          // NUBE: el registro en ADM sigue siendo del poller (F4 lo mueve acá),
+          // pero cuando su script se NIEGA —"no cuadra con el documento", un
+          // proveedor sin RNC, una cuenta que no existe— la fila queda en
+          // 'aprobada' sin docid y sin dueño: el poller ya no despierta a nadie
+          // (Hermes no existe) y el turno no se entera solo.
+          //
+          // Pasó con la factura de Guan Lan el 2026-08-17: aprobada, el
+          // registrador la rechazó por 69,79 de diferencia en el ITBIS, y se
+          // quedó quieta hasta que un humano la miró. Acá se le avisa al turno,
+          // que es quien puede corregir las líneas o preguntar.
+          if (await pokearContable(fila.id, 'registro_pendiente')) registro.pokes_ok++;
+          else registro.pokes_fallidos++;
         }
       }
     }
