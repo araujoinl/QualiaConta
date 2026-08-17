@@ -755,6 +755,30 @@ decide proponer y cuándo preguntar. Eso sigue siendo el trabajo de F3.
   regla escrita — es cómo el turno decide CERRAR. Queda como el trabajo de
   fondo de F3, con el corpus como banco de pruebas.
 
+## 5.quater Checklist de rescate de Hermes (ejecutado 2026-08-16)
+
+Hecho ANTES de apagar nada, que es el orden que importa:
+
+- **Cosecha del volumen**: 7 entradas del libro de acción del 15-08 (cargo DHL,
+  pago a Lucami, los dos pagos de los locales J-11/J-12 y tres transferencias),
+  `criterios.md` vivo y dos scripts de pago que el contable escribió — todo
+  vivía SOLO en el volumen y se perdía con el contenedor. Copiado al repo y
+  commiteado desde local (el server no commitea).
+- **Copia completa fuera del server**: `volumen-hermes.tgz`, 4,1 GB / 65.814
+  archivos, verificada. Más `config-hermes.yaml` y `crons-hermes.json`.
+- **El candado de firma, archivado** (`approvals.deny` del config):
+  `*electronicsign*`, `*removesign*`, `*journals/void*`. Con Hermes apagado ese
+  candado deja de existir, y **es precondición de F4 portarlo como default-deny
+  en el cliente HTTP de la nube** (§11.2 y el diseño de F4): hoy no hay escritor
+  en la nube, así que no queda nada descubierto — pero el día que lo haya, sin
+  esa lista blanca el rol de ADM no alcanza.
+- **Los 5 crons `sugerir-*` de Hermes**: pausados; sus herederos corren en la
+  nube en modo real desde el cutover de detectores.
+
+Pendiente de este checklist al momento de escribir: `docker save` de la imagen
+(el volumen ya está afuera, que es lo irreemplazable) y la actualización de
+`~/.claude/rules/codebox.md` a ficha histórica.
+
 ## 6. Qué se reescribe del SPEC (en sesión de enmienda, no de pasada)
 
 | Decisión | Cambio | Por qué |
