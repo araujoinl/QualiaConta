@@ -83,6 +83,15 @@ const LIMITE_SELECT = 200;
 const FUNCION = 'qualia-barrido';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Ancla del escalonado del bloque 3, en qualia_eventos. `esperaSegunEdad` mide
+// la edad de la FILA, que no cambia entre corridas: sin una marca de "ya avise",
+// en cuanto la edad cruza el tier la condicion se cumple en TODAS las corridas
+// siguientes y el escalonado deja de escalonar. Es el mapa `avisado` que el
+// poller tenia en RAM, ahora en la base — una function no tiene RAM entre
+// invocaciones. El autor es 'sistema' a proposito: el trigger qualia_poke_contable
+// solo dispara con autor='usuario', asi que esta marca no se despierta a si misma.
+const TIPO_AVISO_REGISTRO = 'aviso_registro';
+
 type Modo = 'server' | 'sombra' | 'nube';
 
 function json(body: unknown, status = 200): Response {
@@ -121,6 +130,33 @@ function porEmpresa<T extends { empresa_id: string }>(filas: T[]): Map<string, T
  * registro en ADM se NIEGA: el script del server rechaza el documento y, sin
  * Hermes, nadie más se entera. Falla suave — el próximo barrido reintenta.
  */
+/**
+ * Deja la marca de "ya avise" en la linea de tiempo del trabajo.
+ *
+ * Doble proposito, y por eso va en qualia_eventos y no en una tabla aparte:
+ * es el ancla del escalonado, y de paso es lo unico que hace visible en la web
+ * que el sistema esta esperando por esta fila. Hasta ahora un registro negado
+ * no dejaba rastro en ningun lado — ni en la fila (error_detalle vacio, sin
+ * registro_adm) ni en su historia: se veia una factura 'aprobada' y nada mas.
+ *
+ * Falla suave: sin la marca el proximo barrido avisa de nuevo, molesto pero no
+ * roto. Abortar el barrido entero por un insert perdido si seria roto.
+ */
+async function marcarAvisado(
+  trabajoId: string,
+  datos: Record<string, unknown>,
+  errores: string[],
+): Promise<void> {
+  const { error } = await sb().from('qualia_eventos').insert({
+    trabajo_id: trabajoId,
+    autor: 'sistema',
+    tipo: TIPO_AVISO_REGISTRO,
+    contenido: 'El registro en ADM sigue pendiente: se despertó al turno.',
+    datos,
+  });
+  if (error) errores.push(`marca de aviso ${trabajoId}: ${error.message}`);
+}
+
 async function pokearContable(trabajoId: string, motivo: string): Promise<boolean> {
   const base = Deno.env.get('QUALIA_FUNCTIONS_URL') ??
     `${Deno.env.get('SUPABASE_URL') ?? ''}/functions/v1`;
@@ -400,13 +436,20 @@ Deno.serve(async (req) => {
     // 429 de z.AI, cuatro filas en 'aprobada' sin docid y sin error_detalle —
     // fuera del alcance de todo, destrabadas a mano).
     //
-    // En F1 el registrador NO existe: este rescate SOLO detecta y reporta —
-    // nada dispara un registro. TODO(F4): cablear el disparo a
-    // qualia-registrador cuando nazca, con el claim de registro en la fila
-    // (§5-F4) como memoria del ultimo intento; el escalonado del poller vivia
-    // en RAM (mapa `avisado`) y sin ese claim el barrido no tiene donde anclar
-    // "ya lo intente hace N min". Aca el tier se calcula y viaja en el reporte
-    // para que el cableado de F4 herede los numeros exactos.
+    // En F1 el registrador NO existe: este rescate no dispara un registro, solo
+    // despierta al turno. TODO(F4): cablear el disparo a qualia-registrador
+    // cuando nazca.
+    //
+    // El escalonado se ancla en una marca 'sistema'/aviso_registro en
+    // qualia_eventos (ver TIPO_AVISO_REGISTRO). El plan preveia usar para eso el
+    // claim de registro de la fila (§5-F4), pero esperar a F4 dejaba el tier
+    // roto mientras tanto: `esperaSegunEdad` mide la edad de la fila, que no se
+    // mueve mientras el registro sigue negado, asi que una vez cruzado el
+    // umbral la condicion se cumplia en cada corrida — cada 2 minutos durante
+    // las 12 horas del tope. Se vio con Guan Lan el 2026-08-17: 321 apuntes de
+    // sombra de la misma fila en 11 horas, que en nube habrian sido 321 pokes.
+    // Cuando F4 traiga el claim, este ancla se puede plegar ahi; hasta entonces
+    // el aviso es lo unico que existe y necesita su propia memoria.
     //
     // criterio y caso quedan AFUERA como en el poller: viven en 'aprobada' sin
     // docid para siempre (el CHECK de la base exige un DocID que ninguno tiene
@@ -418,7 +461,16 @@ Deno.serve(async (req) => {
       sombra: 0,
       pokes_ok: 0,
       pokes_fallidos: 0,
-      detectadas: [] as Array<{ trabajo_id: string; empresa_id: string; edad_min: number; espera_min: number }>,
+      detectadas: [] as Array<
+        {
+          trabajo_id: string;
+          empresa_id: string;
+          edad_min: number;
+          espera_min: number;
+          desde_ultimo_min: number;
+          avisado: boolean;
+        }
+      >,
     };
 
     let q3 = db.from('qualia_trabajos')
@@ -434,6 +486,25 @@ Deno.serve(async (req) => {
     const { data: sinDocid, error: e3 } = await q3;
     if (e3) throw new Error(`leyendo aprobadas sin docid: ${e3.message}`);
 
+    // El ancla del escalonado, en UNA consulta para todos los candidatos: la
+    // alternativa (un select por fila dentro del loop) es un N+1 contra la
+    // misma tabla que ya esta indexada por (trabajo_id, id).
+    const ultimoAviso = new Map<string, number>();
+    if (sinDocid && sinDocid.length > 0) {
+      const { data: avisos, error: eAv } = await db.from('qualia_eventos')
+        .select('trabajo_id, created_at')
+        .eq('autor', 'sistema')
+        .eq('tipo', TIPO_AVISO_REGISTRO)
+        .in('trabajo_id', sinDocid.map((f) => f.id))
+        .gte('created_at', hace(TOPE_S));
+      if (eAv) throw new Error(`leyendo avisos de registro: ${eAv.message}`);
+      for (const a of avisos ?? []) {
+        const t = new Date(a.created_at as string).getTime();
+        const previo = ultimoAviso.get(a.trabajo_id as string);
+        if (previo === undefined || t > previo) ultimoAviso.set(a.trabajo_id as string, t);
+      }
+    }
+
     for (const [empresaId, filas] of porEmpresa(sinDocid ?? [])) {
       const m = await modoDe(empresaId);
       if (m === 'server') continue;
@@ -442,11 +513,25 @@ Deno.serve(async (req) => {
         registro.candidatos++;
         const edadS = edadSegundos(fila.updated_at);
         const esperaS = esperaSegunEdad(edadS);
+
+        // Contra el ultimo aviso, no contra la edad de la fila: 'aprobada' y
+        // updated_at no se mueven mientras el registro sigue negado, asi que
+        // medir la edad sola hace que el tier, una vez cruzado, se cumpla para
+        // siempre. Sin aviso previo la primera medida ES la edad — el estreno
+        // de la fila no cambia.
+        const previo = ultimoAviso.get(fila.id);
+        const desdeUltimoS = previo === undefined
+          ? edadS
+          : Math.floor((Date.now() - previo) / 1000);
+        const debeAvisar = esperaS > 0 && desdeUltimoS >= esperaS;
+
         registro.detectadas.push({
           trabajo_id: fila.id,
           empresa_id: empresaId,
           edad_min: Math.floor(edadS / 60),
           espera_min: Math.floor(esperaS / 60),
+          desde_ultimo_min: Math.floor(desdeUltimoS / 60),
+          avisado: previo !== undefined,
         });
 
         if (m === 'sombra') {
@@ -457,9 +542,15 @@ Deno.serve(async (req) => {
             tipo: fila.tipo,
             edad_s: edadS,
             espera_s: esperaS,
+            desde_ultimo_s: desdeUltimoS,
+            // La sombra no escribe la marca (su unico destino es qualia_sombra),
+            // asi que sigue anotando en cada corrida. `debe_avisar` es lo que
+            // haria la nube: el diff del cutover se lee filtrando por este
+            // campo, no contando filas.
+            debe_avisar: debeAvisar,
             accion: 'reintentar_registro_adm', // lo que hace el poller hoy; en la nube recien en F4
           })) registro.sombra++;
-        } else if (esperaS > 0 && edadS >= esperaS) {
+        } else if (debeAvisar) {
           // NUBE: el registro en ADM sigue siendo del poller (F4 lo mueve acá),
           // pero cuando su script se NIEGA —"no cuadra con el documento", un
           // proveedor sin RNC, una cuenta que no existe— la fila queda en
@@ -470,8 +561,17 @@ Deno.serve(async (req) => {
           // registrador la rechazó por 69,79 de diferencia en el ITBIS, y se
           // quedó quieta hasta que un humano la miró. Acá se le avisa al turno,
           // que es quien puede corregir las líneas o preguntar.
-          if (await pokearContable(fila.id, 'registro_pendiente')) registro.pokes_ok++;
-          else registro.pokes_fallidos++;
+          if (await pokearContable(fila.id, 'registro_pendiente')) {
+            registro.pokes_ok++;
+            // La marca va DESPUES del poke que salio bien: si el poke falla la
+            // fila queda sin marca y el proximo barrido reintenta enseguida,
+            // que es justo lo que se quiere de un aviso que no llego.
+            await marcarAvisado(fila.id, {
+              motivo: 'registro_pendiente',
+              edad_s: edadS,
+              espera_s: esperaS,
+            }, errores);
+          } else registro.pokes_fallidos++;
         }
       }
     }
