@@ -674,9 +674,35 @@ async function preparar(ctx: Ctx): Promise<void> {
   // El padrón arranca ACÁ, no en el bloque 6b: es una consulta independiente
   // (¿de quién es este RNC?) y esperarla después de la del comprobante sumaba
   // sus segundos en fila. Se dispara y se recoge más abajo.
+  //
+  // Y antes de salir a la web, se mira el padrón LOCAL (tabla dgii_rnc, ~787k
+  // contribuyentes que se cargan del archivo público de la DGII el día 1 de
+  // cada mes). Contesta en milisegundos lo mismo que el formulario ASP.NET
+  // tardaba ~5s en contestar. Si el RNC no está —contribuyente nuevo, o el
+  // padrón todavía sin cargar— se cae a la consulta online de siempre: la
+  // tabla nunca contesta "no existe", solo "no lo tengo".
   const padronPromesa: Promise<Record<string, unknown>> | null = RNC && quedaReloj()
-    ? import('./dgii.ts')
-      .then((m) => conPlazo(m.consultaPadronRnc(RNC), 45_000, 'padron RNC'))
+    ? (async () => {
+      const { data } = await ctx.db
+        .from('dgii_rnc')
+        .select('nombre, nombre_comercial, actividad, estado, regimen')
+        .eq('rnc', RNC)
+        .maybeSingle();
+      if (data && typeof data.nombre === 'string') {
+        return {
+          estado: 'ENCONTRADO',
+          rnc_consultado: RNC,
+          razon_social: data.nombre,
+          nombre_comercial: data.nombre_comercial,
+          actividad: data.actividad,
+          estado_contribuyente: data.estado,
+          regimen: data.regimen,
+          fuente: 'padron local (archivo publico de la DGII)',
+        } as Record<string, unknown>;
+      }
+      const m = await import('./dgii.ts');
+      return await conPlazo(m.consultaPadronRnc(RNC), 45_000, 'padron RNC');
+    })()
       .catch(() => noVerificable('la consulta al padron de RNC fallo o excedio el tiempo'))
     : null;
 
