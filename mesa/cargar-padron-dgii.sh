@@ -54,7 +54,10 @@ import io, json, os, sys, urllib.error, urllib.request, zipfile
 
 url = os.environ["NUBE_URL"]
 key = os.environ["NUBE_KEY"]
-LOTE = 5000
+# 1000 y no 5000: con lotes grandes el upsert se pasaba del statement timeout
+# de la base (57014). Mil filas entran holgadas y el archivo entero sigue
+# subiendo en un par de minutos.
+LOTE = 1000
 
 def subir(filas):
     if not filas:
