@@ -448,6 +448,10 @@ async function preparar(ctx: Ctx): Promise<void> {
   }
   const bytes = descarga.bytes;
   log(`descargado (${Math.floor(bytes.length / 1024)} KB)`);
+  // Los checks se escriben EN el momento de cada paso, no al final: la mesa
+  // los muestra a medida que llegan y así se ve avanzar (pedido de Carlos
+  // 2026-08-17 — en bloque al terminar no sirve para saber si está vivo).
+  await check(ctx, `Documento recibido (${Math.floor(bytes.length / 1024)} KB)`);
 
   // ── ¿Mismo documento? Entonces el dossier de antes sirve (bloque 2b) ─────
   // El sha se calcula sobre el archivo, no sobre la URL firmada, que se
@@ -485,7 +489,10 @@ async function preparar(ctx: Ctx): Promise<void> {
 
   const visionSobre = async (dataUrl: string, extras: Extraccion): Promise<Extraccion> => {
     const r = await extraccionVision(empresaId, dataUrl, extras);
-    if ('extr' in r) return r.extr;
+    if ('extr' in r) {
+      await check(ctx, 'Texto extraído de la imagen (visión)');
+      return r.extr;
+    }
     // El motivo nunca puede salir vacío: un «aviso: vision:» pelado no le dice
     // nada a quien audita después (pasó el 2026-08-10 en el server).
     anotar(`vision: ${r.fallo || 'sin motivo'}`);
@@ -573,8 +580,23 @@ async function preparar(ctx: Ctx): Promise<void> {
       // Las fotos son el único camino lento del prep (~20-30s): se avisa al
       // hilo que ya se está leyendo, para que la espera no parezca cola muerta.
       await insertarEvento(ctx, 'progreso', '⚙️ Preparador: leyendo la foto…');
-      const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-      extr = await visionSobre(`data:${mime};base64,${aBase64(bytes)}`, {});
+      // A visión NO va la foto entera: 2,3 MB en base64 son 3,2 MB de subida y
+      // un montón de tokens de imagen, y el modelo lee IGUAL de bien un 1800px
+      // (medido: los campos salieron idénticos). Se pide reducida al
+      // transformador de Storage; si esa vía falla, va la original.
+      let paraVision = bytes;
+      let mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      if (bytes.length > 900_000) {
+        const chica = await heicAJpeg(ctx, 1800);
+        if (chica && chica.length < bytes.length) {
+          paraVision = chica;
+          mime = 'image/jpeg';
+          log(`vision sobre la version reducida (${Math.floor(chica.length / 1024)} KB de ${
+            Math.floor(bytes.length / 1024)
+          } KB)`);
+        }
+      }
+      extr = await visionSobre(`data:${mime};base64,${aBase64(paraVision)}`, {});
       try {
         // El decodificador se elige por CONTENIDO, no por el nombre: la misma
         // trampa del HEIC renombrado aplica a un png que se llama .jpg.
@@ -623,6 +645,9 @@ async function preparar(ctx: Ctx): Promise<void> {
       if (qr.encontrado && qr.campos) {
         fusionarQr(extr, qr.campos);
         log('timbre e-CF tomado del QR (pisa lo leido del texto)');
+        await check(ctx, 'Código QR del comprobante leído (manda sobre el texto)');
+      } else {
+        await check(ctx, 'Sin código QR legible (normal en facturas impresas)');
       }
       // Que no haya QR legible NO es un problema del documento: las facturas
       // impresas (B01) no llevan, y una foto torcida puede no darlo.
@@ -645,6 +670,15 @@ async function preparar(ctx: Ctx): Promise<void> {
   if (!/^(B\d{10}|E\d{12})$/.test(NCF)) NCF = '';
   let RNC = texted('rnc');
   if (!/^(\d{9}|\d{11})$/.test(RNC)) RNC = '';
+
+  // El padrón arranca ACÁ, no en el bloque 6b: es una consulta independiente
+  // (¿de quién es este RNC?) y esperarla después de la del comprobante sumaba
+  // sus segundos en fila. Se dispara y se recoge más abajo.
+  const padronPromesa: Promise<Record<string, unknown>> | null = RNC && quedaReloj()
+    ? import('./dgii.ts')
+      .then((m) => conPlazo(m.consultaPadronRnc(RNC), 45_000, 'padron RNC'))
+      .catch(() => noVerificable('la consulta al padron de RNC fallo o excedio el tiempo'))
+    : null;
 
   // Checks de lectura: primero QUÉ se pudo leer del papel. Van separados
   // porque cada uno puede fallar solo, y saber cuál falló es media
@@ -800,16 +834,14 @@ async function preparar(ctx: Ctx): Promise<void> {
   // fallback que rescata al e-CF sin código de seguridad legible.
   let padron: Record<string, unknown> | null = null;
   if (RNC) {
-    if (!quedaReloj()) {
+    if (padronPromesa === null) {
       anotar('sin reloj para la consulta del padron de RNC');
       padron = noVerificable('el prep se quedo sin tiempo para el padron de RNC');
     } else {
-      try {
-        const { consultaPadronRnc } = await import('./dgii.ts');
-        padron = await conPlazo(consultaPadronRnc(RNC), 45_000, 'padron RNC');
-      } catch {
+      // Ya venía corriendo desde el bloque 5: acá solo se recoge.
+      padron = await padronPromesa;
+      if (String(padron?.estado ?? '') === 'no verificable') {
         anotar('consulta del padron de RNC fallo o excedio el tiempo');
-        padron = noVerificable('la consulta al padron de RNC fallo o excedio el tiempo');
       }
     }
   }
