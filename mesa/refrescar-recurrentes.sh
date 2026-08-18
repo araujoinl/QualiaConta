@@ -133,6 +133,51 @@ fi
 # haciendo lo único que sigue siendo suyo — refrescar el espejo que el detector
 # consulta. Correrlo también acá sembraría la misma sugerencia dos veces.
 
+# ── El espejo tiene que SUBIR, no sólo refrescarse acá ───────────────────────
+# Y ésa era la mitad que faltaba desde el apagón de Hermes. El detector dejó de
+# leer este archivo del disco y pasó a leer su copia del bucket, pero la única
+# subida vivía en el refresh diario (`refrescar-precedentes.sh`, 05:20 UTC). O
+# sea: este script bajaba las anulaciones cada hora contra un archivo que nadie
+# miraba, y el detector de la nube decidía sobre una foto de ADM de hasta 24
+# horas. El 2026-08-18 se eliminó la factura de Claro del mes y la caja siguió
+# diciendo «Llegó · FP00001134» — no porque no se enterara, sino porque el
+# archivo donde ya estaba escrito no había cruzado a la nube.
+#
+# Sube SÓLO cuando el contenido cambió de verdad, y la huella se compara contra
+# la de la última subida EXITOSA, no contra la corrida anterior: así un fallo de
+# red se reintenta solo en los 5 minutos siguientes en vez de esperar al día.
+# Con ~2 documentos nuevos y un puñado de anulaciones por día, son unas pocas
+# subidas de 22 MB en vez de 288.
+#
+# Un fallo acá no cambia el código de salida: el archivo local quedó bien y el
+# detector sigue con el espejo anterior, que es exactamente lo de antes.
+ESPEJO_FACTURAS="$QUALIA_PREENTRENAMIENTO/raw/vendor-bills-detalle.jsonl"
+MARCADOR_SUBIDA=/home/codebox/.qualia-espejo-facturas-subido
+NUBE_URL="https://uzvnluxxaekmaqnuocvo.supabase.co"
+NUBE_EMP="1de77ce6-ed98-4a96-8b1f-d8b902f11cd5"
+
+if [ -f "$ESPEJO_FACTURAS" ]; then
+    huella=$(md5sum "$ESPEJO_FACTURAS" | cut -d' ' -f1)
+    subida=$(cat "$MARCADOR_SUBIDA" 2>/dev/null || echo '')
+    if [ "$huella" != "$subida" ]; then
+        NUBE_KEY=$(grep -m1 '^SUPABASE_SERVICE_ROLE_KEY=' /home/codebox/colector-bancos/.env | cut -d= -f2- | tr -d '"')
+        if [ -z "$NUBE_KEY" ]; then
+            registrar "ERROR: no encontré la llave de Supabase, el espejo no sube"
+        else
+            code=$(curl -s -o /dev/null -w '%{http_code}' -m 300 -X POST \
+                "$NUBE_URL/storage/v1/object/qualia-espejos/espejo-adm/$NUBE_EMP/vendor-bills-detalle.jsonl" \
+                -H "Authorization: Bearer $NUBE_KEY" -H 'x-upsert: true' \
+                -H 'Content-Type: application/octet-stream' --data-binary @"$ESPEJO_FACTURAS")
+            if [ "$code" = "200" ]; then
+                echo "$huella" >"$MARCADOR_SUBIDA"
+                registrar "espejo de facturas subido a la nube"
+            else
+                registrar "ERROR subiendo el espejo de facturas (HTTP $code), reintento en la próxima corrida"
+            fi
+        fi
+    fi
+fi
+
 # Anticipo ISR: NO se sugiere por acá. El flujo vive en la banda de impuestos
 # de Labs_Inv (calendarioFiscal clave 'anticipo'), con el gesto doble de subir
 # volante+comprobante. El script `sugerir-anticipo-isr.sh` queda en el repo como

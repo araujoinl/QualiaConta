@@ -233,10 +233,17 @@ export async function detectarRecurrentes(
 
   for (const [prov, fs] of facturas) {
     const nombre = (prov != null ? canonicos.get(prov) : undefined) ?? nombres.get(prov) ?? '?';
-    if ((prov != null && rechazados.has(prov)) || rechazados.has(nombre)) {
-      continue; // dijiste que no. Nunca más.
-    }
+    // PONERLO A VIGILAR PERDONA EL RECHAZO, y por eso se mira primero. Rechazar
+    // borra el vigilado en la misma acción (la mesa lo hace al confirmar), así
+    // que un vigilado vivo sólo puede haberse puesto DESPUÉS del rechazo: es la
+    // decisión más reciente y la más explícita de las dos. Sin esto el rechazo
+    // era una puerta sin retorno que ninguna pantalla mostraba — el 2026-08-18
+    // se rechazó a Claro, se lo volvió a vigilar 15 segundos después, y el
+    // detector siguió salteándolo en silencio.
     const vigilado = prov != null && vigilados.has(prov);
+    if (!vigilado && ((prov != null && rechazados.has(prov)) || rechazados.has(nombre))) {
+      continue; // dijiste que no. Nunca más — salvo que lo pongas a vigilar.
+    }
     // Ya está en la caja: entró alguna vez y no lo rechazaste. Vale lo mismo
     // que el alta a mano, y por eso se saltea los tres cortes igual.
     const conocido = (prov != null && conocidos.has(prov)) || conocidos.has(nombre);
