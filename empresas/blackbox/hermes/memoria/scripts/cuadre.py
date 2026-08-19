@@ -35,10 +35,18 @@ def r2(x):
 
 
 def total_segun_adm(items):
-    """Lo que ADM va a guardar como total, dados los renglones que se le mandan."""
+    """Lo que ADM va a guardar como total, dados los renglones que se le mandan.
+
+    El descuento entra ANTES del redondeo del neto: en la FP00001065 (600.00 al
+    10%) ADM guarda neto 540.00 y cobra el ITBIS sobre eso, que es tambien como
+    lo imprime el papel de Account One (Subtotal 600 / Descuento 60 / Neto 540).
+    Es la unica evidencia que hay; si un descuento con decimales descuadra por
+    un centavo, sospechar del orden del redondeo."""
     total = Decimal("0")
     for it in items:
-        net = r2(Decimal(str(it["Quantity"])) * Decimal(str(it["Price"])))
+        desc = Decimal(str(it.get("DiscountPercent") or 0))
+        net = r2(Decimal(str(it["Quantity"])) * Decimal(str(it["Price"]))
+                 * (Decimal("1") - desc / Decimal("100")))
         pct = Decimal(str(it.get("TaxPercent") or 0))
         tax = r2(net * pct / Decimal("100")) if it.get("TaxScheduleID") else Decimal("0")
         total += net + tax
@@ -130,10 +138,12 @@ def cuadrar_items(items, total_papel, margen_centavos=25):
                     prueba = [dict(x) for x in items]
                     prueba[idx]["Price"] = float(candidato)
                     if total_segun_adm(prueba) == objetivo:
+                        desc = Decimal(str(items[idx].get("DiscountPercent") or 0))
                         return prueba, {
                             "renglon": idx,
                             "antes": original,
                             "despues": candidato,
-                            "movido": r2((candidato - original) * cantidad),
+                            "movido": r2((candidato - original) * cantidad
+                                         * (Decimal("1") - desc / Decimal("100"))),
                         }
     return items, None

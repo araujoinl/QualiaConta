@@ -71,7 +71,7 @@ TAX_SCHEDULES = {
     30.0: (TAX_ITBIS_30, 30.0),
 }
 
-def resolver_tasa_linea(itbis, cantidad, precio):
+def resolver_tasa_linea(itbis, cantidad, precio, descuento=0):
     """Dado el ITBIS y la base de una linea, devuelve (TaxScheduleID, TaxPercent).
     Si itbis<=0 -> exento. Si la tasa no calza con un schedule conocido, morir.
 
@@ -79,11 +79,15 @@ def resolver_tasa_linea(itbis, cantidad, precio):
     llega con todo en negativo, pero se endereza en la puerta
     (normalizar_nota_credito), asi que aca abajo un negativo ya no es una nota
     de credito: es una linea mal capturada, y tratarla como exenta es el
-    degradado correcto — no despejarle una tasa dividiendo dos negativos."""
+    degradado correcto — no despejarle una tasa dividiendo dos negativos.
+
+    La base es la DESCONTADA: el ITBIS del papel se cobra sobre el neto
+    (FP00001122: 600 al 10% -> ITBIS 97.20 = 18% de 540, no de 600)."""
     itbis = float(itbis or 0)
     if itbis <= 0:
         return (None, 0.0)
-    base = float(cantidad or 1) * float(precio or 0)
+    base = (float(cantidad or 1) * float(precio or 0)
+            * (1 - float(descuento or 0) / 100.0))
     if base <= 0:
         return (None, 0.0)
     tasa = round((itbis / base) * 100, 1)
@@ -462,6 +466,14 @@ def resolver_invoice_id(docid, ncf_modificado):
 
 
 # ------------------------------------------------------------------ documento
+def tasa_de_adm(moneda):
+    """La tasa de cambio configurada en ADM para la moneda. 0 si no esta."""
+    for c in paginar("Currencies"):
+        if c.get("ID") == moneda:
+            return float(c.get("ExchangeRate") or 0)
+    return 0.0
+
+
 def mapa_cuentas():
     """codigo de cuenta -> UUID. La propuesta trae el codigo ("611.17"), que es
     como piensa el contable; ADM necesita el UUID. La traduccion la hace este
@@ -483,14 +495,22 @@ def armar_payload(p, relationship_id, payment_term_id,
     cuentas = mapa_cuentas()
     items = []
     for i, l in enumerate(lineas, 1):
+        # El descuento va como descuento, no aplastado en el precio: registrar
+        # el neto como precio deja Subtotal/Descuento del documento distintos a
+        # los del papel (la FP00001065 salio 540 pelado siendo 600 al 10% y la
+        # contable la corrigio a mano).
+        descuento = float(l.get("descuento") or 0)
+        if not 0 <= descuento < 100:
+            morir("la linea %d trae descuento %s%%: se espera el PORCENTAJE "
+                  "(0-99.99), no el monto descontado" % (i, l.get("descuento")))
         sched_id, sched_pct = resolver_tasa_linea(
-            l.get("itbis"), l.get("cantidad"), l.get("precio"))
+            l.get("itbis"), l.get("cantidad"), l.get("precio"), descuento)
         items.append({
             "RowOrder": i, "RowType": 0,
             "Name": str(l.get("descripcion") or "")[:200],
             "Quantity": float(l.get("cantidad") or 1),
             "Price": float(l.get("precio") or 0),
-            "Cost": 0.0, "DiscountPercent": 0.0, "ExchangeRate": 0.0,
+            "Cost": 0.0, "DiscountPercent": descuento, "ExchangeRate": 0.0,
             "AccountID": (l.get("account_id") or l.get("cuenta_id")
                           or cuentas.get(str(l.get("cuenta") or "").strip())),
             # El monto del ITBIS NO se manda: el server lo calcula del grupo.
@@ -519,6 +539,25 @@ def armar_payload(p, relationship_id, payment_term_id,
               % (ajuste["renglon"] + 1, ajuste["antes"], ajuste["despues"],
                  float(ajuste["movido"])))
 
+    # La tasa de cambio NUNCA es 1 en moneda extranjera: con 1 el libro en
+    # pesos guarda el monto en dolares como si fueran pesos (la FP00001118
+    # quedo asentada por RD$2,306 siendo ~RD$134,000). Manda la tasa del papel
+    # (`tasa_usd`); sin ella, la configurada en ADM, avisando — es una tasa de
+    # sistema y puede no ser la que el proveedor imprimio.
+    moneda = p.get("moneda") or "DOP"
+    tasa = 1.0
+    if moneda != "DOP":
+        tasa = float(p.get("tasa_usd") or 0)
+        if tasa <= 0:
+            tasa = tasa_de_adm(moneda)
+            if tasa <= 0:
+                morir("la factura esta en %s y no hay tasa: la propuesta no trae "
+                      "`tasa_usd` (la impresa en el papel) y ADM no tiene la "
+                      "moneda configurada. Sin tasa el gasto en pesos queda "
+                      "dividido por ~60; no registro asi." % moneda)
+            print("  tasa: la propuesta no trae `tasa_usd`; va la de ADM (%.4f). "
+                  "Si el papel imprime otra, corregi la propuesta." % tasa)
+
     payload = {
         "DocDate": p.get("fecha"),
         "Reference": p.get("numero_factura_suplidor") or p.get("ncf"),
@@ -529,8 +568,8 @@ def armar_payload(p, relationship_id, payment_term_id,
         # de que ADM acepta el documento. Vacio y ausente no son lo mismo.
         "FiscalID": re.sub(r"\D", "", str(p.get("rnc") or "")) or None,
         "Beneficiary": str(p.get("proveedor") or "")[:120],
-        "CurrencyID": p.get("moneda") or "DOP",
-        "ExchangeRate": 1.0,
+        "CurrencyID": moneda,
+        "ExchangeRate": tasa,
         # Obligatorio aunque el esquema lo marque opcional: omitirlo devuelve
         # "Este termino de pago no existe". Se hereda del proveedor.
         "PaymentTermID": payment_term_id,
@@ -610,7 +649,8 @@ def verificar_cuadre(p, payload):
     base_gravada = 0.0
     exento = 0.0
     for item in payload["Items"]:
-        neto = float(cuadre.r2(item["Quantity"] * item["Price"]))
+        neto = float(cuadre.r2(item["Quantity"] * item["Price"]
+                               * (1 - float(item.get("DiscountPercent") or 0) / 100.0)))
         if item["TaxScheduleID"]:
             base_gravada += neto
             itbis_adm += float(cuadre.r2(neto * item["TaxPercent"] / 100.0))

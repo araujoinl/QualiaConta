@@ -344,6 +344,20 @@ pasivo con un tercero (adelantos de clientes, depósitos en garantía) o una
 cuenta por cobrar, **no es un crédito bancario** — es plata de alguien que no
 es el banco, y ya perdiste en la pregunta 1. Eso salió como CB00000258.
 
+### El papel manda dos datos más: la tasa y el descuento
+
+- **Moneda extranjera** → `moneda: "USD"` **y** `tasa_usd` = la tasa de cambio
+  IMPRESA en el papel (Account One la imprime como «Tasa»). Sin `tasa_usd` el
+  registrador cae a la tasa de sistema de ADM, que puede no ser la del
+  proveedor — y sin ninguna, el gasto en pesos queda dividido por ~60: la
+  FP00001118 (US$2,306.15) quedó asentada por RD$2,306 en vez de ~RD$134,000.
+- **Descuento** → si el papel trae columna de descuento, la línea lleva el
+  precio BRUTO en `precio` y el porcentaje en `descuento` (número 0-99.99,
+  no el monto). Aplastar el neto en el precio deja Subtotal/Descuento del
+  documento distintos a los del papel: la FP00001065 salió con 540 pelado
+  siendo 600 al 10% y la contable la corrigió a mano. El ITBIS del papel
+  cruza contra la base DESCONTADA (97.20 = 18% de 540, no de 600).
+
 Si tu razonamiento nombra una cuenta que no le toca al tipo que elegiste, **la
 propuesta no sale**: estás describiendo un documento y etiquetando otro. Pasó el
 2026-08-05 con la liquidación de la DGA por RD$939.118,86 — quedó guardada como
