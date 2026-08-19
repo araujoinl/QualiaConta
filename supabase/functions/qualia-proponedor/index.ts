@@ -333,8 +333,13 @@ async function atender(trabajoId: string, dossierEn: string | null = null): Prom
         salidaDebug.brecha_itbis = fallo.numeros;
         salidaDebug.brecha_pregunta = fallo.texto;
         throw new NoPropone(
-          `ITBIS contra la tasa (pregunta ${fallo.pregunta}): ${fallo.motivo}. ` +
-            'Esto NO se absorbe: preguntale al humano con los números y las dos salidas',
+          fallo.pregunta === 2
+            // La pregunta 2 es lectura que no reproduce el papel (libro
+            // 2026-08-19): acá no hay brecha que ofrecer, hay OCR que revisar.
+            ? `la lectura no reproduce el papel (pregunta 2): ${fallo.motivo}. ` +
+              'Esto NO es una brecha: pedile al humano que confirme los números impresos o corrija la lectura'
+            : `ITBIS contra la tasa (pregunta ${fallo.pregunta}): ${fallo.motivo}. ` +
+              'Esto NO se absorbe: preguntale al humano con los números y las dos salidas',
         );
       }
       if (fallo.estado === 'absorbida') {

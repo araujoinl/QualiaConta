@@ -895,10 +895,27 @@ function validarBrechaItbis(filas: Dic[], doc: string, p: Dic, opciones: Opcione
   const tieneAjuste = filas.some((l) => String(l.descripcion ?? '').includes(MOTIVO_SIN_ITBIS));
 
   if (fallo.estado === 'avisar') {
-    // El turno NO propone esta factura: pregunta. Y la pregunta va con los
-    // números y con las dos salidas nombradas — una pregunta sin salidas deja
-    // la factura parada, que es como terminaron la FP00001063 y la B0100000600.
+    // El turno NO propone esta factura: pregunta. Y CUÁL pregunta depende de
+    // quién tiene el número que no cierra (libro 2026-08-19): en la pregunta 2
+    // el número es del CLASIFICADOR —la lectura no reproduce el papel— y
+    // ofrecer absorber/reclamar ahí es pedirle al humano decidir una brecha
+    // que puede no existir (B0100006550 de PASTORIZA: papel limpio al 18%,
+    // «tasa efectiva 17,91%» calculada sobre una base que nadie imprimió). En
+    // las demás, la pregunta va con los números y con las dos salidas
+    // nombradas — una pregunta sin salidas deja la factura parada, que es como
+    // terminaron la FP00001063 y la B0100000600.
     const n = fallo.numeros;
+    if (fallo.pregunta === 2) {
+      errores.push(
+        `mi lectura del documento no reproduce el papel (pregunta 2 de la cadena de brecha): ${fallo.motivo}. ` +
+          'Esto NO es una brecha de ITBIS y sobre una lectura dudosa no se declara ninguna: NO absorbas, NO ' +
+          'reclames, NO dejes precedente de emisor y NO le ofrezcas esas salidas al humano. La salida es ' +
+          '`preguntar_al_humano` pidiéndole que confirme los números impresos del papel (renglones, subtotal, ' +
+          'ITBIS, total) o que marque la lectura como errada, para re-analizar de cero. Copiá esta pregunta ' +
+          `tal cual, que ya trae los números:\n«${fallo.texto}»`,
+      );
+      return errores;
+    }
     errores.push(
       `el ITBIS del papel no se sostiene contra ninguna tasa legal (pregunta ${fallo.pregunta} del criterio ` +
         `del 2026-08-17): ${fallo.motivo}. NO se absorbe, NO se despeja y NO elijas vos la tasa: por el papel ` +

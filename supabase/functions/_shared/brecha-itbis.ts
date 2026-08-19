@@ -238,6 +238,13 @@ export const CRITERIO_BRECHA =
 export const CRITERIO_BRECHA_ENMENDADO =
   'libro-de-accion/2026-08-17-el-itbis-que-se-registra-es-el-impreso.md';
 
+/** La que separa la pregunta de LECTURA de la de brecha: cuando el número que
+ * no cierra es el reconstruido —no uno impreso—, no se ofrece absorber ni
+ * reclamar (B0100006550 de PASTORIZA PLASTICS: papel limpio al 18%, pregunta de
+ * brecha fabricada por una base de OCR que no estaba impresa en ningún lado). */
+export const CRITERIO_LECTURA =
+  'libro-de-accion/2026-08-19-una-brecha-solo-se-declara-sobre-numeros-impresos.md';
+
 // ── el precedente por emisor ────────────────────────────────────────────────
 //
 // UNA fila de `qualia_config` por emisor, por empresa y con respaldo global:
@@ -578,12 +585,18 @@ export function evaluarBrechaItbis(e: EntradaBrecha): Veredicto {
     tasaDeclarada,
     topePct,
   );
+  // La pregunta 2 es «MI lectura no reproduce el papel»: ahí las salidas de
+  // brecha (absorber/reclamar) deciden sobre la propia resta del clasificador,
+  // no sobre el papel — absorber dejaría precedente de emisor por un error de
+  // OCR. La B0100006550 de PASTORIZA lo probó (libro 2026-08-19).
   const avisar = (pregunta: number, motivo: string): Veredicto => ({
     estado: 'avisar',
     pregunta,
     motivo,
     numeros,
-    texto: textoPreguntaBrecha(numeros, motivo),
+    texto: pregunta === 2
+      ? textoPreguntaLectura(numeros, motivo)
+      : textoPreguntaBrecha(numeros, motivo),
   });
 
   // ── el renglón que no calza con ningún schedule: frena SIEMPRE ────────────
@@ -1098,6 +1111,36 @@ export function textoPreguntaBrecha(n: NumerosBrecha, motivo: string, moneda = '
     `que ADM llegue al mismo total del papel. Dejo el precedente y sus próximas facturas salen solas.\n` +
     `B) RECLAMAR — la factura queda parada y le pedís al proveedor un comprobante corregido.\n\n` +
     `Criterio: ${n.criterio}.`;
+}
+
+/**
+ * LA OTRA PREGUNTA: la de la pregunta 2, cuando lo que no cierra es LA LECTURA
+ * y no el papel (libro 2026-08-19). No ofrece absorber ni reclamar — las dos
+ * presuponen que el papel dice lo que se leyó, y acá eso es justo lo que está
+ * en duda: absorber dejaría un precedente de emisor fabricado por un error de
+ * OCR, y reclamar manda a pelear con un proveedor que pudo haber facturado
+ * bien. Los únicos números que afirma son IMPRESOS (total e ITBIS del papel) o
+ * restas de impresos; los reconstruidos viajan sólo dentro del `motivo`, como
+ * lo que son: la resta que no cerró.
+ */
+export function textoPreguntaLectura(n: NumerosBrecha, motivo: string, moneda = 'RD$'): string {
+  const baseImplicita = n.total_papel - n.itbis_impreso;
+  const limpia = lecturasPosibles(n.itbis_impreso, n.total_papel)
+    .find((l) => Math.abs(l.exento) <= UMBRAL_CUADRE);
+  return `⚠️ Mi lectura de esta factura no reproduce el papel, y sobre una lectura dudosa no se declara ` +
+    `ninguna brecha de ITBIS.\n\n` +
+    `Detalle técnico: ${motivo}.\n\n` +
+    `Con los números impresos solos, el papel implica una base de ${plata(baseImplicita, moneda)} ` +
+    `(total ${plata(n.total_papel, moneda)} − ITBIS impreso ${plata(n.itbis_impreso, moneda)}), y mi ` +
+    `reconstrucción de los renglones no reproduce esa cuenta.` +
+    (limpia
+      ? `\nAl ${limpia.tasa.toFixed(0)}% la cabecera impresa cierra SOLA (base ${plata(limpia.base, moneda)}): ` +
+        `todo apunta a que el papel está BIEN y el error es mío al reconstruir los renglones.`
+      : '') +
+    `\n\nNo te ofrezco absorber ni reclamar: las dos decidirían sobre MI resta, no sobre el papel. ` +
+    `Revisá el documento contra lo que leí — confirmame los números impresos (renglones, subtotal, ITBIS, ` +
+    `total) o marcá que leí mal el documento — y lo vuelvo a analizar de cero.\n\n` +
+    `Criterio: ${CRITERIO_LECTURA}.`;
 }
 
 /** La nota que queda en el hilo cuando SÍ se absorbió, en llano y con los
