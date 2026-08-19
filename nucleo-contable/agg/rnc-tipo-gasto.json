@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generado": "2026-08-15T05:21:37Z",
+  "generado": "2026-08-19T05:20:47Z",
   "alcance": "GENERAL (DGII) — vale para cualquier empresa; el tipo de gasto 606 no depende de quién compra. La cuenta contable NO se comparte: vive en cada empresa.",
   "n_empresas_aportantes": 1,
-  "n_suplidores": 164,
-  "n_facturas": 1129,
+  "n_suplidores": 165,
+  "n_facturas": 1139,
   "n_sin_rnc": 28,
   "n_sin_tipo_gasto": 21,
   "n_con_dominante": 39
@@ -13,13 +13,13 @@
   {
    "codigo": "02",
    "nombre": "Gastos por Trabajos, Suministros y Servicios",
-   "usos": 707,
+   "usos": 714,
    "n_suplidores": 107
   },
   {
    "codigo": "07",
    "nombre": "Gastos Financieros",
-   "usos": 196,
+   "usos": 197,
    "n_suplidores": 1
   },
   {
@@ -43,8 +43,8 @@
   {
    "codigo": "10",
    "nombre": "Adquisición de Activos",
-   "usos": 18,
-   "n_suplidores": 14
+   "usos": 20,
+   "n_suplidores": 15
   },
   {
    "codigo": "04",
@@ -81,13 +81,13 @@
   {
    "rnc": "102012921",
    "nombre": "Banco Multiple Santa Cruz S A",
-   "facturas": 198,
+   "facturas": 199,
    "dominante": "07",
    "tipos": [
     {
      "codigo": "07",
      "nombre": "Gastos Financieros",
-     "usos": 196,
+     "usos": 197,
      "pct": 99.0
     },
     {
@@ -107,13 +107,13 @@
   {
    "rnc": "132942248",
    "nombre": "Tupaq Cargo & Courier Srl",
-   "facturas": 131,
+   "facturas": 133,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 130,
+     "usos": 132,
      "pct": 99.2
     },
     {
@@ -141,13 +141,13 @@
   {
    "rnc": "101767766",
    "nombre": "Mecari Srl",
-   "facturas": 90,
+   "facturas": 91,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 90,
+     "usos": 91,
      "pct": 100.0
     }
    ]
@@ -175,13 +175,13 @@
   {
    "rnc": "101068744",
    "nombre": "Totalenergies Marketing Dominicana, Sa",
-   "facturas": 40,
+   "facturas": 41,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 40,
+     "usos": 41,
      "pct": 100.0
     }
    ]
@@ -207,22 +207,22 @@
    ]
   },
   {
-   "rnc": "133169045",
-   "nombre": "Account One Dcm2rp, Srl",
-   "facturas": 22,
+   "rnc": "101001577",
+   "nombre": "Compania Dominicana De Telefonos S A",
+   "facturas": 23,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 22,
+     "usos": 23,
      "pct": 100.0
     }
    ]
   },
   {
-   "rnc": "101001577",
-   "nombre": "Compania Dominicana De Telefonos S A",
+   "rnc": "133169045",
+   "nombre": "Account One Dcm2rp, Srl",
    "facturas": 22,
    "dominante": "02",
    "tipos": [
@@ -283,13 +283,13 @@
   {
    "rnc": "130012271",
    "nombre": "Megasuply Srl",
-   "facturas": 13,
+   "facturas": 14,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 13,
+     "usos": 14,
      "pct": 100.0
     }
    ]
@@ -349,6 +349,32 @@
    ]
   },
   {
+   "rnc": "131459562",
+   "nombre": "Good Market Express Eg Srl",
+   "facturas": 11,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 8,
+     "pct": 72.7
+    },
+    {
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
+     "usos": 2,
+     "pct": 18.2
+    },
+    {
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
+     "usos": 1,
+     "pct": 9.1
+    }
+   ]
+  },
+  {
    "rnc": "130689164",
    "nombre": "Sigma Petroleum Corp Sas",
    "facturas": 11,
@@ -373,32 +399,6 @@
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 10,
      "pct": 100.0
-    }
-   ]
-  },
-  {
-   "rnc": "131459562",
-   "nombre": "Good Market Express Eg Srl",
-   "facturas": 10,
-   "dominante": "02",
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 7,
-     "pct": 70.0
-    },
-    {
-     "codigo": "01",
-     "nombre": "Gastos de Personal",
-     "usos": 2,
-     "pct": 20.0
-    },
-    {
-     "codigo": "05",
-     "nombre": "Gastos de Representación",
-     "usos": 1,
-     "pct": 10.0
     }
    ]
   },
@@ -1305,6 +1305,20 @@
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 2,
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rnc": "00100197912",
+   "nombre": "Nercido Melanio Vargas",
+   "facturas": 2,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "10",
+     "nombre": "Adquisición de Activos",
      "usos": 2,
      "pct": 100.0
     }

@@ -1,0 +1,10 @@
+# Pagar FP00001154: TOTALENERGIES PARAISO
+
+- **Fecha:** 2026-08-18
+- **Caso:** Pagar FP00001154: TOTALENERGIES PARAISO
+- **Decisión:** BillPayments RD$750.00 DocID PP00000824.
+- **Por qué:** Registro por el camino directo de la mesa; ver propuesta aprobada.
+- **Sostén:** Método: usuario
+- **Aprobó:** C.Araujo, por la mesa web
+- **Alcance:** — (documenta este caso; sin alcance no automatiza)
+- **Deroga:** —
