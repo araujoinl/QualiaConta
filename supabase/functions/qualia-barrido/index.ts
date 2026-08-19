@@ -23,7 +23,8 @@ import { registrarSombra } from '../_shared/sombra.ts';
  * dia se agrega un estado del contable, hay que preguntarse quien lo rescata.
  *
  * Rescates:
- *   1) 're_poke'            pendiente sin claim > 300s  -> poke al preparador
+ *   1) 're_poke'            pendiente sin claim > 300s  -> poke al preparador,
+ *                           escalonado y con cierre en 'error' pasado el tope
  *   2) 'reserva_muerta'     analizando > 20 min         -> vuelve a pendiente
  *   3) 'registro_reintento' aprobada sin docid          -> F1: SOLO detecta
  *   4) 'sin_libro'          registrada/criterio sin libro -> F1: SOLO detecta
@@ -92,6 +93,21 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // solo dispara con autor='usuario', asi que esta marca no se despierta a si misma.
 const TIPO_AVISO_REGISTRO = 'aviso_registro';
 
+// Ancla del escalonado del bloque 1. Misma idea que TIPO_AVISO_REGISTRO y por
+// el mismo motivo, que ahi se explica para 'aprobada': el preparador NO reclama
+// la fila (el claim pendiente->analizando es del proponedor, ver el encabezado
+// de qualia-preparador), asi que una fila cuyo prep muere sin cerrar se queda en
+// 'pendiente' con updated_at intacto y el rescate 1 la vuelve a pokear en CADA
+// corrida — cada 2 minutos, sin fin, porque el bloque 1 tampoco tenia el tope de
+// TOPE_S que si llevan los bloques 2 y 3.
+//
+// No es teorico: el 2026-08-19 un PDF escaneado de 520 KB se comio 85 pokes en
+// 1h50 —el rasterizado a PNG revienta el limite del worker y se lleva al prep
+// sin excepcion que capturar, el mismo agujero que el HEIC— y cada vuelta pago
+// su llamada al modelo. Se corto a mano. El sello da las dos cosas que
+// faltaban: contra que medir el escalonado, y cuantos intentos lleva la fila.
+const TIPO_POKE_PREPARADOR = 'poke_preparador';
+
 type Modo = 'server' | 'sombra' | 'nube';
 
 function json(body: unknown, status = 200): Response {
@@ -155,6 +171,64 @@ async function marcarAvisado(
     datos,
   });
   if (error) errores.push(`marca de aviso ${trabajoId}: ${error.message}`);
+}
+
+/**
+ * Sello del bloque 1: queda dicho que a esta fila ya se le mando un poke.
+ *
+ * Va en qualia_eventos por lo mismo que la marca de aviso: es el ancla del
+ * escalonado Y lo unico que hace visible en la web que el sistema esta
+ * reintentando. Autor 'sistema' a proposito — el trigger qualia_poke_contable
+ * solo dispara con autor='usuario', asi que la marca no se despierta a si misma.
+ *
+ * Falla suave, igual que marcarAvisado: sin el sello el proximo barrido pokea
+ * de nuevo (molesto, no roto); abortar el barrido por un insert perdido si seria
+ * roto.
+ */
+async function marcarPokeado(
+  trabajoId: string,
+  datos: Record<string, unknown>,
+  errores: string[],
+): Promise<void> {
+  const { error } = await sb().from('qualia_eventos').insert({
+    trabajo_id: trabajoId,
+    autor: 'sistema',
+    tipo: TIPO_POKE_PREPARADOR,
+    contenido: 'El documento sigue sin prepararse: se despertó al preparador.',
+    datos,
+  });
+  if (error) errores.push(`sello de poke ${trabajoId}: ${error.message}`);
+}
+
+/**
+ * Cierra en 'error' una fila que el preparador nunca pudo terminar.
+ *
+ * Es la regla que el encabezado de TOPE_S ya declaraba y que el bloque 1 no
+ * aplicaba: pasadas 12 horas lo que sigue trabado no es transitorio, y
+ * reintentar para siempre da el mismo fallo sin arreglar nada. Sin este cierre
+ * la fila se queda "cargando" en la web hasta que un humano la encuentre — que
+ * es exactamente como se descubrio el incidente del 2026-08-19.
+ *
+ * El guard de estado en el WHERE es el mismo del rescate 2: si el prep revivio
+ * y la movio mientras tanto, 0 filas y no se pisa nada.
+ */
+async function rendirse(
+  trabajoId: string,
+  empresaId: string,
+  detalle: string,
+  errores: string[],
+): Promise<boolean> {
+  const { data, error } = await sb().from('qualia_trabajos')
+    .update({ estado: 'error', error_detalle: detalle })
+    .eq('id', trabajoId)
+    .eq('empresa_id', empresaId)
+    .eq('estado', 'pendiente')
+    .select('id');
+  if (error) {
+    errores.push(`rindiendo ${trabajoId}: ${error.message}`);
+    return false;
+  }
+  return (data ?? []).length > 0;
 }
 
 async function pokearContable(trabajoId: string, motivo: string): Promise<boolean> {
@@ -240,7 +314,16 @@ Deno.serve(async (req) => {
     // y no la ve). La clave del anti-spam del poller incluia updated_at ("si
     // vuelve a pendiente es una peticion nueva"): por eso el umbral va sobre
     // updated_at, no created_at.
-    const rePoke = { candidatos: 0, excluidos_por_evento: 0, sin_cupo: 0, pokes_ok: 0, pokes_fallidos: 0, sombra: 0 };
+    const rePoke = {
+      candidatos: 0,
+      excluidos_por_evento: 0,
+      sin_cupo: 0,
+      pokes_ok: 0,
+      pokes_fallidos: 0,
+      sombra: 0,
+      esperando: 0,
+      rendidas: 0,
+    };
 
     let q1 = db.from('qualia_trabajos')
       .select('id, empresa_id, updated_at, created_at')
@@ -291,6 +374,31 @@ Deno.serve(async (req) => {
       return true;
     });
 
+    // Ancla del escalonado del bloque 1, en UNA consulta para todos los
+    // candidatos — mismo patron y mismo motivo que el ultimoAviso del bloque 3
+    // (un select por fila seria un N+1 contra la tabla que ya esta indexada).
+    // Se traen TODOS los sellos y no solo el ultimo porque el conteo entra en el
+    // motivo del cierre: al humano que abre la fila le dice cuantas veces se
+    // intento, que es la diferencia entre "no se pudo" y "nadie lo miro".
+    const ultimoPoke = new Map<string, number>();
+    const pokesPrevios = new Map<string, number>();
+    if (elegibles.length > 0) {
+      const { data: sellos, error: eSe } = await db.from('qualia_eventos')
+        .select('trabajo_id, created_at')
+        .eq('autor', 'sistema')
+        .eq('tipo', TIPO_POKE_PREPARADOR)
+        .in('trabajo_id', elegibles.map((p) => p.id))
+        .gte('created_at', hace(TOPE_S));
+      if (eSe) throw new Error(`leyendo sellos de poke: ${eSe.message}`);
+      for (const s of sellos ?? []) {
+        const id = s.trabajo_id as string;
+        const t = new Date(s.created_at as string).getTime();
+        const previo = ultimoPoke.get(id);
+        if (previo === undefined || t > previo) ultimoPoke.set(id, t);
+        pokesPrevios.set(id, (pokesPrevios.get(id) ?? 0) + 1);
+      }
+    }
+
     for (const [empresaId, filas] of porEmpresa(elegibles)) {
       const m = await modoDe(empresaId);
       if (m === 'server') continue;
@@ -312,6 +420,50 @@ Deno.serve(async (req) => {
 
       for (const fila of filas) {
         rePoke.candidatos++;
+
+        const edadS = edadSegundos(fila.updated_at);
+        const intentos = pokesPrevios.get(fila.id) ?? 0;
+        const esperaS = esperaSegunEdad(edadS);
+        const previoS = ultimoPoke.get(fila.id);
+        const desdeUltimoS = previoS === undefined
+          ? edadS
+          : Math.floor((Date.now() - previoS) / 1000);
+
+        // Tope de 12 horas, el que ya llevan los bloques 2 y 3 y a este le
+        // faltaba. Se cierra en 'error' en vez de solo dejar de mirar: una fila
+        // abandonada en 'pendiente' se ve "cargando" para siempre en la web, y
+        // el humano no tiene como distinguirla de una que recien entro.
+        if (edadS > TOPE_S) {
+          const detalle =
+            `El preparador no pudo terminar este documento en 12 horas (${intentos} intento(s)) y se cerro solo. ` +
+            `Suele ser un PDF escaneado que no se puede rasterizar o una imagen ilegible: volver a subirlo, ` +
+            `mejor como foto nitida o PDF con capa de texto.`;
+          if (m === 'sombra') {
+            if (await sombraSegura(empresaId, `${fila.id}+re_poke_tope`, {
+              rescate: 're_poke',
+              trabajo_id: fila.id,
+              empresa_id: empresaId,
+              edad_s: edadS,
+              intentos,
+              accion: 'rendirse_por_tope',
+            })) rePoke.sombra++;
+          } else if (await rendirse(fila.id, empresaId, detalle, errores)) {
+            rePoke.rendidas++;
+          }
+          continue;
+        }
+
+        // Escalonado entre pokes, contra el sello y no contra la edad de la
+        // fila: el preparador no la reclama, asi que updated_at no se mueve
+        // mientras el prep falla y medir la edad sola deja la condicion cumplida
+        // en todas las corridas. Sin sello previo NO se espera: el umbral del
+        // query (300s) ya es la primera espera, y retrasar el estreno a 10 min
+        // seria hacer mas lento el rescate que si funciona.
+        if (previoS !== undefined && desdeUltimoS < esperaS) {
+          rePoke.esperando++;
+          continue;
+        }
+
         if (cupo <= 0) { rePoke.sin_cupo++; continue; }
         cupo--;
 
@@ -332,7 +484,13 @@ Deno.serve(async (req) => {
             rescate: 're_poke',
             trabajo_id: fila.id,
             empresa_id: empresaId,
-            edad_s: edadSegundos(fila.updated_at),
+            edad_s: edadS,
+            // La sombra no escribe el sello (su unico destino es qualia_sombra),
+            // asi que estos dos se recalculan igual en cada corrida: el diff del
+            // cutover se lee por campo, no contando filas — mismo criterio que
+            // `debe_avisar` en el bloque 3.
+            intentos,
+            espera_s: esperaS,
             accion: 'poke_preparador',
             poke,
           })) rePoke.sombra++;
@@ -357,8 +515,19 @@ Deno.serve(async (req) => {
             body: JSON.stringify(poke),
             signal: AbortSignal.timeout(15_000),
           });
-          if (resp.ok) rePoke.pokes_ok++;
-          else {
+          if (resp.ok) {
+            rePoke.pokes_ok++;
+            // El sello va DESPUES del poke que salio bien, como la marca del
+            // bloque 3: si el poke no llego, la fila queda sin sello y el
+            // proximo barrido reintenta enseguida — que es justo lo que se
+            // quiere de un aviso que no llego.
+            await marcarPokeado(fila.id, {
+              motivo: poke.motivo,
+              edad_s: edadS,
+              espera_s: esperaS,
+              intento_n: intentos + 1,
+            }, errores);
+          } else {
             rePoke.pokes_fallidos++;
             errores.push(`poke ${fila.id}: HTTP ${resp.status}`);
           }
