@@ -241,8 +241,19 @@ gobierna la doctrina contable ratificada:
   pasivo que nunca se registró.
 - **P-002**: un reverso o devolución usa la MISMA cuenta de su movimiento
   original; sin original atado, se pregunta.
+- **Un par «Devuelta» NO se da por cerrado sin restarlo primero (H-13).** El
+  cruce de reversos empareja por referencia citada aunque los montos difieran,
+  porque al devolver una transferencia el banco se queda la comisión. Así que
+  para CADA movimiento con `reverso_monto`, la resta es obligatoria:
+  `|monto| − |reverso_monto|`. Si da cero, el par se anula y no hay nada que
+  asentar. **Si da distinto de cero, esa diferencia es plata que el banco se
+  quedó y que no tiene línea propia en el estado de cuenta**: se asienta sola,
+  como cargo bancario, con `Reference` = el `banco_tx_id` del RETORNO. El
+  resumen del reporte los cuenta como «se anulan con su reverso» y ahí ese neto
+  no aparece — no alcanza con leer el resumen. Mientras H-13 no esté ratificada,
+  se detecta, se dejan los números y se PREGUNTA.
 - **P-003**: jerarquía — ADM real → doctrina → precedente → la DGII SOLO para
   el eje fiscal. La DGII jamás elige la cuenta ni el documento.
 - El tratamiento por situación (cargos, excedentes de clientes, garantías,
-  cuotas de préstamo…) está en `doctrina/conciliacion-hechos.md` (H-01..H-10).
+  cuotas de préstamo…) está en `doctrina/conciliacion-hechos.md` (H-01..H-13).
   Un hecho marcado **ABIERTO** se pregunta citándolo, nunca se adivina.

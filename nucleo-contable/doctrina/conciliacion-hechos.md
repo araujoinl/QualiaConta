@@ -2,6 +2,7 @@
 estado: ratificado
 aprobo: C.Araujo, por chat, 2026-08-07 (los tratamientos «mecánica ratificada» describen el uso real; los ABIERTO ordenan preguntar, no adivinar). Re-ratificado mismo día: H-04/06/07 reescritos a forma fija de por vida — el estado del plan no vive en una entrada. Mismo día, H-12 dictado y H-06/H-07 reapuntados al vehículo: el dictamen del Caso #2 mandó al dueño a asentar a mano teniendo precedente (CB00000258)
 evidencia: histórico ADM de Blackbox (211 registrados vía mesa + asientos ED) y auditoría de fallos, corte 2026-08-07
+pendiente: H-13 (devolución parcial) es dictado técnico del 2026-08-18 y NO está ratificado todavía. Hasta que lo esté, se lee pero no automatiza: el hecho se detecta y se pregunta
 ---
 
 # Conciliación: del hecho al asiento
@@ -199,3 +200,50 @@ mundo van al INDEX como pendientes, nunca acá.
   conclusión CORRECTA y termina en un evento `pregunta`.
 - `Reference` = `banco_tx_id`, como en todo documento nacido de un movimiento
   del banco.
+
+## H-13 — Devolución parcial: la salida vuelve por MENOS de lo que salió
+
+- **Documento:** `BankCharges` (cargo) por la retención · **Rango:** dictado
+  técnico (2026-08-18) · **Vigencia:** desde su ratificación
+- **El hecho:** una salida del banco vuelve devuelta, y el crédito de vuelta es
+  MENOR que el débito que salió. La diferencia se la quedó el banco —o su
+  corresponsal— por procesar la devolución. **No existe una tercera línea en el
+  estado de cuenta:** la retención viaja ya descontada adentro del retorno, y
+  esperarla como movimiento propio es esperar algo que no va a llegar nunca.
+- **Un par que vuelve corto NO se anula solo, y ésa es toda la entrada.** Un
+  reverso que vuelve completo se neutraliza y no deja asiento; uno que vuelve
+  corto deja un costo real. Darlo por anulado hace las dos cosas malas a la vez:
+  pierde el gasto y deja la cuenta de banco descuadrada exactamente por la
+  diferencia, para siempre. La materialidad no lo salva — el saldo del banco se
+  movió por ese monto, así que se asienta aunque sean centavos.
+- **La diferencia se CALCULA, no se lee.** Es `|salida| − |retorno|` del par, y
+  el par lo da el cruce de reversos de la conciliación. Ninguna de las dos
+  líneas del banco la contiene, y ningún texto del banco la nombra.
+- **Tratamiento, en dos tramos que son independientes:**
+  1. **El par bruto.** Primero P-001: ¿el envío quedó asentado en ADM? Si NO
+     —el caso normal, porque un envío devuelto rara vez alcanzó a registrarse—
+     el par se neutraliza y no se registra ninguna de las dos patas: la
+     operación económica no ocurrió. Si SÍ, se reversa contra su original
+     (P-002), nunca contra una cuenta parecida.
+  2. **La retención, siempre, y en documento aparte.** Es lo que el banco te
+     cobró: mismo tratamiento que H-01 — débito a la cuenta de cargos bancarios
+     del plan vivo, crédito a la cuenta de banco. La naturaleza manda (P-004) y
+     la contraparte ES el banco, así que `BankCharges` es el vehículo correcto
+     por H-12, sin la excepción de tercero. Un trabajo, un documento: el reverso
+     del tramo 1 y la retención jamás van mezclados en una misma propuesta.
+- **`Reference` apunta al RETORNO, que es el movimiento que la contiene.** La
+  retención no tiene `banco_tx_id` propio porque no tiene línea propia. El
+  anti-duplicado se hace por ese par, **nunca por monto suelto**: una retención
+  de US$5 se parece a cualquier otra comisión del mes y por monto se adopta un
+  gemelo ajeno.
+- **En cuenta de moneda extranjera, tramo 1 y tramo 2 se miden distinto, y ahí
+  hay una segunda diferencia que no es comisión.** La retención se mide en la
+  moneda de la CUENTA, donde las dos patas son comparables. Recién si el tramo 1
+  hubo que reversarlo, el original entró a una tasa y el reverso sale a otra: eso
+  es **diferencia cambiaria**, no retención, y va a la cuenta de diferencia de
+  cambio del plan vivo. Sumarlas en un solo renglón infla el gasto bancario con
+  plata que el banco nunca cobró. Si el plan no ofrece cuenta para la diferencia
+  de cambio, se pregunta citando este hecho.
+- **El caso simétrico es el mismo hecho:** una ENTRADA que se devuelve y sale por
+  menos también deja retención. Cambia el signo de las dos patas del par, no el
+  tratamiento de la retención — que sigue siendo un cargo del banco.

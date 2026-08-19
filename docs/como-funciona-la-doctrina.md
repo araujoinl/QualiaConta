@@ -26,7 +26,7 @@ auditar**.
     │
   EL MÉTODO         P-001 … P-005        «cómo se decide cualquier asiento»
     │
-  LOS HECHOS        H-01 … H-12          «este hecho del banco → este asiento»
+  LOS HECHOS        H-01 … H-13          «este hecho del banco → este asiento»
     │
   LA EMPRESA        C-001 … C-007        «cómo lo hace Blackbox en concreto»
     │
@@ -77,7 +77,7 @@ asiento, en cualquier empresa. Los cinco:
 Nacieron de una auditoría real: 72 trabajos con tu feedback, 2026-08-07. Cada
 uno existe porque su ausencia costó plata o retrabajos.
 
-### Los Hechos — H-01 … H-12 en `nucleo-contable/doctrina/conciliacion-hechos.md`
+### Los Hechos — H-01 … H-13 en `nucleo-contable/doctrina/conciliacion-hechos.md`
 
 El diccionario hecho→asiento. Cada H toma un hecho que aparece en el banco
 —un cargo, un reverso, un anticipo, la nómina— y dice qué asiento le
@@ -213,12 +213,14 @@ los **casos por familia** de la hoja de ruta (`A-01`, `K-01`, `M-04`…) que son
 el catálogo para el auditor, y los **«Caso #N»** de la mesa, que son hilos de
 conciliación concretos que tu gente arma en la web.
 
-## 7. Qué está ratificado y qué sigue abierto (al 2026-08-15)
+## 7. Qué está ratificado y qué sigue abierto (al 2026-08-18)
 
 - **Ratificado**: P-001…P-005, H-01…H-12, C-001…C-007 (los últimos tres el
   2026-08-15, «quiero 0 en borrador»), pagos a cuenta del ISR, y la enmienda
   NIIF de P-003 (nivel 5, 2026-08-15, «firma las que ya están»).
-- **Abierto en la doctrina**: la semántica de las 48 cuentas de
+- **Abierto en la doctrina**: **H-13** (devolución parcial — la retención que el
+  banco se queda al devolver una transferencia), dictada el 2026-08-18 y sin
+  firmar: hasta que se ratifique, detecta y pregunta; la semántica de las 48 cuentas de
   `cuentas-en-uso.md` (borrador del núcleo — cada cuenta necesita su «qué es /
   qué NO va acá» dictado); «Adelanto de Clientes» sin código en ADM; las tablas
   de amortización de los préstamos vivos (sin ellas H-04 siempre pregunta).

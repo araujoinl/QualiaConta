@@ -726,7 +726,7 @@ Criterio de cutover de F3, con esto medido: facturas y criterios en verde;
 ### Segunda vuelta: el turno razonaba SIN las reglas (hallazgo de fondo)
 
 Antes de seguir tocando el prompt se verificó lo obvio que nadie había mirado:
-**el núcleo DGII, la doctrina (P-001..P-005 y el mapa H-01..H-12) y los
+**el núcleo DGII, la doctrina (P-001..P-005 y el mapa H-01..H-13) y los
 criterios ratificados NUNCA se empaquetaron con el turno**, y ninguna tool los
 leía — mientras `system.md` le afirmaba que sí los llevaba. Todo el examen
 anterior midió a un contable sin su manual. Corregido: `nucleo.ts` (20
@@ -843,7 +843,7 @@ carga.
 
 | Capa | Qué es hoy | Dónde vive hoy | Destino |
 |---|---|---|---|
-| **Lo que sabe** — núcleo compartido | `nucleo-contable/`: DGII (7 normas con rango y vigencia: retenciones ISR/ITBIS con casilla del IT-1, tasas, NCF 31-47, 606/607, anticipo ISR), NIIF-PYMES (6 secciones destiladas), doctrina (principios P-001..P-005 y mapa hecho→asiento H-01..H-12), agregado RNC→tipo de gasto (164 suplidores) | git, montado `:ro` en el contenedor | git igual; **empaquetado en el bundle** de cada function al deploy. Cambiar una norma = commit + redeploy, amarrado al commit |
+| **Lo que sabe** — núcleo compartido | `nucleo-contable/`: DGII (7 normas con rango y vigencia: retenciones ISR/ITBIS con casilla del IT-1, tasas, NCF 31-47, 606/607, anticipo ISR), NIIF-PYMES (6 secciones destiladas), doctrina (principios P-001..P-005 y mapa hecho→asiento H-01..H-13), agregado RNC→tipo de gasto (164 suplidores) | git, montado `:ro` en el contenedor | git igual; **empaquetado en el bundle** de cada function al deploy. Cambiar una norma = commit + redeploy, amarrado al commit |
 | **Lo que aprendió de la empresa** | `empresas/blackbox/hermes/`: SOUL.md (103 líneas — el system prompt), memoria curada (proveedores.md 939 líneas en borrador, criterios C-00x ratificados, nómina), **libro de acción: 284 entradas append-only** con Alcance y Aprobó | git (whitelisteado en el .gitignore) | git igual → bundle. El libro además mantiene su **doble punta que ya existe hoy**: archivo en git (auditoría por diff) + espejo en `qualia_libro` (la lectura operativa de precedentes en runtime) |
 | **Cómo procede** — protocolos | `skills/`: mesa-de-trabajo (el flujo con sus compuertas: las 5 preguntas del tipo de documento, aritmética del ITBIS despejada, borrador-no-es-precedente), consultar-*, conciliar, CxC. El router `abrir-trabajo.sh` (763 líneas) ya sirve "la tajada" de instrucciones según el estado real de la fila | git | git igual → **instrucciones por paso** de cada function. El router determinista se porta casi 1:1: hoy ya decide por estado de la fila, no por lo que diga el webhook |
 | **Lo que recuerda de cada caso** | la conversación del trabajo | `qualia_eventos` (ya en Supabase) | igual — ya es serverless; cada turno recarga el historial de la base |
