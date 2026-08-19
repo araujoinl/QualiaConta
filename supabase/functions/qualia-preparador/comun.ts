@@ -2,6 +2,12 @@
 // preparador. El mapa de bloques del fuente (mesa/preparar-trabajo.sh) vive en
 // el encabezado de index.ts; acá solo está lo que necesita más de un módulo.
 
+// Versión del dossier = versión de la lógica de extracción. Un dossier de otra
+// versión está vencido aunque el documento sea el mismo. Vive acá y no en
+// index.ts porque el CONTABLE también la necesita: es él quien decide si el
+// dossier que encuentra le sirve o hay que re-poke al preparador.
+export const PREP_VERSION = 3;
+
 export type Extraccion = Record<string, unknown>;
 
 export interface ItemDoc {

@@ -3,7 +3,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { sb, modo } from '../_shared/db.ts';
 import { autorizado } from '../_shared/auth.ts';
 import { registrarSombra } from '../_shared/sombra.ts';
-import { Extraccion, conPlazo, fragNinguno, sha256hex, aBase64 } from './comun.ts';
+import { Extraccion, PREP_VERSION, conPlazo, fragNinguno, sha256hex, aBase64 } from './comun.ts';
 import {
   extraccionXml,
   extraerCamposTexto,
@@ -72,11 +72,9 @@ import { BUCKET_CACHE, buscarDuplicados, gcCache, rutaCache } from './dedup.ts';
 
 const FUNCION = 'qualia-preparador';
 
-// Versión del dossier = versión de la lógica de extracción. Un dossier de otra
-// versión se considera vencido y se re-prepara aunque el documento sea el
-// mismo. Se mantiene la numeración del fuente (v3: renglones del XML e-CF con
-// aritmética verificada) para que el diff de sombra compare versiones iguales.
-const PREP_VERSION = 3;
+// PREP_VERSION vive en comun.ts (la comparte el contable). Se mantiene la
+// numeración del fuente (v3: renglones del XML e-CF con aritmética verificada)
+// para que el diff de sombra compare versiones iguales.
 
 const BUCKET_DOCS = 'qualia-conta';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
