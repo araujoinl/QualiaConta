@@ -81,6 +81,50 @@ export async function extraerTextoPdf(bytes: Uint8Array): Promise<string> {
   return typeof text === 'string' ? text : String(text ?? '');
 }
 
+// ───────────────────── scan embebido en el PDF ──────────────────────────────
+
+// Por debajo de esto un JPEG adentro del PDF es un logo o una firma, no la
+// página escaneada: un escaneo real pesa cientos de KB. El umbral decide si el
+// prep esquiva pdfium (ver el caller), así que peca de alto a propósito.
+const UMBRAL_SCAN_BYTES = 100_000;
+
+/**
+ * El JPEG más grande embebido en el PDF, si pesa como una página escaneada.
+ *
+ * Un PDF escaneado no es más que un JPEG envuelto en un contenedor PDF
+ * (stream /DCTDecode). Rasterizarlo con pdfium para "verlo" excede el límite
+ * de cómputo del worker y la plataforma lo mata SIN excepción — 2026-08-19,
+ * dos veces con el mismo escaneo de 520 KB; ningún try/catch ni plazo salva
+ * de eso porque no queda promesa que rechace. Sacar el JPEG directo de los
+ * bytes es O(n), sin decodificar nada.
+ *
+ * Se busca por marcadores SOI (FFD8FF) → EOI (FFD9), no parseando el PDF: los
+ * escáneres y apps de "scan" emiten DCTDecode siempre, y un candidato cortado
+ * (un EOI espurio dentro de los datos, raro) lo rechaza jpeg-js o la visión
+ * más adelante — el degradado ya existe. Escaneos CCITT/Flate (fax B/N) no
+ * tienen JPEG y devuelven null: el caller sigue su camino de siempre.
+ */
+export function extraerJpegEmbebido(bytes: Uint8Array): Uint8Array | null {
+  let mejor: { desde: number; largo: number } | null = null;
+  for (let i = 0; i + 2 < bytes.length; i++) {
+    if (bytes[i] !== 0xff || bytes[i + 1] !== 0xd8 || bytes[i + 2] !== 0xff) continue;
+    let fin = -1;
+    for (let j = i + 3; j + 1 < bytes.length; j++) {
+      if (bytes[j] === 0xff && bytes[j + 1] === 0xd9) {
+        fin = j + 2;
+        break;
+      }
+    }
+    if (fin < 0) break; // SOI sin cierre: no hay más candidatos completos
+    const largo = fin - i;
+    if (largo >= UMBRAL_SCAN_BYTES && (!mejor || largo > mejor.largo)) {
+      mejor = { desde: i, largo };
+    }
+    i = fin - 1; // saltar el candidato entero (los SOI anidados son miniaturas)
+  }
+  return mejor ? bytes.subarray(mejor.desde, mejor.desde + mejor.largo) : null;
+}
+
 // ────────────────── campos por regex sobre el texto (bloque 4) ──────────────
 
 const RE_MONTO = /(\d{1,3}(?:,\d{3})+\.\d{2}|\d+\.\d{2})/g;

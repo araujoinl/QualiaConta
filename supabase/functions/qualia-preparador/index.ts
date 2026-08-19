@@ -7,6 +7,7 @@ import { Extraccion, PREP_VERSION, conPlazo, fragNinguno, sha256hex, aBase64 } f
 import {
   extraccionXml,
   extraerCamposTexto,
+  extraerJpegEmbebido,
   extraerTextoPdf,
   tipoDocumento,
 } from './extraccion.ts';
@@ -510,18 +511,38 @@ async function preparar(ctx: Ctx): Promise<void> {
       break;
     }
     case 'pdf': {
-      // El QR exige rasterizar TODO PDF, también los que traen capa de texto
-      // (§4.4 del plan): el raster se hace una vez y sirve para QR y visión.
-      try {
-        paginas = await conPlazo(rasterizarPdf(bytes), 120_000, 'raster del PDF');
-      } catch (e) {
-        anotar(`raster del PDF fallo: ${e instanceof Error ? e.name : 'error'}`);
-      }
       try {
         texto = await conPlazo(extraerTextoPdf(bytes), 60_000, 'texto del PDF');
       } catch {
         anotar('no pude extraer texto del PDF (unpdf)');
         texto = null;
+      }
+      // El QR exige mirar TODO PDF como imagen, también los que traen capa de
+      // texto (§4.4 del plan) — pero por CUÁL camino depende de qué hay
+      // adentro. Un PDF cuya página ES una foto gigante (un escaneo) mata al
+      // worker en el render de pdfium: el límite de cómputo se excede y la
+      // plataforma lo corta SIN excepción (2026-08-19, dos veces con el mismo
+      // escaneo de 520 KB; conPlazo no salva porque no queda promesa que
+      // rechace). Si el PDF trae un JPEG grande embebido, ese JPEG se usa
+      // directo para QR y visión y pdfium NO se toca — cubre también al scan
+      // con capa OCR, que trae texto Y la foto gigante. pdfium queda solo para
+      // los PDF livianos (e-CF vectorial: 187ms medidos).
+      const scan = extraerJpegEmbebido(bytes);
+      if (scan) {
+        log(`PDF con scan embebido (${Math.floor(scan.length / 1024)} KB): JPEG directo, sin pdfium`);
+        try {
+          const pagina = await decodificarImagen(scan, 'jpg');
+          if (pagina) paginas = [pagina];
+          else anotar('QR: no pude decodificar el scan embebido');
+        } catch {
+          anotar('QR: decodificar el scan embebido fallo o excedio la memoria');
+        }
+      } else {
+        try {
+          paginas = await conPlazo(rasterizarPdf(bytes), 120_000, 'raster del PDF');
+        } catch (e) {
+          anotar(`raster del PDF fallo: ${e instanceof Error ? e.name : 'error'}`);
+        }
       }
       if (texto && /\S/.test(texto)) {
         try {
@@ -532,10 +553,20 @@ async function preparar(ctx: Ctx): Promise<void> {
         }
       } else {
         // PDF sin capa de texto: en el server esto quedaba metodo='ninguno' y
-        // la visión la hacía el agente; acá el raster ya está en la mano y la
-        // visión es del prep (decisión F2, §4.4).
+        // la visión la hacía el agente; acá la imagen ya está en la mano y la
+        // visión es del prep (decisión F2, §4.4). El scan embebido va entero
+        // (es el JPEG original del escáner); el raster solo si no había scan.
         texto = null;
-        if (paginas.length === 0) {
+        if (scan && scan.length <= MAX_BYTES_VISION) {
+          await insertarEvento(ctx, 'progreso', '⚙️ Preparador: leyendo el documento escaneado…');
+          extr = await visionSobre(
+            `data:image/jpeg;base64,${aBase64(scan)}`,
+            { scan_embebido_de_pdf: true },
+          );
+        } else if (scan) {
+          anotar('scan embebido mayor a 10 MB; sin vision en el prep');
+          extr = fragNinguno('imagen muy grande para el prep; el agente aplica vision');
+        } else if (paginas.length === 0) {
           extr = fragNinguno('PDF sin capa de texto y sin raster; el agente decide si aplica vision');
         } else {
           await insertarEvento(ctx, 'progreso', '⚙️ Preparador: leyendo el documento escaneado…');
