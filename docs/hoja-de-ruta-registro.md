@@ -441,6 +441,12 @@ Cr               ─────► la cuenta de banco por el total
   verificable en la cuota de leasing FP00001033, que separa `210.01` por RD$11,807.15.
 - `Reference` = el NCF del cargo (es la llave que distingue cargos gemelos); si no hay
   NCF, `Reference` = `banco_tx_id`.
+- **Todo CB con NCF lleva `FiscalID`** (el campo «RNC» de la pantalla) = RNC del banco
+  emisor — Santa Cruz `102012921`. El 606 exige el emisor de cada comprobante; los CB
+  de junio–agosto 2026 salieron sin él y la contable los corrigió a mano. Desde el
+  2026-08-19 `registrar-cargo-bancario.py` lo manda siempre (mapa `BANCO_RNC`) y se
+  niega a registrar un NCF sin emisor resoluble. Aplica a TODA la familia F y G cuando
+  hay comprobante, no sólo a F‑C.
 
 ### F‑D · Varios cargos amparados por UN solo comprobante
 

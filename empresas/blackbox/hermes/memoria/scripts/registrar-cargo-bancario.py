@@ -40,6 +40,15 @@ UUIDS_CONOCIDOS = {
 # historico; los que no llevaban comprobante iban SIN tipo de gasto.
 EXPENSE_TYPE_GASTOS_FINANCIEROS = "aaee37e1-3cde-485d-92fd-a0db22efd789"
 
+# RNC del banco emisor del comprobante: va en `FiscalID` de la cabecera (el
+# campo "RNC" de la pantalla Cargo/Credito Bancario). Sin el, la linea del 606
+# sale con NCF pero sin emisor y el gasto pierde el respaldo. Los 16 CB de
+# agosto 2026 salieron asi y los tuvo que corregir la contable a mano.
+# Solo digitos, como el Vendor "Banco Multiple Santa Cruz S A" en ADM.
+BANCO_RNC = {
+    "santacruz": "102012921",  # Banco Multiple Santa Cruz S A
+}
+
 
 def morir(msg):
     print(msg, file=sys.stderr)
@@ -360,6 +369,18 @@ def main():
     if ncf:
         payload["NCF"] = ncf
         payload["ExpenseTypeID"] = EXPENSE_TYPE_GASTOS_FINANCIEROS
+        # El RNC del emisor: primero el de la propuesta (si el detector lo
+        # trae), si no el mapa por banco. NCF sin RNC no se registra: es la
+        # linea coja del 606 que motivo este campo.
+        rnc = re.sub(r"\D", "", str(p.get("rnc") or ""))
+        if len(rnc) not in (9, 11):
+            rnc = BANCO_RNC.get(str(p.get("banco") or "").strip().lower(), "")
+        if not rnc:
+            morir("el cargo trae NCF %s pero no pude resolver el RNC del banco "
+                  "emisor (propuesta sin `rnc` y banco '%s' fuera de BANCO_RNC). "
+                  "Agrega el banco al mapa BANCO_RNC de este script; no registro "
+                  "un comprobante sin emisor." % (ncf, p.get("banco")))
+        payload["FiscalID"] = rnc
 
     if args.simular:
         print(json.dumps(payload, ensure_ascii=False, indent=1))
