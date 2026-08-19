@@ -588,7 +588,13 @@ while [ "$corriendo" -eq 1 ]; do
   # Cuando la nube es dueña, este poller NO reclama ni despierta a nadie para
   # analizar — pero sigue haciendo lo suyo: registrar en ADM lo ya aprobado y
   # sus barridos de rescate. Eso muere en F4, no acá.
-  nube_analiza=$(sql "select case when coalesce((select valor->>'modo' from qualia_modos where clave='modo:qualia-preparador' and empresa_id='$QUALIA_EMPRESA_ID'), (select valor->>'modo' from qualia_modos where clave='modo:qualia-preparador' and empresa_id is null), 'server') = 'nube' then 1 else 0 end")
+  # Una lectura fallida (psql con hipo, timeout) NO cambia de dueño: se queda
+  # el último valor leído. El fail-open de antes ("vacío = soy el dueño") hizo
+  # que el 2026-08-19 la mesa compitiera 4 veces con la nube por el mismo
+  # trabajo: prep + clasificación pagados dos veces y pokes a un webhook que
+  # ya no existe.
+  lectura_nube=$(sql "select case when coalesce((select valor->>'modo' from qualia_modos where clave='modo:qualia-preparador' and empresa_id='$QUALIA_EMPRESA_ID'), (select valor->>'modo' from qualia_modos where clave='modo:qualia-preparador' and empresa_id is null), 'server') = 'nube' then 1 else 0 end")
+  [ -n "$lectura_nube" ] && nube_analiza=$lectura_nube
   if [ "${nube_analiza:-0}" = "1" ]; then
     if [ "${aviso_nube:-0}" -eq 0 ]; then
       log "el análisis lo maneja la nube: no reclamo ni despierto al contable (sigo registrando y barriendo)"

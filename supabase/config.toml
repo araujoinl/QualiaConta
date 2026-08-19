@@ -1,0 +1,40 @@
+# Config del proyecto para la CLI de Supabase.
+#
+# Lo ÚNICO que se fija acá es verify_jwt por function: estas functions se
+# autorizan entre sí con el bearer de los crons (qualia_config 'cron_bearer',
+# validado en _shared/auth.ts), NO con un JWT de Supabase. Un deploy que
+# encienda verify_jwt les cierra la puerta a sus propios pokes: pasó el
+# 2026-08-19 (proponedor y contable subidos con el candado puesto → todo
+# poke respondía 401 y los trabajos quedaron en 'pendiente' para siempre).
+#
+# Con esto en el repo, `supabase functions deploy <nombre>` respeta el flag
+# sin necesidad de acordarse de --no-verify-jwt. Los deploys por MCP
+# (deploy_edge_function) NO leen este archivo: ahí el flag viaja en la
+# llamada y hay que pasarlo explícito.
+
+[functions.qualia-barrido]
+verify_jwt = false
+
+[functions.qualia-preparador]
+verify_jwt = false
+
+[functions.qualia-proponedor]
+verify_jwt = false
+
+[functions.qualia-contable]
+verify_jwt = false
+
+[functions.qualia-sugerencias]
+verify_jwt = false
+
+[functions.qualia-salud]
+verify_jwt = false
+
+[functions.qualia-lapidas]
+verify_jwt = false
+
+[functions.qualia-examen]
+verify_jwt = false
+
+[functions.qualia-padron-dgii]
+verify_jwt = false
