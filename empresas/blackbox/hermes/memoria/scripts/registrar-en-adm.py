@@ -108,6 +108,59 @@ TERMINOS = {
 }
 TIPO_GASTO_DEFECTO = "dcda501b-23df-4074-a8b8-039a153c6b44"  # 02 Trabajos y Servicios
 
+# Nombre canonico del catalogo 606 por codigo, para resolver el tipo de gasto
+# de la propuesta contra /api/ExpenseTypes (que trae nombre y UUID, sin codigo).
+# El orden y los nombres son los del catalogo de DGII y coinciden letra por
+# letra con los de ADM (leido el 2026-08-20).
+TIPOS_GASTO_606 = {
+    "01": "gastos de personal",
+    "02": "gastos por trabajos, suministros y servicios",
+    "03": "arrendamientos",
+    "04": "gastos de activo fijo",
+    "05": "gastos de representacion",
+    "06": "otras deducciones admitidas",
+    "07": "gastos financieros",
+    "08": "gastos extraordinarios",
+    "09": "compras y gastos que formaran parte del costo de venta",
+    "10": "adquisicion de activos",
+    "11": "gastos de seguros",
+}
+
+
+def tipo_gasto_id(tg):
+    """UUID de ADM para el `tipo_gasto` de la propuesta.
+
+    El bug que esto arregla: la propuesta trae {codigo, nombre} y el payload
+    solo miraba `adm_id`, que casi nunca viene — asi que TODO caia callado al
+    default 02. Asi salieron 22 facturas con el tipo que el modelo propuso
+    tirado a la basura (la de DGA ADUANAS por RD$939,118 que iba al 09, entre
+    ellas; caso FP00001130, 2026-08-20).
+
+    Sin tipo en la propuesta -> default 02, como siempre. Con tipo que no se
+    puede resolver -> morir: un default callado que PISA lo propuesto es peor
+    que preguntar."""
+    if not tg:
+        return TIPO_GASTO_DEFECTO
+    if tg.get("adm_id"):
+        return tg["adm_id"]
+    codigo = str(tg.get("codigo") or "").strip().zfill(2)
+    nombre = TIPOS_GASTO_606.get(codigo)
+    if not nombre:
+        morir("tipo_gasto con codigo '%s' que no existe en el catalogo 606 "
+              "(01-11). Corregi la propuesta." % tg.get("codigo"))
+    # Compara sin acentos ni mayusculas: ADM escribe "Representación" y
+    # "Formarán" con tilde, y la tabla de arriba va plana a proposito.
+    def plano(s):
+        s = re.sub(r"\s+", " ", str(s or "").strip().lower())
+        return s.translate(str.maketrans("áéíóúñ", "aeioun"))
+
+    d = llamar("GET", "ExpenseTypes", params={"skip": 0})
+    for t in d.get("data") or []:
+        if plano(t.get("Name")) == nombre:
+            return t["ID"]
+    morir("el tipo de gasto %s (%s) no aparece en /api/ExpenseTypes de ADM. "
+          "No lo degrado al 02: revisa el catalogo." % (codigo, nombre))
+
 # Entidades que NO tienen RNC de emisor, y por eso son el unico caso que se
 # resuelve por nombre. El Estado no emite NCF ni imprime su RNC en el papel: la
 # liquidacion de aduana trae el RNC del CONTRIBUYENTE que paga, no el de la DGA,
@@ -571,6 +624,21 @@ def armar_payload(p, relationship_id, payment_term_id,
                   "FP00001118 o un placeholder). La tasa real esta impresa en "
                   "el papel; corregi `tasa_usd` en la propuesta." % (tasa, moneda))
 
+    # La fecha del documento ES la de emision del NCF. Si DGII verifico el
+    # comprobante, su fecha es dato duro: una propuesta que dice otra cosa la
+    # leyo mal (FP00001130: 25-jun por 1-jul, corregida a mano ya pagada).
+    # DGII la devuelve dd-mm-aaaa; la propuesta va en ISO.
+    f_dgii = str((p.get("dgii") or {}).get("fecha_emision")
+                 or (p.get("dgii") or {}).get("fecha") or "").strip()
+    m = re.match(r"^(\d{2})-(\d{2})-(\d{4})$", f_dgii[:10])
+    f_dgii_iso = ("%s-%s-%s" % (m.group(3), m.group(2), m.group(1)) if m
+                  else f_dgii[:10] if re.match(r"^\d{4}-\d{2}-\d{2}", f_dgii) else "")
+    if f_dgii_iso and str(p.get("fecha") or "")[:10] != f_dgii_iso:
+        morir("la fecha de la propuesta (%s) no es la de emision del NCF segun "
+              "DGII (%s). La fecha del documento ES la de emision impresa — ni "
+              "la del periodo, ni la del pago. Corregi la propuesta."
+              % (p.get("fecha"), f_dgii_iso))
+
     payload = {
         "DocDate": p.get("fecha"),
         "Reference": p.get("numero_factura_suplidor") or p.get("ncf"),
@@ -586,7 +654,7 @@ def armar_payload(p, relationship_id, payment_term_id,
         # Obligatorio aunque el esquema lo marque opcional: omitirlo devuelve
         # "Este termino de pago no existe". Se hereda del proveedor.
         "PaymentTermID": payment_term_id,
-        "ExpenseTypeID": (p.get("tipo_gasto") or {}).get("adm_id") or TIPO_GASTO_DEFECTO,
+        "ExpenseTypeID": tipo_gasto_id(p.get("tipo_gasto")),
         "Items": items,
     }
 
