@@ -183,6 +183,32 @@ export class AdmCliente {
   }
 
   /**
+   * Sube un adjunto a /api/Storage (multipart a mano, gemela de la del
+   * fuente). Pasa por el MISMO candado que todo lo demás; el rol lleva
+   * espacio y sin encodear da HTTP 000 — por eso la query la arma URL.
+   */
+  async subirStorage(transactionId: string, cuerpo: Uint8Array, borde: string): Promise<RespuestaAdm> {
+    verificarRuta('POST', 'Storage');
+    const r = await this.#fetch(this.#url('Storage', { transactionID: transactionId }), {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${btoa(`${this.#cred.api_username}:${this.#cred.api_password}`)}`,
+        Accept: 'application/json',
+        'Content-Type': `multipart/form-data; boundary=${borde}`,
+      },
+      body: cuerpo as BodyInit,
+      signal: AbortSignal.timeout(180_000),
+    });
+    const texto = await r.text();
+    if (!r.ok) throw new Error(sanear(`ADM ${r.status} en Storage: ${texto.slice(0, 200)}`, this.#cred));
+    try {
+      return JSON.parse(texto) as RespuestaAdm;
+    } catch {
+      throw new Error(sanear(`Storage devolvió no-JSON: ${texto.slice(0, 200)}`, this.#cred));
+    }
+  }
+
+  /**
    * Readback verificado: GET del detalle DESPUÉS de escribir, con el recurso
    * CORRECTO. Preguntarle a VendorBills por el UUID de una NCP devuelve
    * success:true con data:null — indistinguible de un documento borrado

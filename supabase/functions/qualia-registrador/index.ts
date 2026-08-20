@@ -16,6 +16,7 @@ import type { CredAdm } from '../_shared/adm.ts';
 import { Catalogo } from '../_shared/catalogo.ts';
 import { armarVendorBill, ErrorPropuesta, soloDigitos, totalPredicho } from './vendor_bills.ts';
 import { armarCargo } from './bank_charges.ts';
+import { registrarTrabajo } from './registro.ts';
 
 // deno-lint-ignore no-explicit-any
 type Dic = Record<string, any>;
@@ -203,5 +204,34 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  return json({ error: `acción desconocida: '${body.accion}' (hoy sólo backtest)` }, 400);
+  if (body.accion === 'registrar') {
+    const trabajoId = String(body.trabajo_id ?? '');
+    if (!/^[0-9a-f-]{36}$/.test(trabajoId)) return json({ error: 'trabajo_id inválido' }, 400);
+    const invocacion = `reg-${crypto.randomUUID().slice(0, 8)}`;
+    return json(await registrarTrabajo(sb(), trabajoId, invocacion));
+  }
+
+  if (body.accion === 'barrido') {
+    // La red de seguridad: aprobadas sin docid de los tipos portados, en modo
+    // nube, de a pocas (el turno por empresa las serializa igual). criterio y
+    // caso viven en 'aprobada' para siempre: afuera, como en el poller.
+    const limite = Math.min(Number(body.limite ?? 10), 25);
+    const { data: filas, error } = await sb()
+      .from('qualia_trabajos')
+      .select('id')
+      .eq('estado', 'aprobada')
+      .not('tipo', 'in', '("criterio","caso")')
+      .is('propuesta->registro_adm->>docid', null)
+      .order('updated_at', { ascending: true })
+      .limit(limite);
+    if (error) return json({ error: error.message }, 500);
+    const resultados = [];
+    for (const f of filas ?? []) {
+      const invocacion = `reg-${crypto.randomUUID().slice(0, 8)}`;
+      resultados.push(await registrarTrabajo(sb(), String((f as Dic).id), invocacion));
+    }
+    return json({ barridos: resultados.length, resultados });
+  }
+
+  return json({ error: `acción desconocida: '${body.accion}'` }, 400);
 });

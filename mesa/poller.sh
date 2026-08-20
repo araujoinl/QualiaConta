@@ -348,6 +348,24 @@ registrar_directo() {
   # (los pokes de las otras acciones del usuario quedarían atrás).
   local id="$1" doc script
   doc=$(sql "select propuesta->>'documento_adm' from qualia_trabajos where id='${id}' and empresa_id='${QUALIA_EMPRESA_ID}'")
+
+  # El traspaso a la nube (F4, cutover 2026-08-20): con modo:qualia-registrador
+  # en 'nube', el registro es de qualia-registrador — el trigger de 'aprobada'
+  # y su barrido cada 10 min. Registrar acá también sería el choque de
+  # correlativo con DOS mutex distintos (el flock local y el turno de la nube
+  # no se conocen): exactamente la precondición 13 del plan. La mesa se apaga
+  # cuando todos los tipos estén portados; mientras, este gate la saca del
+  # camino de los tipos que la nube ya cubre.
+  local nube_registra
+  nube_registra=$(sql "select case when coalesce((select valor->>'modo' from qualia_modos where clave='modo:qualia-registrador' and empresa_id='$QUALIA_EMPRESA_ID'), (select valor->>'modo' from qualia_modos where clave='modo:qualia-registrador' and empresa_id is null), 'server') = 'nube' then 1 else 0 end")
+  if [ "${nube_registra:-0}" = "1" ]; then
+    case "$doc" in
+      VendorBills|VendorCreditNotes|BankCharges)
+        log "no registro ($doc $id): el registro lo maneja la nube"
+        return 0 ;;
+    esac
+  fi
+
   if ! script=$(script_de_registro "$doc"); then
     # Tipo sin script propio (Journals, o algo que se agregue mañana): lo hace
     # el contable, exactamente como antes. Preferimos el camino caro al
