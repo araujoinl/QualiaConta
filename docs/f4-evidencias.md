@@ -5,8 +5,28 @@
 > 33/40 idénticos (7 diferencias = ediciones humanas posteriores, 0 bugs), y
 > ED/TE/PP/PC con backtest **63/63 idénticos**. Trigger de 'aprobada' + barrido
 > cada 10 min + kill-switch por empresa. El poller cede TODOS los tipos con el
-> modo en nube. Pendiente sólo la limpieza física de CodeBox (el server cayó
-> offline justo antes; ver el script de limpieza en deploy/).
+> modo en nube.
+>
+> **SERVER LIMPIO 2026-08-20 ~14:00 RD.** CodeBox quedó sin NADA de QualiaConta:
+> contenedores abajo y borrados, imagen `qualiaconta:local` eliminada,
+> `/home/codebox/qualiaconta` borrado (los restos root-owned vía contenedor
+> efímero), crontab sin líneas qualia. Respaldo previo de lo no versionado
+> (.env + mesa-cache, 137 MB) en `~/Backups/qualiaconta-codebox-20260820-135502.tar.gz`
+> de la máquina de Carlos. El alimentador del espejo de facturas (el único cron
+> del server que la nube aún necesitaba) quedó portado como `qualia-espejo`
+> (cron horario :05, incremental, verificado bajando el espejo en su corrida
+> inaugural).
+>
+> **Huecos que dejó el server, con dueño pendiente:**
+> 1. Padrón DGII mensual (`cargar-padron-dgii.sh`, corría el día 1): la Edge
+>    Function no puede parsear el millón de filas (2s de CPU). Propuesta:
+>    GitHub Action mensual con la llave en secret. Próximo vencimiento: 1-sep.
+> 2. Respaldo local del bucket `qualia-conta` (`respaldo-documentos.sh`): los
+>    documentos viven SOLO en Storage (el pg_dump nocturno no cubre buckets).
+>    Decidir: sumarlo a `/opt/supabase-backup` del server (pide sudo) u otra vía.
+> 3. Alertas por WhatsApp (`alerta-salud.sh`): el cuadre y las escrituras
+>    parciales hoy quedan en tablas sin canal humano — es la Fase 3 del plan de
+>    profesionalización.
 
 > «Ninguna se da por buena sin evidencia escrita»: este archivo ES el registro.
 > Una precondición sin su evidencia acá sigue abierta, diga lo que diga el chat.
