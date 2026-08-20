@@ -6,9 +6,11 @@ name: padron-dgii
 
 on:
   schedule:
-    # Día 1 de cada mes, 08:00 UTC = 04:00 en RD. GitHub puede demorar el
-    # disparo unos minutos; para el padrón no importa.
-    - cron: "0 8 1 * *"
+    # Día 1 de cada mes, 06:00 UTC = 02:00 en RD. De madrugada SIEMPRE: la
+    # carga machaca la base y de día ralentiza todo el sistema (regla de
+    # Carlos, 2026-08-20). GitHub puede demorar el disparo unos minutos; para
+    # el padrón no importa.
+    - cron: "0 6 1 * *"
   workflow_dispatch:
 
 jobs:
