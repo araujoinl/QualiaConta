@@ -29,9 +29,12 @@ function jsonPlanoEstiloPython(obj: Dic): string {
 }
 
 /**
- * Prompt fijo, port literal de prompt_clasificacion() del fuente. Los textos
- * se copian byte a byte — incluido el "10%%" de la línea de propina, que en el
- * fuente nunca pasa por el operador % y llega así, doblado, al modelo.
+ * Prompt fijo, port de prompt_clasificacion() del fuente. Los textos se
+ * copian byte a byte — incluido el "10%%" de la línea de propina, que en el
+ * fuente nunca pasa por el operador % y llega así, doblado, al modelo — con
+ * UNA divergencia deliberada: la instrucción de descuento por línea, que el
+ * fuente no conoce (el sistema la aprendió después del port; en sombra ese
+ * pedazo del prompt es un diff que SÍ es de esta versión, no del port).
  */
 export function promptClasificacion(
   extr: Dic,
@@ -117,15 +120,25 @@ export function promptClasificacion(
     '',
     'Si el documento trae propina legal (10%%, Ley 16-92), va como renglón ' +
     'propio con itbis 0, en la cuenta de propinas de la lista si existe.',
+    // Divergencia deliberada del fuente (rama-facturas-1, «El papel manda tres
+    // datos más»): el camino determinista aprendió descuento por línea después
+    // del port y el prompt del server no lo pide.
+    'Si el papel trae columna de descuento, cada renglón lleva el precio ' +
+    'BRUTO en "precio" y el porcentaje en "descuento" (número 0-99.99, no el ' +
+    'monto descontado); nunca aplastes el neto en el precio. Si no hay ' +
+    'columna de descuento, no pongas el campo.',
     'Forma exacta de la respuesta: ' +
     '{"lineas": [{"descripcion": str, "cantidad": number, ' +
-    '"precio": number (unitario SIN ITBIS), "itbis": number (del renglón, ' +
+    '"precio": number (unitario BRUTO, SIN ITBIS), ' +
+    '"descuento": number (% 0-99.99, sólo si el papel lo trae), ' +
+    '"itbis": number (del renglón, ' +
     '0 si exento), "cuenta": "codigo de la lista", "razon": str corta}], ' +
     '"contradiccion": true|false, ' +
     '"contradiccion_detalle": str|null, ' +
     '"confianza": number 0-1 (qué tan seguro estás del reparto COMPLETO)}. ' +
-    'La suma de precio*cantidad + itbis de todos los renglones debe igualar ' +
-    'el monto del documento. No inventes renglones ni valores.',
+    'La suma de precio*cantidad*(1-descuento/100) + itbis de todos los ' +
+    'renglones debe igualar el monto del documento. No inventes renglones ni ' +
+    'valores.',
   );
   return partes.join('\n');
 }

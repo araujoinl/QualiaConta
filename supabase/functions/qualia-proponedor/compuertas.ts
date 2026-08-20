@@ -6,7 +6,7 @@
 // ajuste silencioso — despejar números para que la aritmética cierre es
 // exactamente el modo de falla (FP00001120) que este camino no puede tener.
 
-import { type DatosBrecha, textoDetalleBrecha } from '../_shared/brecha-itbis.ts';
+import { type DatosBrecha, netoCent, textoDetalleBrecha } from '../_shared/brecha-itbis.ts';
 
 export type Dic = Record<string, unknown>;
 export type Camino = 'precedente' | 'multi';
@@ -17,10 +17,16 @@ export type Camino = 'precedente' | 'multi';
 export const DOMINANTE_MIN = 70.0;
 export const MUESTRA_MIN = 3;
 export const CONFIANZA_MIN = 0.90;
-// La web valida sum(precio*cantidad)+sum(itbis) contra monto con este umbral;
-// proponer algo que la web pintaría en rojo sería trabajo muerto.
+// La web y el validador de la nube cuadran sum(neto por renglón: half-up de
+// cantidad×precio×(1−descuento/100), con netoCent) + sum(itbis) contra monto
+// con este umbral; proponer algo que la web pintaría en rojo sería trabajo
+// muerto.
 export const UMBRAL_CUADRE = 0.05;
 export const RATIO_INTRA_MIN = 1.5;
+// Espejo de TASA_USD_PISO de qualia-contable/validar.ts (las functions no se
+// importan entre carpetas hermanas): tasa_usd 1.0 es la FP00001118 (US$2,306.15
+// asentados como RD$2,306), no una tasa.
+export const TASA_USD_PISO = 5;
 
 // La MISMA versión que el fuente, a propósito: en sombra la propuesta se
 // diffea campo a campo contra la que escribió el server, y un version propio
@@ -274,6 +280,10 @@ export type Linea = {
   descripcion: string;
   cantidad: number;
   precio: number;
+  /** % 0-99.99 del papel, con el `precio` BRUTO — nunca el monto descontado ni
+   * el neto aplastado (rama-facturas-1, «El papel manda tres datos más»). Sólo
+   * viaja cuando el papel trae la columna. */
+  descuento?: number;
   grupo_impuesto: string;
   itbis: number;
   cuenta: string;
@@ -320,6 +330,22 @@ export function validarLineas(
     if (!desc || !cant || prec === null || itb === null) {
       throw new NoPropone(`renglon incompleto (${desc.slice(0, 40) || 'sin descripcion'})`);
     }
+    // El mismo guard del validador de la nube (validarItems): `descuento` es el
+    // PORCENTAJE 0-99.99 del papel, jamás el monto descontado — y el precio
+    // viaja BRUTO. Acá no hay nota de crédito (sólo facturas), así que no hay
+    // abs() que aplicar. Un valor ilegible no se despeja: NoPropone.
+    let descuento = 0;
+    if (it.descuento !== undefined && it.descuento !== null && String(it.descuento).trim() !== '') {
+      const dNum = numeroF(it.descuento, 100);
+      if (dNum === null) {
+        throw new NoPropone(
+          `descuento '${String(it.descuento).slice(0, 20)}' no es un porcentaje 0-99.99 (${
+            desc.slice(0, 40)
+          })`,
+        );
+      }
+      descuento = dNum;
+    }
     if (!historico.has(cuenta)) {
       // El mueble en la gasolinera: la cuenta correcta NO está en el
       // histórico del proveedor. Ese caso es EXACTAMENTE el que merece la
@@ -341,6 +367,9 @@ export function validarLineas(
       descripcion: desc,
       cantidad: cant,
       precio: prec,
+      // El campo sólo viaja cuando hay descuento real: así el jsonb de un papel
+      // sin columna de descuento queda byte a byte como siempre.
+      ...(descuento > 0 ? { descuento } : {}),
       grupo_impuesto: itb ? 'ITBIS' : 'EXENTO',
       itbis: itb,
       cuenta,
@@ -351,7 +380,22 @@ export function validarLineas(
 
   const monto = numeroF(extr.monto);
   if (monto === null) throw new NoPropone('dossier sin monto');
-  const base = pyRoundN(lineas.reduce((s, l) => s + l.precio * l.cantidad, 0), 2);
+  // La base de cada renglón es la DESCONTADA y se redondea half-up POR RENGLÓN
+  // antes de sumar, con la misma aritmética exacta del validador de la nube
+  // (validar.ts, cuadre con netoCent): sumar los productos sin redondear
+  // acumula hasta medio centavo por renglón. numeroF ya acotó cantidad, precio
+  // y descuento; si igual un renglón no fuera representable, cae al producto
+  // en float como hace el validador.
+  const base = pyRoundN(
+    lineas.reduce((s, l) => {
+      try {
+        return s + Number(netoCent(l.cantidad, l.precio, l.descuento ?? 0)) / 100;
+      } catch {
+        return s + l.precio * l.cantidad * (1 - (l.descuento ?? 0) / 100);
+      }
+    }, 0),
+    2,
+  );
   const itbisLineas = pyRoundN(lineas.reduce((s, l) => s + l.itbis, 0), 2);
   const calc = pyRoundN(base + itbisLineas, 2);
   if (Math.abs(calc - monto) > UMBRAL_CUADRE) {
@@ -420,6 +464,23 @@ export function armarPropuesta(
     detalle,
     proponedor: { version: VERSION, camino, modelo: modeloUsado },
   };
+  // ── tasa_usd: la exigencia del validador de la nube, adelantada ───────────
+  // Para VendorBills en moneda extranjera el validador exige `tasa_usd` (la
+  // IMPRESA en el papel, piso TASA_USD_PISO) y el registrador sin ella cae a la
+  // tasa de sistema avisando sólo por consola — la FP00001118 quedó asentada
+  // por RD$2,306 siendo ~RD$134,000. Si el dossier la trae plausible se
+  // propaga; si no, esto degrada a turno: proponer un documento en USD sin
+  // tasa es proponer algo que la web pintaría en rojo.
+  if (String(p.moneda).toUpperCase() !== 'DOP') {
+    const tasaUsd = numeroF(extr.tasa_usd);
+    if (tasaUsd === null || tasaUsd < TASA_USD_PISO) {
+      throw new NoPropone(
+        `documento en ${String(p.moneda)} sin tasa_usd plausible en el dossier ` +
+          `(piso ${TASA_USD_PISO}): la tasa impresa la confirma la sesion`,
+      );
+    }
+    p.tasa_usd = tasaUsd;
+  }
   // Los cuatro números del criterio, con la misma forma con que C-008 anota
   // `propuesta.conversion`: es el rastro que la mesa muestra y el que queda en
   // la fila para siempre.
