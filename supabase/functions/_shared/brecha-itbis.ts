@@ -77,13 +77,21 @@ function esc(x: number): bigint {
   return neg ? -v : v;
 }
 
-const CENT_EN_ESC16 = 10n ** 14n; // un centavo, en la escala del producto (1e16)
+const ESC100 = esc(100); // el 100 del porcentaje, en escala 1e8
+const CENT_EN_ESC26 = 10n ** 24n; // un centavo, en la escala del producto ×(100−desc) (1e26)
 
-/** `Net_i = redondear(Quantity_i × Price_i)` de ADM, en centavos. */
-export function netoCent(cantidad: number, precio: number): bigint {
-  const prod = esc(cantidad) * esc(precio);
+/** `Net_i = redondear(Quantity_i × Price_i × (1 − Discount_i/100))` de ADM, en
+ * centavos. El descuento entra ANTES del redondeo — espejo de `neto_linea` de
+ * cuadre.py, verificado en vivo contra ADM el 2026-08-19 (FP00001122: 600.00 al
+ * 10% → Subtotal 600 / Descuento 60 / Neto 540 / Total 637.20 exactos). */
+export function netoCent(cantidad: number, precio: number, descuento = 0): bigint {
+  const factor = ESC100 - esc(descuento); // (100 − desc), en escala 1e8
+  if (factor <= 0n || factor > ESC100) {
+    throw new RangeError(`descuento ${descuento} fuera del rango 0-99.99 del registrador`);
+  }
+  const prod = esc(cantidad) * esc(precio) * factor;
   if (prod < 0n) throw new RangeError('un renglón con neto negativo no es de este camino');
-  return (2n * prod + CENT_EN_ESC16) / (2n * CENT_EN_ESC16);
+  return (2n * prod + CENT_EN_ESC26) / (2n * CENT_EN_ESC26);
 }
 
 /** `Tax_i = redondear(Net_i × TaxPercent_i)` de ADM, en centavos. */
@@ -115,9 +123,12 @@ export function tasaDeRenglon(
   itbis: number,
   cantidad: number,
   precio: number,
+  descuento = 0,
 ): number | null | undefined {
   if (!(itbis > 0)) return null;
-  const base = (cantidad || 1) * (precio || 0);
+  // La base es la DESCONTADA — espejo de resolver_tasa_linea: el ITBIS del
+  // papel se cobra sobre el neto (FP00001122: 97.20 = 18% de 540, no de 600).
+  const base = (cantidad || 1) * (precio || 0) * (1 - (descuento || 0) / 100);
   if (base <= 0) return null;
   const tasa = Number(((itbis / base) * 100).toFixed(1));
   // Tolerancia de un punto y gana el schedule MÁS CERCANO, no el primero que
@@ -133,7 +144,8 @@ export function tasaDeRenglon(
 
 /**
  * Un renglón de items tal como viaja en `propuesta.lineas`:
- * `{descripcion, cantidad, precio, grupo_impuesto, itbis, cuenta, cuenta_nombre}`.
+ * `{descripcion, cantidad, precio, descuento?, grupo_impuesto, itbis, cuenta, cuenta_nombre}`
+ * (`descuento` = porcentaje 0-99.99 del papel; el precio viaja BRUTO).
  *
  * Se tipa flojo a propósito: el MISMO detector corre sobre los renglones que
  * arma el proponedor (tipados) y sobre el jsonb crudo que manda el turno. Dos
@@ -160,8 +172,9 @@ export function predecirAdm(lineas: LineaItems[]): PrediccionAdm {
   const tasas = new Set<number>();
   const sinSchedule: number[] = [];
   lineas.forEach((l, i) => {
-    const neto = netoCent(Number(l.cantidad ?? 1), Number(l.precio ?? 0));
-    const t = tasaDeRenglon(Number(l.itbis ?? 0), Number(l.cantidad ?? 1), Number(l.precio ?? 0));
+    const desc = Number(l.descuento ?? 0);
+    const neto = netoCent(Number(l.cantidad ?? 1), Number(l.precio ?? 0), desc);
+    const t = tasaDeRenglon(Number(l.itbis ?? 0), Number(l.cantidad ?? 1), Number(l.precio ?? 0), desc);
     if (t === undefined) {
       sinSchedule.push(i + 1);
       exento += neto;
@@ -449,7 +462,12 @@ interface Gravada {
 function tasaDeclaradaUnica(gravadas: Gravada[]): number | null {
   const declaradas = new Set<number>();
   for (const g of gravadas) {
-    const t = tasaDeRenglon(Number(g.l.itbis ?? 0), Number(g.l.cantidad ?? 1), Number(g.l.precio ?? 0));
+    const t = tasaDeRenglon(
+      Number(g.l.itbis ?? 0),
+      Number(g.l.cantidad ?? 1),
+      Number(g.l.precio ?? 0),
+      Number(g.l.descuento ?? 0),
+    );
     if (typeof t !== 'number') return null;
     declaradas.add(t);
   }
@@ -569,7 +587,11 @@ export function evaluarBrechaItbis(e: EntradaBrecha): Veredicto {
   // renglón suelto no decide nada acá, porque el reparto del ITBIS entre
   // renglones lo hizo el clasificador y no el papel — el papel imprime UN ITBIS.
   const gravadas: Gravada[] = e.lineas
-    .map((l, i) => ({ i, l, neto: netoCent(Number(l.cantidad ?? 1), Number(l.precio ?? 0)) }))
+    .map((l, i) => ({
+      i,
+      l,
+      neto: netoCent(Number(l.cantidad ?? 1), Number(l.precio ?? 0), Number(l.descuento ?? 0)),
+    }))
     .filter((g) => Number(g.l.itbis ?? 0) > 0 && g.neto > 0n);
   const baseGravadaCent = gravadas.reduce((s, g) => s + g.neto, 0n);
   const tasaDeclarada = tasaDeclaradaUnica(gravadas);
@@ -846,9 +868,12 @@ function repartir(
   let baseBisagra: bigint | null = null;
   let precioBisagra = 0;
   const cantidadBisagra = Number(bisagra.l.cantidad ?? 1) || 1;
+  // El bisagra conserva su descuento: el precio que se busca es el BRUTO que,
+  // descontado, deja exactamente el neto objetivo — como lo va a guardar ADM.
+  const descuentoBisagra = Number(bisagra.l.descuento ?? 0);
   for (const b of candidatasBase(arranque, idealCent, bisagra.neto)) {
     if (itbisCent(b, tasa) !== objetivoBisagra) continue;
-    const precio = precioParaNeto(cantidadBisagra, b);
+    const precio = precioParaNeto(cantidadBisagra, b, descuentoBisagra);
     if (precio === null) continue;
     baseBisagra = b;
     precioBisagra = precio;
@@ -879,7 +904,7 @@ function repartir(
       // ITBIS, y el `Name` dice por qué. No se rotula «exento»: el residuo salió
       // de una resta y llamarlo exento contamina la lectura para siempre
       // (FP00001120).
-      const neto = netoCent(Number(l.cantidad ?? 1), Number(l.precio ?? 0));
+      const neto = netoCent(Number(l.cantidad ?? 1), Number(l.precio ?? 0), Number(l.descuento ?? 0));
       lineas.push({
         ...l,
         descripcion: nombreRenglonSinItbis(l.descripcion),
@@ -913,7 +938,9 @@ function repartir(
   // mismo número o la compuerta de la mesa lo pinta en rojo.
   for (const l of lineas) {
     if (!(Number(l.itbis ?? 0) > 0)) continue;
-    l.itbis = aPesos(itbisCent(netoCent(Number(l.cantidad ?? 1), Number(l.precio ?? 0)), tasa));
+    l.itbis = aPesos(
+      itbisCent(netoCent(Number(l.cantidad ?? 1), Number(l.precio ?? 0), Number(l.descuento ?? 0)), tasa),
+    );
     l.grupo_impuesto = 'ITBIS';
   }
   for (const a of ajustePorCuenta.values()) {
@@ -1019,8 +1046,9 @@ function* candidatasBase(arranque: bigint, ideal: bigint, tope: bigint): Generat
  * BUSCA en vez de despejar, por la misma razón que `cuadrar_items`: el redondeo
  * hace que el neto no sea una función continua del precio.
  */
-function precioParaNeto(cantidad: number, objetivo: bigint): number | null {
-  const ideal = Number(objetivo) / 100 / cantidad;
+function precioParaNeto(cantidad: number, objetivo: bigint, descuento = 0): number | null {
+  // El objetivo es el neto DESCONTADO: el precio bruto ideal lo deshace.
+  const ideal = Number(objetivo) / 100 / cantidad / (1 - (descuento || 0) / 100);
   for (const decimales of [2, 3]) {
     const paso = 10 ** -decimales;
     const centro = Number(ideal.toFixed(decimales));
@@ -1029,7 +1057,7 @@ function precioParaNeto(cantidad: number, objetivo: bigint): number | null {
         const precio = Number(p.toFixed(decimales));
         if (precio <= 0) continue;
         try {
-          if (netoCent(cantidad, precio) === objetivo) return precio;
+          if (netoCent(cantidad, precio, descuento) === objetivo) return precio;
         } catch {
           continue;
         }

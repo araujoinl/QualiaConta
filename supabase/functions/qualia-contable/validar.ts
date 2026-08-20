@@ -280,18 +280,25 @@ export function validarPropuesta(
     if (monto === null) {
       errores.push('falta `monto`: sin él no hay cuadre que verificar');
     } else {
-      const base = filas.reduce(
-        (s, l) => s + (numeroDe(l.precio) ?? 0) * (numeroDe(l.cantidad) ?? 0),
-        0,
-      );
+      // La base de cada renglón es la DESCONTADA: `neto_linea` de cuadre.py
+      // aplica el descuento ANTES de redondear (verificado contra ADM en vivo
+      // el 2026-08-19, FP00001122: 600 al 10% → neto 540, total 637.20). En la
+      // nota de crédito el descuento se endereza con abs() igual que precio e
+      // itbis (normalizar_nota_credito).
+      const base = filas.reduce((s, l) => {
+        const d = numeroDe(l.descuento) ?? 0;
+        const desc = abs ? Math.abs(d) : d;
+        return s + (numeroDe(l.precio) ?? 0) * (numeroDe(l.cantidad) ?? 0) * (1 - desc / 100);
+      }, 0);
       const itbis = filas.reduce((s, l) => s + (numeroDe(l.itbis) ?? 0), 0);
       const total = round2(base + itbis);
       const dif = abs ? Math.abs(Math.abs(total) - Math.abs(monto)) : Math.abs(total - monto);
       if (dif > UMBRAL_CUADRE) {
         errores.push(
-          `no cuadra: sum(precio×cantidad)=${round2(base)} + sum(itbis)=${round2(itbis)} = ${total}, ` +
+          `no cuadra: sum(precio×cantidad×(1−descuento/100))=${round2(base)} + sum(itbis)=${round2(itbis)} = ${total}, ` +
             `contra monto=${monto} (diferencia ${round2(dif)}, umbral ${UMBRAL_CUADRE}). ` +
-            'NO prorratees ni despejes una tasa para que cierre: si la aritmética no da, el dato leído está mal — volvé al papel',
+            'NO prorratees ni despejes una tasa para que cierre: si la aritmética no da, el dato leído está mal — volvé al papel. ' +
+            'Y si el papel trae columna de descuento, va en `descuento` (% por línea) con el `precio` BRUTO, no aplastado en el precio',
         );
       }
     }
@@ -415,8 +422,35 @@ function huecosDeRegistro(
   // Los seis scripts caen a `p.get("moneda") or "DOP"`: ausente y DOP son
   // indistinguibles para ellos, así que una factura en USD (PIER 17, flete de
   // importación) quedaría registrada en pesos sin que nadie se entere.
-  if (String(p.moneda ?? '').trim() === '') {
+  const moneda = String(p.moneda ?? '').trim().toUpperCase();
+  if (moneda === '') {
     falta('moneda', 'falta `moneda`: el registrador cae a "DOP" en silencio, y un documento en USD registrado en pesos no se descubre hasta la conciliación');
+  } else if (moneda !== 'DOP' && DOC_ITEMS.has(doc)) {
+    // ── tasa_usd: la exigencia temprana de la tasa de cambio ────────────────
+    // El registrador tiene fallback —cae a la tasa de sistema de ADM, sólo
+    // avisando por consola— pero esa tasa puede no ser la que el proveedor
+    // imprimió, y nadie lee esa consola. La que manda es la IMPRESA en el
+    // papel (Account One la imprime como «Tasa»), así que se exige acá, antes
+    // de que un humano apruebe. Y con el piso de plausibilidad del registrador:
+    // `tasa_usd: 1` reproduce exactamente la FP00001118 (US$2,306.15 asentados
+    // como RD$2,306 en vez de ~RD$134,000); ninguna moneda extranjera que esta
+    // empresa toca baja de 5.
+    const tasaUsd = numeroDe(p.tasa_usd);
+    if (tasaUsd === null) {
+      falta(
+        'tasa_usd',
+        `la factura está en ${moneda} y no trae \`tasa_usd\`: es la tasa de cambio IMPRESA en el papel. ` +
+          'Sin ella el registrador cae a la tasa de sistema de ADM avisando sólo por consola — y con tasa 1.0 ' +
+          'el gasto queda dividido por ~60 (la FP00001118 quedó asentada por RD$2,306 siendo ~RD$134,000). ' +
+          'Si el papel no la imprime, preguntá',
+      );
+    } else if (tasaUsd < 5) {
+      falta(
+        'tasa_usd',
+        `\`tasa_usd\` ${tasaUsd} no es plausible (piso 5 del registrador): parece el 1.0 del bug FP00001118 ` +
+          'o un placeholder. La tasa real está impresa en el papel',
+      );
+    }
   }
 
   // ── monto ─────────────────────────────────────────────────────────────────
@@ -807,6 +841,19 @@ function validarItems(filas: Dic[], doc: string, p: Dic, brecha: OpcionesBrecha)
     }
     if ('debito' in l || 'credito' in l) {
       errores.push(`línea ${n}: ${doc} lleva renglones de ITEMS (descripcion/cantidad/precio/itbis/cuenta), no partida doble`);
+    }
+    // El guard del registrador: `descuento` es el PORCENTAJE 0-99.99, nunca el
+    // monto descontado (registrar-en-adm.py muere con otro valor). En la nota
+    // de crédito capturada en negativo el registrador lo endereza con abs().
+    if (l.descuento !== undefined && l.descuento !== null && String(l.descuento).trim() !== '') {
+      const d = numeroDe(l.descuento);
+      const dEfectivo = d === null ? null : doc === 'VendorCreditNotes' ? Math.abs(d) : d;
+      if (dEfectivo === null || dEfectivo < 0 || dEfectivo >= 100) {
+        errores.push(
+          `línea ${n}: \`descuento\` '${String(l.descuento)}' no es un porcentaje 0-99.99: es el % del papel, ` +
+            'no el monto descontado — y el precio viaja BRUTO, nunca el neto aplastado',
+        );
+      }
     }
   });
 
