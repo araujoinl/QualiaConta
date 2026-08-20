@@ -1,0 +1,2400 @@
+[
+ {
+  "docid": "FP00001061",
+  "monto": "163.26",
+  "items": [
+   {
+    "Quantity": 0.5,
+    "Price": 118.08,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 10.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 66.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 8.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 7.38,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "163.26",
+  "total_despues": "163.26",
+  "precios_finales": [
+   118.08,
+   10.46,
+   66.42,
+   8.0,
+   7.38
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001062",
+  "monto": "2624.00",
+  "items": [
+   {
+    "Quantity": 2.0,
+    "Price": 125.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 850.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 950.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 205.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "2624.00",
+  "total_despues": "2624.00",
+  "precios_finales": [
+   125.0,
+   850.0,
+   950.0,
+   205.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001063",
+  "monto": "4520.47",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 650.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 16
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 878.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 16
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 1622.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 16
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 436.14,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 16
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 358.61,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "4518.53",
+  "total_despues": "4518.53",
+  "precios_finales": [
+   650.0,
+   878.0,
+   1622.0,
+   436.14,
+   358.61
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001064",
+  "monto": "2112.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 650.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 250.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 100.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 50.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 600.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 165.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "2112.00",
+  "total_despues": "2112.00",
+  "precios_finales": [
+   650.0,
+   250.0,
+   100.0,
+   50.0,
+   600.0,
+   165.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001065",
+  "monto": "637.20",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 540.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "637.20",
+  "total_despues": "637.20",
+  "precios_finales": [
+   540.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001066",
+  "monto": "6351.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 4885.37,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 488.56,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 97.71,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "6351.01",
+  "total_despues": "6351.00",
+  "precios_finales": [
+   4885.37,
+   488.55,
+   97.71
+  ],
+  "ajuste": {
+   "renglon": 1,
+   "antes": "488.56",
+   "despues": "488.55",
+   "movido": "-0.01"
+  }
+ },
+ {
+  "docid": "FP00001067",
+  "monto": "1856.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 1600.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 256.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "1856.00",
+  "total_despues": "1856.00",
+  "precios_finales": [
+   1600.0,
+   256.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001068",
+  "monto": "90000.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 76271.19,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "90000.00",
+  "total_despues": "90000.00",
+  "precios_finales": [
+   76271.19
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001069",
+  "monto": "3763.20",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 400.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 780.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 620.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 230.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 220.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 270.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 2.0,
+    "Price": 100.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 220.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 294.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "3763.20",
+  "total_despues": "3763.20",
+  "precios_finales": [
+   400.0,
+   780.0,
+   620.0,
+   230.0,
+   220.0,
+   270.0,
+   100.0,
+   220.0,
+   294.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001070",
+  "monto": "205.05",
+  "items": [
+   {
+    "Quantity": 0.8,
+    "Price": 118.07,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 10.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 66.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 8.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 7.38,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "205.05",
+  "total_despues": "205.05",
+  "precios_finales": [
+   118.07,
+   10.46,
+   66.42,
+   8.0,
+   7.38
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001071",
+  "monto": "184.15",
+  "items": [
+   {
+    "Quantity": 0.65,
+    "Price": 118.08,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 10.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 66.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 8.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 7.38,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "184.16",
+  "total_despues": "184.15",
+  "precios_finales": [
+   118.08,
+   10.46,
+   66.41,
+   8.0,
+   7.38
+  ],
+  "ajuste": {
+   "renglon": 2,
+   "antes": "66.42",
+   "despues": "66.41",
+   "movido": "-0.01"
+  }
+ },
+ {
+  "docid": "FP00001072",
+  "monto": "6490.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 5500.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "6490.00",
+  "total_despues": "6490.00",
+  "precios_finales": [
+   5500.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001073",
+  "monto": "594.99",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 347.66,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 0.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 117.19,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 46.48,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "595.00",
+  "total_despues": "594.99",
+  "precios_finales": [
+   347.66,
+   0.0,
+   117.19,
+   46.47
+  ],
+  "ajuste": {
+   "renglon": 3,
+   "antes": "46.48",
+   "despues": "46.47",
+   "movido": "-0.01"
+  }
+ },
+ {
+  "docid": "FP00001074",
+  "monto": "617.24",
+  "items": [
+   {
+    "Quantity": 2.65,
+    "Price": 118.08,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 2.65,
+    "Price": 10.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 2.65,
+    "Price": 66.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 2.65,
+    "Price": 8.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 2.65,
+    "Price": 7.38,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "617.24",
+  "total_despues": "617.24",
+  "precios_finales": [
+   118.08,
+   10.46,
+   66.42,
+   8.0,
+   7.38
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001075",
+  "monto": "1200.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 1016.95,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "1200.00",
+  "total_despues": "1200.00",
+  "precios_finales": [
+   1016.95
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001076",
+  "monto": "19417.07",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 19417.07,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "19417.07",
+  "total_despues": "19417.07",
+  "precios_finales": [
+   19417.07
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001077",
+  "monto": "15000.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 15000.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "15000.00",
+  "total_despues": "15000.00",
+  "precios_finales": [
+   15000.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001078",
+  "monto": "2000.00",
+  "items": [
+   {
+    "Quantity": 7.85,
+    "Price": 254.78,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "2000.02",
+  "total_despues": "2000.00",
+  "precios_finales": [
+   254.777
+  ],
+  "ajuste": {
+   "renglon": 0,
+   "antes": "254.78",
+   "despues": "254.777",
+   "movido": "-0.02"
+  }
+ },
+ {
+  "docid": "FP00001079",
+  "monto": "4460.80",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 195.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 75.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 450.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 575.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 675.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 2.0,
+    "Price": 495.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 525.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 348.5,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "4460.80",
+  "total_despues": "4460.80",
+  "precios_finales": [
+   195.0,
+   75.0,
+   450.0,
+   575.0,
+   675.0,
+   495.0,
+   525.0,
+   348.5
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001080",
+  "monto": "244.55",
+  "items": [
+   {
+    "Quantity": 1.05,
+    "Price": 118.08,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.05,
+    "Price": 10.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.05,
+    "Price": 66.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.05,
+    "Price": 7.99,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.05,
+    "Price": 7.38,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "244.56",
+  "total_despues": "244.55",
+  "precios_finales": [
+   118.08,
+   10.46,
+   66.41,
+   7.99,
+   7.38
+  ],
+  "ajuste": {
+   "renglon": 2,
+   "antes": "66.42",
+   "despues": "66.41",
+   "movido": "-0.01"
+  }
+ },
+ {
+  "docid": "FP00001081",
+  "monto": "1145.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 894.53,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 89.45,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "1145.00",
+  "total_despues": "1145.00",
+  "precios_finales": [
+   894.53,
+   89.45
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001082",
+  "monto": "2320.91",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 1966.87,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "2320.91",
+  "total_despues": "2320.91",
+  "precios_finales": [
+   1966.87
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001083",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 2.22,
+    "Price": 337.84,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   337.84
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001084",
+  "monto": "163.26",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 59.04,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 10.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 66.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 8.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 7.38,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "163.26",
+  "total_despues": "163.26",
+  "precios_finales": [
+   59.04,
+   10.46,
+   66.42,
+   8.0,
+   7.38
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001085",
+  "monto": "163.26",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 59.04,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 10.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 66.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 8.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 7.38,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 0.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 0.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "163.26",
+  "total_despues": "163.26",
+  "precios_finales": [
+   59.04,
+   10.46,
+   66.42,
+   8.0,
+   7.38,
+   0.0,
+   0.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001086",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 750.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   750.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001087",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 2.45,
+    "Price": 306.12,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "749.99",
+  "total_despues": "750.00",
+  "precios_finales": [
+   306.121
+  ],
+  "ajuste": {
+   "renglon": 0,
+   "antes": "306.12",
+   "despues": "306.121",
+   "movido": "0.01"
+  }
+ },
+ {
+  "docid": "FP00001088",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 2.42,
+    "Price": 309.92,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.01",
+  "total_despues": "750.00",
+  "precios_finales": [
+   309.919
+  ],
+  "ajuste": {
+   "renglon": 0,
+   "antes": "309.92",
+   "despues": "309.919",
+   "movido": "-0.01"
+  }
+ },
+ {
+  "docid": "FP00001089",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 750.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   750.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001090",
+  "monto": "11564.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 9800.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "11564.00",
+  "total_despues": "11564.00",
+  "precios_finales": [
+   9800.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001091",
+  "monto": "14000.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 14000.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "14000.00",
+  "total_despues": "14000.00",
+  "precios_finales": [
+   14000.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001092",
+  "monto": "4737.77",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 2306.07,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 225.41,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 1431.35,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 172.18,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 159.04,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "4737.77",
+  "total_despues": "4737.77",
+  "precios_finales": [
+   2306.07,
+   225.41,
+   1431.35,
+   172.18,
+   159.04
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001093",
+  "monto": "714.53",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 347.78,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 34.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 215.87,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 25.97,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 23.99,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "714.53",
+  "total_despues": "714.53",
+  "precios_finales": [
+   347.78,
+   34.0,
+   215.87,
+   25.97,
+   23.99
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001094",
+  "monto": "2117.98",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 566.78,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 50.16,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 318.82,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 1000.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 38.4,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 35.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "2117.98",
+  "total_despues": "2117.98",
+  "precios_finales": [
+   566.78,
+   50.16,
+   318.82,
+   1000.0,
+   38.4,
+   35.42
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001095",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 2.48,
+    "Price": 302.41,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "749.98",
+  "total_despues": "750.00",
+  "precios_finales": [
+   302.42
+  ],
+  "ajuste": {
+   "renglon": 0,
+   "antes": "302.41",
+   "despues": "302.42",
+   "movido": "0.02"
+  }
+ },
+ {
+  "docid": "FP00001096",
+  "monto": "1141.32",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 578.59,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 51.25,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 325.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 39.2,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 36.16,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "1141.32",
+  "total_despues": "1141.32",
+  "precios_finales": [
+   578.59,
+   51.25,
+   325.46,
+   39.2,
+   36.16
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001097",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 2.22,
+    "Price": 337.84,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   337.84
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001098",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 2.48,
+    "Price": 302.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   302.42
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001099",
+  "monto": "177.19",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 70.85,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 10.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 66.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 8.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 7.38,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "177.19",
+  "total_despues": "177.19",
+  "precios_finales": [
+   70.85,
+   10.46,
+   66.42,
+   8.0,
+   7.38
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001100",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 750.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   750.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001101",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 2.22,
+    "Price": 337.84,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   337.84
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001102",
+  "monto": "330.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 84.75,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 2.0,
+    "Price": 97.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "330.02",
+  "total_despues": "330.00",
+  "precios_finales": [
+   84.74,
+   97.46
+  ],
+  "ajuste": {
+   "renglon": 0,
+   "antes": "84.75",
+   "despues": "84.74",
+   "movido": "-0.02"
+  }
+ },
+ {
+  "docid": "FP00001103",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 750.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   750.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001104",
+  "monto": "1464.01",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 97.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 2.0,
+    "Price": 38.14,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 50.85,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 110.17,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 144.07,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 88.98,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 426.72,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 16
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 253.39,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "1464.01",
+  "total_despues": "1464.01",
+  "precios_finales": [
+   97.46,
+   38.14,
+   50.85,
+   110.17,
+   144.07,
+   88.98,
+   426.72,
+   253.39
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001105",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 750.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   750.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001106",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 750.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   750.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001107",
+  "monto": "12350.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 10466.1,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "12350.00",
+  "total_despues": "12350.00",
+  "precios_finales": [
+   10466.1
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001108",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 2.218279,
+    "Price": 338.1,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   338.1
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001109",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 750.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   750.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001110",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 750.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   750.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001111",
+  "monto": "1081.68",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 275.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 269.49,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 6.78,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 5.72,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 4.19,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 355.08,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "1081.68",
+  "total_despues": "1081.68",
+  "precios_finales": [
+   275.42,
+   269.49,
+   6.78,
+   5.72,
+   4.19,
+   355.08
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001112",
+  "monto": "792.12",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 165.31,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 14.64,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 92.99,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 11.19,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 10.33,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 59.04,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 10.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 66.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 8.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 7.38,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 153.5,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 13.59,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 86.35,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 10.39,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 9.59,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "792.12",
+  "total_despues": "792.12",
+  "precios_finales": [
+   165.31,
+   14.64,
+   92.99,
+   11.19,
+   10.33,
+   59.04,
+   10.46,
+   66.42,
+   8.0,
+   7.38,
+   153.5,
+   13.59,
+   86.35,
+   10.39,
+   9.59
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001113",
+  "monto": "754.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 304.24,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 334.75,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "754.01",
+  "total_despues": "754.00",
+  "precios_finales": [
+   304.23,
+   334.75
+  ],
+  "ajuste": {
+   "renglon": 0,
+   "antes": "304.24",
+   "despues": "304.23",
+   "movido": "-0.01"
+  }
+ },
+ {
+  "docid": "FP00001114",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 750.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   750.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001115",
+  "monto": "750.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 750.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "750.00",
+  "total_despues": "750.00",
+  "precios_finales": [
+   750.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001116",
+  "monto": "1629.99",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 504.23,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 444.91,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 0.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 135.59,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 148.31,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 148.31,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "1630.00",
+  "total_despues": "1629.99",
+  "precios_finales": [
+   504.22,
+   444.91,
+   0.0,
+   135.59,
+   148.31,
+   148.31
+  ],
+  "ajuste": {
+   "renglon": 0,
+   "antes": "504.23",
+   "despues": "504.22",
+   "movido": "-0.01"
+  }
+ },
+ {
+  "docid": "FP00001117",
+  "monto": "2090.13",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 389.84,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 38.14,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 127.2,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 2.0,
+    "Price": 135.59,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 389.84,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 0.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 389.84,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 38.14,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 127.12,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "2090.14",
+  "total_despues": "2090.13",
+  "precios_finales": [
+   389.83,
+   38.14,
+   127.2,
+   135.59,
+   389.84,
+   0.0,
+   389.84,
+   38.14,
+   127.12
+  ],
+  "ajuste": {
+   "renglon": 0,
+   "antes": "389.84",
+   "despues": "389.83",
+   "movido": "-0.01"
+  }
+ },
+ {
+  "docid": "FP00001118",
+  "monto": "2306.15",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 218.9,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 35.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 95.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 25.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 100.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 481.58,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 65.48,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 306.46,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 30.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 50.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 65.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 131.34,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 262.68,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 25.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 262.68,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "2306.15",
+  "total_despues": "2306.15",
+  "precios_finales": [
+   218.9,
+   35.0,
+   95.0,
+   25.0,
+   100.0,
+   481.58,
+   65.48,
+   306.46,
+   30.0,
+   50.0,
+   65.0,
+   131.34,
+   262.68,
+   25.0,
+   262.68
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001119",
+  "monto": "760.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 559.32,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 84.75,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "760.01",
+  "total_despues": "760.00",
+  "precios_finales": [
+   559.31,
+   84.75
+  ],
+  "ajuste": {
+   "renglon": 0,
+   "antes": "559.32",
+   "despues": "559.31",
+   "movido": "-0.01"
+  }
+ },
+ {
+  "docid": "FP00001120",
+  "monto": "374.95",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 287.33,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   },
+   {
+    "Quantity": 1.0,
+    "Price": 35.9,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": null,
+    "TaxPercent": 0
+   }
+  ],
+  "total_antes": "374.95",
+  "total_despues": "374.95",
+  "precios_finales": [
+   287.33,
+   35.9
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001121",
+  "monto": "374.95",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 323.23,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 16
+   }
+  ],
+  "total_antes": "374.95",
+  "total_despues": "374.95",
+  "precios_finales": [
+   323.23
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001122",
+  "monto": "637.20",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 540.0,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "637.20",
+  "total_despues": "637.20",
+  "precios_finales": [
+   540.0
+  ],
+  "ajuste": null
+ },
+ {
+  "docid": "FP00001123",
+  "monto": "620.00",
+  "items": [
+   {
+    "Quantity": 1.0,
+    "Price": 525.42,
+    "DiscountPercent": 0.0,
+    "TaxScheduleID": "sched",
+    "TaxPercent": 18
+   }
+  ],
+  "total_antes": "620.00",
+  "total_despues": "620.00",
+  "precios_finales": [
+   525.42
+  ],
+  "ajuste": null
+ }
+]
