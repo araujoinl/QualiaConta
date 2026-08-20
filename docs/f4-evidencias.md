@@ -18,9 +18,15 @@
 > inaugural).
 >
 > **Huecos que dejó el server, con dueño pendiente:**
-> 1. Padrón DGII mensual (`cargar-padron-dgii.sh`, corría el día 1): la Edge
->    Function no puede parsear el millón de filas (2s de CPU). Propuesta:
->    GitHub Action mensual con la llave en secret. Próximo vencimiento: 1-sep.
+> 1. Padrón DGII mensual — **PORTADO 2026-08-20 a GitHub Actions**:
+>    `.github/workflows/padron-dgii.yml` corre `mesa/cargar-padron-dgii.sh`
+>    (adaptado: llave por entorno, log a stdout) el día 1 de cada mes, 08:00 UTC.
+>    Corrida de prueba local del 2026-08-20: leidas=787.020, cargadas=786.975,
+>    marca `refresco_padron_dgii` estampada 18:20 UTC — el 1-sep ya no aprieta.
+>    Para ACTIVAR falta: secret `SUPABASE_SERVICE_ROLE_KEY` en el repo + push
+>    (esperan OK de Carlos). Ojo verificación: los upserts no mueven
+>    `actualizado_en` (default solo al insertar); la frescura se lee en la
+>    marca de `qualia_config`, no en `max(actualizado_en)`.
 > 2. Respaldo local del bucket `qualia-conta` (`respaldo-documentos.sh`): los
 >    documentos viven SOLO en Storage (el pg_dump nocturno no cubre buckets).
 >    Decidir: sumarlo a `/opt/supabase-backup` del server (pide sudo) u otra vía.

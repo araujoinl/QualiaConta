@@ -4,12 +4,14 @@
 # activo?" desde la base en vez de contra el formulario web de la DGII (un
 # ASP.NET viejo que se lleva ~5s por factura y a veces no responde).
 #
-# POR QUÉ ACÁ Y NO EN LA NUBE: la Edge Function `qualia-padron-dgii` existe y
-# funciona, pero cada invocación tiene 2 SEGUNDOS de CPU y parsear el millón de
-# líneas del archivo necesita ~70 (medido 2026-08-17: cargó 30.000 filas y la
-# plataforma la cortó). Partirlo en ~35 invocaciones encadenadas se puede, pero
-# no compra nada mientras el server siga vivo por los colectores del banco, que
-# necesitan hardware. Cuando el server se vaya, se retoma ese camino.
+# POR QUÉ EN GITHUB ACTIONS: el cron original vivía en CodeBox y se fue con el
+# server (2026-08-20). La Edge Function `qualia-padron-dgii` sigue sin poder:
+# 2 SEGUNDOS de CPU por invocación y parsear el millón de líneas necesita ~70
+# (medido 2026-08-17: cargó 30.000 filas y la plataforma la cortó). Partirla en
+# ~35 invocaciones encadenadas era el plan B; el runner de Actions corre este
+# script entero de una sola vez y no hay nada que partir.
+# Workflow: .github/workflows/padron-dgii.yml (día 1 de cada mes, y a mano con
+# workflow_dispatch).
 #
 # Lo que NO se puede cachear, y por eso el preparador lo sigue consultando
 # online: la validez del COMPROBANTE (NCF/e-CF). Eso es por documento y la DGII
@@ -18,21 +20,25 @@
 # Cron: mensual. El archivo se publica cada pocos días, pero un RNC no cambia de
 # dueño y mensual alcanza para lo que decide (activo/suspendido, régimen).
 #
-# Uso: ./cargar-padron-dgii.sh
+# Uso: SUPABASE_SERVICE_ROLE_KEY=... ./cargar-padron-dgii.sh
+# Opcionales: SUPABASE_URL (default: la Supabase de Labs), LOG (default: stdout).
 
 set -uo pipefail
 
-LOG=/home/codebox/qualia-padron.log
+# En Actions stdout ES el log del job; local se puede apuntar a un archivo.
+LOG="${LOG:-/dev/stdout}"
 URL="https://dgii.gov.do/app/WebApps/Consultas/RNC/DGII_RNC.zip"
 # La DGII responde 403 a un cliente sin navegador (verificado 2026-08-17).
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
-NUBE_URL="https://uzvnluxxaekmaqnuocvo.supabase.co"
+NUBE_URL="${SUPABASE_URL:-https://uzvnluxxaekmaqnuocvo.supabase.co}"
 
 registrar() { echo "$(date -u +%FT%TZ) $*" >>"$LOG"; }
 
-NUBE_KEY=$(grep -m1 '^SUPABASE_SERVICE_ROLE_KEY=' /home/codebox/colector-bancos/.env | cut -d= -f2- | tr -d '"')
+# La llave viene del entorno: en Actions, del secret del repo; local, exportada
+# a mano. Nunca de un archivo dentro de git.
+NUBE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-}"
 if [ -z "$NUBE_KEY" ]; then
-    registrar "ERROR: sin SUPABASE_SERVICE_ROLE_KEY; no cargo nada"
+    registrar "ERROR: sin SUPABASE_SERVICE_ROLE_KEY en el entorno; no cargo nada"
     exit 1
 fi
 
@@ -40,11 +46,12 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
 registrar "=== inicio ==="
-if ! curl -s -m 600 -A "$UA" -o "$TMP/padron.zip" "$URL"; then
+# -f: un 403/500 de la DGII debe fallar acá, no llegarle como HTML al zipfile.
+if ! curl -fsS -m 600 -A "$UA" -o "$TMP/padron.zip" "$URL"; then
     registrar "ERROR: no pude bajar el archivo de la DGII"
     exit 1
 fi
-registrar "bajado ($(stat -c %s "$TMP/padron.zip") bytes)"
+registrar "bajado ($(wc -c <"$TMP/padron.zip" | tr -d ' ') bytes)"
 
 # El parseo y la subida van en python: el archivo es latin-1 con campos
 # separados por barra, y se sube por lotes al endpoint REST con upsert (la

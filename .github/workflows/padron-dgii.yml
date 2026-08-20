@@ -1,0 +1,23 @@
+# Carga mensual del padrón de contribuyentes de la DGII en la tabla dgii_rnc
+# de la Supabase de Labs. Reemplaza el cron que vivía en CodeBox (server
+# apagado 2026-08-20). El trabajo lo hace mesa/cargar-padron-dgii.sh; acá solo
+# se agenda y se le pasa la llave (secret SUPABASE_SERVICE_ROLE_KEY del repo).
+name: padron-dgii
+
+on:
+  schedule:
+    # Día 1 de cada mes, 08:00 UTC = 04:00 en RD. GitHub puede demorar el
+    # disparo unos minutos; para el padrón no importa.
+    - cron: "0 8 1 * *"
+  workflow_dispatch:
+
+jobs:
+  cargar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cargar padrón DGII
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: bash mesa/cargar-padron-dgii.sh
