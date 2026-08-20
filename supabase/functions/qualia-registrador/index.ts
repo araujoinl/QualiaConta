@@ -16,6 +16,7 @@ import type { CredAdm } from '../_shared/adm.ts';
 import { Catalogo } from '../_shared/catalogo.ts';
 import { armarVendorBill, ErrorPropuesta, soloDigitos, totalPredicho } from './vendor_bills.ts';
 import { armarCargo } from './bank_charges.ts';
+import { armarJournal, armarTransferencia } from './otros_tipos.ts';
 import { registrarTrabajo } from './registro.ts';
 
 // deno-lint-ignore no-explicit-any
@@ -140,10 +141,19 @@ async function backtest(empresaId: string, alcance: string[], limite: number): P
 
     const docid = String(reg.docid ?? '');
     try {
-      let payload: Dic;
+      let payload: Dic | null = null;
       let recursoReal = documento;
       if (documento === 'BankCharges') {
         payload = armarCargo(p, cat, String((f as Dic).id), tasaAdm).payload;
+      } else if (documento === 'Journals') {
+        payload = armarJournal(p, cat, String((f as Dic).id), tasaAdm).payload;
+      } else if (documento === 'BankBankTransfers') {
+        payload = armarTransferencia(p, cat, String((f as Dic).id), tasaAdm).payload;
+      } else if (documento === 'BillPayments' || documento === 'AccountPayments') {
+        // Los pagos históricos no se pueden REARMAR: sus facturas ya no tienen
+        // saldo en AP (y ese chequeo ES el dedup, por diseño). El backtest de
+        // pagos verifica el documento vivo contra lo que la fila dice.
+        payload = null;
       } else {
         const armado = armarVendorBill(p, cat, {
           // En backtest el proveedor/término no se re-resuelven (son IO): se
@@ -158,12 +168,49 @@ async function backtest(empresaId: string, alcance: string[], limite: number): P
       }
 
       const doc = await adm.readback(recursoReal, String(reg.uuid));
-      if (documento !== 'BankCharges') {
+      let difs: Diferencia[];
+      if (payload === null) {
+        difs = [];
+        if (Math.abs(Math.abs(Number(doc.TotalAmount ?? 0)) - Math.abs(Number(p.monto ?? 0))) > 0.05) {
+          difs.push({ campo: 'TotalAmount', esperado: p.monto, adm: doc.TotalAmount });
+        }
+        if (doc.Void === true) difs.push({ campo: 'Void', esperado: false, adm: true });
+      } else if (documento === 'BankCharges') {
+        difs = diffCargo(payload, doc);
+      } else if (documento === 'Journals' || documento === 'BankBankTransfers') {
+        difs = [];
+        if (String(payload.DocDate ?? '').slice(0, 10) !== String(doc.DocDate ?? '').slice(0, 10)) {
+          difs.push({ campo: 'DocDate', esperado: payload.DocDate, adm: doc.DocDate });
+        }
+        if (Math.abs(Number(payload.TotalAmount ?? 0) - Number(doc.TotalAmount ?? 0)) > 0.05) {
+          difs.push({ campo: 'TotalAmount', esperado: payload.TotalAmount, adm: doc.TotalAmount });
+        }
+        if (documento === 'BankBankTransfers') {
+          if (payload.CashAccountID !== (doc.FromCashAccountID ?? doc.CashAccountID)) {
+            difs.push({ campo: 'CashAccountID', esperado: payload.CashAccountID, adm: doc.FromCashAccountID ?? doc.CashAccountID });
+          }
+          if (payload.DebitAccountID !== (doc.ToCashAccountID ?? doc.DebitAccountID)) {
+            difs.push({ campo: 'DebitAccountID', esperado: payload.DebitAccountID, adm: doc.ToCashAccountID ?? doc.DebitAccountID });
+          }
+        } else {
+          const accAdm: Dic[] = doc.Accounts ?? [];
+          if ((payload.Accounts ?? []).length !== accAdm.length) {
+            difs.push({ campo: 'Accounts.length', esperado: payload.Accounts.length, adm: accAdm.length });
+          } else {
+            (payload.Accounts as Dic[]).forEach((l, i) => {
+              const a = accAdm[i] ?? {};
+              if (l.AccountID !== a.AccountID) difs.push({ campo: `Accounts[${i}].AccountID`, esperado: l.AccountID, adm: a.AccountID });
+              if (num(l.Debit) !== num(a.Debit)) difs.push({ campo: `Accounts[${i}].Debit`, esperado: l.Debit, adm: a.Debit });
+              if (num(l.Credit) !== num(a.Credit)) difs.push({ campo: `Accounts[${i}].Credit`, esperado: l.Credit, adm: a.Credit });
+            });
+          }
+        }
+      } else {
         payload.RelationshipID = doc.RelationshipID ?? null;
         payload.PaymentTermID = doc.PaymentTermID ?? null;
         if ('PaymentTermID' in payload && payload.PaymentTermID === null) delete payload.PaymentTermID;
+        difs = diffVendorBill(payload, doc);
       }
-      const difs = documento === 'BankCharges' ? diffCargo(payload, doc) : diffVendorBill(payload, doc);
       resultados.push({ docid, documento, ok: difs.length === 0, difs });
     } catch (e) {
       const tipo = e instanceof ErrorPropuesta ? 'propuesta_rechazada' : 'error';
@@ -195,7 +242,7 @@ Deno.serve(async (req: Request) => {
     const empresaId = String(body.empresa_id ?? '1de77ce6-ed98-4a96-8b1f-d8b902f11cd5');
     const alcance = Array.isArray(body.documentos) && body.documentos.length
       ? body.documentos.map(String)
-      : ['VendorBills', 'VendorCreditNotes', 'BankCharges'];
+      : ['VendorBills', 'VendorCreditNotes', 'BankCharges', 'Journals', 'BankBankTransfers', 'BillPayments', 'AccountPayments'];
     const limite = Math.min(Number(body.limite ?? 40), 200);
     try {
       return json(await backtest(empresaId, alcance, limite));

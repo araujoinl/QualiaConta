@@ -11,6 +11,7 @@ import { Catalogo } from '../_shared/catalogo.ts';
 import { modo } from '../_shared/db.ts';
 import {
   backdatingOk,
+  candadoNomina,
   escrituraEncendida,
   hashPayload,
   periodoAbierto,
@@ -19,11 +20,23 @@ import {
 } from '../_shared/guardas.ts';
 import { armarVendorBill, ErrorPropuesta, esNotaCredito, soloDigitos } from './vendor_bills.ts';
 import { armarCargo, referenciaDe } from './bank_charges.ts';
+import { adoptarJournal, armarJournal, armarTransferencia, gemelosTransferencia } from './otros_tipos.ts';
+import { autorizarPago, prepararAccountPayment, prepararBillPayment, verificarDuplicadoPago } from './pagos.ts';
 
 // deno-lint-ignore no-explicit-any
 type Dic = Record<string, any>;
 
-const TIPOS_V1 = new Set(['VendorBills', 'VendorCreditNotes', 'BankCharges']);
+// Los 7 tipos portados. La nómina NO es un tipo: es un Journal que el candado
+// de cuentas frena hacia la ruta humana (plan-f4 §6, jamás autónoma).
+const TIPOS_PORTADOS = new Set([
+  'VendorBills',
+  'VendorCreditNotes',
+  'BankCharges',
+  'Journals',
+  'BankBankTransfers',
+  'BillPayments',
+  'AccountPayments',
+]);
 // Presupuesto por tipo (E7): el camino largo del server era factura+adjunto
 // ~300s; el claim debe durar MÁS que el peor caso de la propia invocación.
 const TTL_CLAIM_S = 360;
@@ -302,7 +315,7 @@ export async function registrarTrabajo(
   // escribe el modelo). Tipos fuera del alcance v1 quedan para el server/humano.
   let documento = String(p.documento_adm ?? '').trim();
   if (esNotaCredito(p) && documento !== 'BankCharges') documento = 'VendorCreditNotes';
-  if (!TIPOS_V1.has(documento)) return salir('tipo_no_portado', documento || 'vacío');
+  if (!TIPOS_PORTADOS.has(documento)) return salir('tipo_no_portado', documento || 'vacío');
 
   if ((await modo(empresaId, 'qualia-registrador')) !== 'nube') return salir('modo_server');
 
@@ -388,54 +401,135 @@ export async function registrarTrabajo(
 
     // El armado (puro) + los chequeos IO por tipo.
     let payload: Dic;
-    let recurso: string;
+    let recurso: string = documento;
     let referencia: string;
+    let requiereAuthorize = false;
+    let extraFila: Dic = {};
     const avisos: string[] = [];
+    const tasaDe = (m: string) => tasas.get(m) ?? 0;
 
-    if (documento === 'BankCharges') {
-      const armado = armarCargo(p, cat, trabajoId, (m) => tasas.get(m) ?? 0);
-      payload = armado.payload;
-      recurso = 'BankCharges';
-      referencia = armado.referencia;
-      avisos.push(...armado.avisos);
-      await verificarDuplicadoCargo(
-        db,
-        adm,
-        empresaId,
-        referencia,
-        fechaDoc,
-        Number(p.monto ?? 0),
-        String(payload.CashAccountID),
-      );
-    } else {
-      const prov = await asegurarProveedor(adm, cat, p);
-      if (prov.aviso) avisos.push(prov.aviso);
-      let invoiceId: string | null = null;
-      if (esNotaCredito(p) && p.factura_original_docid) {
-        for (const f of await adm.paginar('VendorBills')) {
-          if (String(f?.DocID ?? '') === String(p.factura_original_docid)) {
-            invoiceId = String(f.ID);
-            break;
+    // Adopción (Journals/TE): el documento YA existe y ES este movimiento.
+    const adoptar = async (docid: string, uuid: string): Promise<ResultadoRegistro> => {
+      const nueva: Dic = { ...p };
+      nueva.registro_adm = {
+        docid,
+        uuid,
+        documento: recurso,
+        fecha: new Date().toISOString().slice(0, 10),
+        reference: referencia,
+        adoptado: true,
+      };
+      await db.from('qualia_trabajos').update({ propuesta: nueva }).eq('id', trabajoId).eq('empresa_id', empresaId);
+      await db.from('qualia_trabajos').update({ estado: 'registrada' })
+        .eq('id', trabajoId).eq('empresa_id', empresaId).eq('estado', 'aprobada');
+      await evento(db, trabajoId, `YA REGISTRADO: ${docid} trae la referencia de este movimiento (${referencia}). Adoptado y cerrado.`);
+      return { trabajo_id: trabajoId, resultado: 'adoptada', docid };
+    };
+
+    switch (documento) {
+      case 'BankCharges': {
+        const armado = armarCargo(p, cat, trabajoId, tasaDe);
+        payload = armado.payload;
+        referencia = armado.referencia;
+        avisos.push(...armado.avisos);
+        await verificarDuplicadoCargo(db, adm, empresaId, referencia, fechaDoc, Number(p.monto ?? 0), String(payload.CashAccountID));
+        break;
+      }
+      case 'Journals': {
+        const armado = armarJournal(p, cat, trabajoId, tasaDe);
+        // La nómina jamás va autónoma: el candado mira las CUENTAS, no el
+        // Reference (E2: ED00000181 lo tiene mal tipeado).
+        const nom = candadoNomina(armado.cuentas);
+        if (!nom.ok) {
+          await evento(db, trabajoId, `registro_frenado: ${nom.motivo}`);
+          return salir('frenada', nom.motivo);
+        }
+        payload = armado.payload;
+        referencia = armado.referencia;
+        const adopcion = await adoptarJournal(adm, referencia, fechaDoc, Number(payload.TotalAmount ?? 0));
+        if (adopcion && 'ambiguo' in adopcion) throw new ErrorPropuesta(adopcion.ambiguo);
+        if (adopcion) return await adoptar(adopcion.docid, adopcion.uuid);
+        break;
+      }
+      case 'BankBankTransfers': {
+        const armado = armarTransferencia(p, cat, trabajoId, tasaDe);
+        payload = armado.payload;
+        referencia = armado.referencia;
+        const { data: recl } = await db
+          .from('qualia_trabajos')
+          .select('propuesta')
+          .eq('empresa_id', empresaId)
+          .not('propuesta->registro_adm->>docid', 'is', null);
+        const reclamados = new Set(
+          (recl ?? [])
+            .map((r: Dic) => r.propuesta?.registro_adm)
+            .filter((r: Dic) => r && !r.eliminado_en && !r.anulado_en)
+            .map((r: Dic) => String(r.docid)),
+        );
+        const g = await gemelosTransferencia(adm, reclamados, armado.uuidOrigen, armado.uuidDestino, Number(p.monto ?? 0), fechaDoc, referencia);
+        if (g && 'ambiguo' in g) {
+          if (p.forzar_registro === true) {
+            avisos.push('forzar_registro: hay gemelos sin dueño y el humano dijo que éste NO es ninguno');
+          } else {
+            throw new ErrorPropuesta(g.ambiguo);
+          }
+        } else if (g) {
+          return await adoptar(g.docid, g.uuid);
+        }
+        break;
+      }
+      case 'BillPayments': {
+        const prep = await prepararBillPayment(adm, cat, p, trabajoId);
+        payload = prep.payload;
+        recurso = prep.recurso;
+        referencia = prep.referencia;
+        requiereAuthorize = prep.requiereAuthorize;
+        extraFila = prep.extraFila;
+        avisos.push(...prep.avisos);
+        await verificarDuplicadoPago(adm, 'BillPayments', referencia);
+        break;
+      }
+      case 'AccountPayments': {
+        const prep = await prepararAccountPayment(adm, cat, p, trabajoId);
+        payload = prep.payload;
+        recurso = prep.recurso;
+        referencia = prep.referencia;
+        requiereAuthorize = prep.requiereAuthorize;
+        extraFila = prep.extraFila;
+        avisos.push(...prep.avisos);
+        await verificarDuplicadoPago(adm, 'AccountPayments', referencia);
+        break;
+      }
+      default: {
+        const prov = await asegurarProveedor(adm, cat, p);
+        if (prov.aviso) avisos.push(prov.aviso);
+        let invoiceId: string | null = null;
+        if (esNotaCredito(p) && p.factura_original_docid) {
+          for (const f of await adm.paginar('VendorBills')) {
+            if (String(f?.DocID ?? '') === String(p.factura_original_docid)) {
+              invoiceId = String(f.ID);
+              break;
+            }
           }
         }
+        const armado = armarVendorBill(p, cat, {
+          relationshipId: prov.rid,
+          paymentTermId: prov.termino,
+          invoiceId,
+          tasaAdmDeMoneda: tasaDe,
+        });
+        payload = armado.payload;
+        recurso = armado.recurso;
+        referencia = String(payload.Reference ?? payload.NCF ?? '');
+        avisos.push(...armado.avisos);
+        await verificarDuplicadoFactura(
+          adm,
+          recurso,
+          payload.NCF ? String(payload.NCF) : null,
+          payload.Reference ? String(payload.Reference) : null,
+          fechaDoc,
+        );
       }
-      const armado = armarVendorBill(p, cat, {
-        relationshipId: prov.rid,
-        paymentTermId: prov.termino,
-        invoiceId,
-        tasaAdmDeMoneda: (m) => tasas.get(m) ?? 0,
-      });
-      payload = armado.payload;
-      recurso = armado.recurso;
-      referencia = String(payload.Reference ?? payload.NCF ?? '');
-      avisos.push(...armado.avisos);
-      await verificarDuplicadoFactura(
-        adm,
-        recurso,
-        payload.NCF ? String(payload.NCF) : null,
-        payload.Reference ? String(payload.Reference) : null,
-        fechaDoc,
-      );
     }
 
     // El evento y la fila del ledger van ANTES del POST (§4.3): es lo único
@@ -515,8 +609,36 @@ export async function registrarTrabajo(
     }
     const docid = String(doc.DocID ?? '');
     const refPersistida = String(doc.Reference ?? '').trim() === referencia;
-    if (recurso === 'BankCharges' && !refPersistida) {
-      avisos.push(`OJO: ADM no persistió el Reference '${referencia}' — dos cargos gemelos vuelven a ser indistinguibles`);
+    if ((recurso === 'BankCharges' || recurso === 'BankBankTransfers' || recurso === 'Journals') && !refPersistida) {
+      avisos.push(`OJO: ADM no persistió el Reference '${referencia}' — dos gemelos vuelven a ser indistinguibles`);
+    }
+
+    // Los pagos: el documento nace PENDIENTE y el Authorize es lo que mueve la
+    // plata (PC00000376: antes del Authorize, Total y cero Accounts). Si queda
+    // pendiente, la fila NO cierra: estado `parcial` en el ledger (E6) y la
+    // deuda visible en registro_adm.
+    let pendiente = false;
+    if (requiereAuthorize) {
+      const aut = await autorizarPago(adm, recurso as 'BillPayments' | 'AccountPayments', guid, docid);
+      pendiente = aut.pendiente;
+      if (aut.aviso) avisos.push(aut.aviso);
+      if (recurso === 'AccountPayments' && !pendiente) {
+        // Cuadre POST-autorización (🪦 PC00000334: ADM autoriza descuadrados
+        // sin chistar): D = C = monto sobre las líneas que ADM derivó.
+        const doc2 = await adm.readback('AccountPayments', guid);
+        // deno-lint-ignore no-explicit-any
+        const admD = ((doc2.Accounts ?? []) as any[]).reduce((s, a) => s + Number(a?.Debit ?? 0), 0);
+        // deno-lint-ignore no-explicit-any
+        const admC = ((doc2.Accounts ?? []) as any[]).reduce((s, a) => s + Number(a?.Credit ?? 0), 0);
+        const m = Math.abs(Number(p.monto ?? 0));
+        if (Math.abs(admD - admC) > 0.01 || Math.abs(admD - m) > 0.01) {
+          pendiente = true;
+          avisos.push(
+            `REGISTRADO PERO DESCUADRADO: ${docid} derivó D=${admD.toFixed(2)} C=${admC.toFixed(2)} ` +
+              `contra monto ${m.toFixed(2)}. Revisar en ADM antes de tocar nada.`,
+          );
+        }
+      }
     }
 
     // La fila: docid PRIMERO (dato irremplazable), estado DESPUÉS y en
@@ -529,6 +651,8 @@ export async function registrarTrabajo(
       documento: recurso,
       fecha: new Date().toISOString().slice(0, 10),
       reference: referencia,
+      ...(requiereAuthorize ? { pendiente_autorizacion: pendiente } : {}),
+      ...extraFila,
     };
     if (recurso === 'VendorCreditNotes') {
       nuevaProp.documento_adm_declarado = p.documento_adm ?? null;
@@ -541,27 +665,42 @@ export async function registrarTrabajo(
     }
     await db.from('qualia_trabajos').update({ propuesta: nuevaProp }).eq('id', trabajoId).eq('empresa_id', empresaId);
 
-    await cerrarLedger('confirmada', { adm_uuid: guid, adm_docid: docid, referencia_persistida: refPersistida });
+    await cerrarLedger(pendiente ? 'parcial' : 'confirmada', {
+      adm_uuid: guid,
+      adm_docid: docid,
+      referencia_persistida: refPersistida,
+      ...(pendiente ? { detalle: 'creado sin autorizar o descuadrado: NO movió plata todavía' } : {}),
+    });
 
-    const adjunto = await subirAdjunto(db, adm, trabajoId, empresaId, guid);
-    avisos.push(adjunto);
+    // El adjunto es del papel: facturas, cargos, asientos y traspasos. Los
+    // pagos no llevan (su respaldo es la factura que cancelan).
+    if (!requiereAuthorize) {
+      avisos.push(await subirAdjunto(db, adm, trabajoId, empresaId, guid));
+    }
 
-    await db
-      .from('qualia_trabajos')
-      .update({ estado: 'registrada' })
-      .eq('id', trabajoId)
-      .eq('empresa_id', empresaId)
-      .eq('estado', 'aprobada');
+    if (!pendiente) {
+      await db
+        .from('qualia_trabajos')
+        .update({ estado: 'registrada' })
+        .eq('id', trabajoId)
+        .eq('empresa_id', empresaId)
+        .eq('estado', 'aprobada');
+    }
 
     await evento(
       db,
       trabajoId,
-      `REGISTRADA: ${recurso} ${docid} (uuid ${guid}) · total ${doc.TotalAmount}` +
+      `${pendiente ? 'CREADO SIN CERRAR' : 'REGISTRADA'}: ${recurso} ${docid} (uuid ${guid}) · total ${doc.TotalAmount}` +
         (avisos.length ? `\n${avisos.join('\n')}` : ''),
-      { docid, uuid: guid, recurso },
+      { docid, uuid: guid, recurso, pendiente },
     );
 
-    return { trabajo_id: trabajoId, resultado: 'registrada', docid, detalle: avisos.join(' | ') };
+    return {
+      trabajo_id: trabajoId,
+      resultado: pendiente ? 'parcial' : 'registrada',
+      docid,
+      detalle: avisos.join(' | '),
+    };
   } catch (e) {
     if (e instanceof ErrorPropuesta) {
       await evento(db, trabajoId, `no registro: ${e.message}`);

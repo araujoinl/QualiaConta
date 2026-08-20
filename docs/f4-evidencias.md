@@ -1,5 +1,13 @@
 # F4 — Evidencias de las precondiciones (plan-f4-registrador.md §11.4)
 
+> **CUTOVER COMPLETO 2026-08-20 (plan corto, OK de Carlos).** Los SIETE tipos
+> registran desde `qualia-registrador`: FP/NCP/CB encendidos con backtest
+> 33/40 idénticos (7 diferencias = ediciones humanas posteriores, 0 bugs), y
+> ED/TE/PP/PC con backtest **63/63 idénticos**. Trigger de 'aprobada' + barrido
+> cada 10 min + kill-switch por empresa. El poller cede TODOS los tipos con el
+> modo en nube. Pendiente sólo la limpieza física de CodeBox (el server cayó
+> offline justo antes; ver el script de limpieza en deploy/).
+
 > «Ninguna se da por buena sin evidencia escrita»: este archivo ES el registro.
 > Una precondición sin su evidencia acá sigue abierta, diga lo que diga el chat.
 

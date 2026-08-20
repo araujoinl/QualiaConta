@@ -21,6 +21,13 @@ export class Catalogo {
   #cajaTarjetas = new Set<string>(); // 203.10, 203.11…
   #bancoRnc = new Map<string, string>(); // 'santacruz' -> '102012921' (vive en `nombre`)
   #tipoGastoDefecto: string | null = null;
+  #grupos = new Set<string>(); // UUIDs de cuentas agrupadoras (ADM no las afecta)
+  #nombreCuenta = new Map<string, string>(); // uuid -> Name (para mensajes)
+  // numero de cuenta del banco -> {codigo contable, moneda}; y tarjeta -> codigo.
+  // ADM tiene cuentas separadas por moneda: pagar cruzando monedas no es un
+  // pago, es una conversión — la decide un humano.
+  #cuentasBanco = new Map<string, { codigo: string; moneda: string }>();
+  #tarjetasNumero = new Map<string, string>();
 
   private constructor() {}
 
@@ -61,6 +68,15 @@ export class Catalogo {
           // El RNC no es un uuid: viaja en `nombre` (solo dígitos).
           if (f.nombre) c.#bancoRnc.set(clave.toLowerCase(), String(f.nombre).replace(/\D/g, ''));
           break;
+        case 'cuenta_banco': {
+          // clave = número de cuenta; nombre = 'codigo|MONEDA' ('101.06|DOP')
+          const [codigo, moneda] = String(f.nombre ?? '').split('|');
+          if (codigo && moneda) c.#cuentasBanco.set(clave, { codigo: codigo.trim(), moneda: moneda.trim() });
+          break;
+        }
+        case 'tarjeta_numero':
+          if (f.nombre) c.#tarjetasNumero.set(clave, String(f.nombre).trim());
+          break;
         case 'config':
           if (clave === 'tipo_gasto_defecto' && f.valor_uuid) c.#tipoGastoDefecto = f.valor_uuid;
           break;
@@ -76,8 +92,31 @@ export class Catalogo {
     for (const cta of await adm.paginar('Accounts')) {
       const cod = String(cta?.Code ?? cta?.AccountCode ?? '').trim();
       if (cod && cta?.ID && !c.#cuentas.has(cod)) c.#cuentas.set(cod, cta.ID);
+      if (cta?.ID) {
+        c.#nombreCuenta.set(String(cta.ID), String(cta?.Name ?? ''));
+        // ADM no afecta cuentas de GRUPO: hay que usar la subcuenta hoja.
+        if (cta?.GroupAccount === true) c.#grupos.add(String(cta.ID));
+      }
     }
     return c;
+  }
+
+  esGrupo(uuid: string): boolean {
+    return this.#grupos.has(String(uuid));
+  }
+
+  nombreCuenta(uuid: string): string {
+    return this.#nombreCuenta.get(String(uuid)) ?? '';
+  }
+
+  /** {codigo, moneda} de una cuenta de banco por su NÚMERO ('11122010023874'). */
+  cuentaBancoPorNumero(numero: string): { codigo: string; moneda: string } | null {
+    return this.#cuentasBanco.get(String(numero ?? '').trim()) ?? null;
+  }
+
+  /** Código contable de una tarjeta por su número enmascarado. */
+  tarjetaPorNumero(numero: string): string | null {
+    return this.#tarjetasNumero.get(String(numero ?? '').trim()) ?? null;
   }
 
   cuentaUuid(codigo: string): string | null {

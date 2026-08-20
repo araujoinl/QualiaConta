@@ -359,11 +359,12 @@ registrar_directo() {
   local nube_registra
   nube_registra=$(sql "select case when coalesce((select valor->>'modo' from qualia_modos where clave='modo:qualia-registrador' and empresa_id='$QUALIA_EMPRESA_ID'), (select valor->>'modo' from qualia_modos where clave='modo:qualia-registrador' and empresa_id is null), 'server') = 'nube' then 1 else 0 end")
   if [ "${nube_registra:-0}" = "1" ]; then
-    case "$doc" in
-      VendorBills|VendorCreditNotes|BankCharges)
-        log "no registro ($doc $id): el registro lo maneja la nube"
-        return 0 ;;
-    esac
+    # Desde el 2026-08-20 la nube porta LOS SIETE tipos (backtest 96/103
+    # idénticos, diferencias todas explicadas): con el modo en nube esta mesa
+    # no registra NADA — dos escritores con mutex distintos es el choque de
+    # correlativo que el turno de la nube existe para impedir.
+    log "no registro ($doc $id): el registro lo maneja la nube"
+    return 0
   fi
 
   if ! script=$(script_de_registro "$doc"); then
