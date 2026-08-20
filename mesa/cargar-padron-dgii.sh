@@ -57,7 +57,7 @@ registrar "bajado ($(wc -c <"$TMP/padron.zip" | tr -d ' ') bytes)"
 # separados por barra, y se sube por lotes al endpoint REST con upsert (la
 # tabla tiene el RNC como llave, así que re-cargar es idempotente).
 NUBE_URL="$NUBE_URL" NUBE_KEY="$NUBE_KEY" python3 - "$TMP/padron.zip" <<'PY' >>"$LOG" 2>&1
-import io, json, os, sys, urllib.error, urllib.request, zipfile
+import io, json, os, sys, time, urllib.error, urllib.request, zipfile
 
 url = os.environ["NUBE_URL"]
 key = os.environ["NUBE_KEY"]
@@ -88,17 +88,33 @@ def subir(filas):
             "Prefer": "resolution=merge-duplicates,return=minimal",
         },
     )
-    try:
-        with urllib.request.urlopen(req, timeout=180) as r:
-            if r.status >= 300:
-                raise RuntimeError(f"HTTP {r.status}")
-    except urllib.error.HTTPError as e:
-        # El cuerpo del error es lo único que dice QUÉ pasó (PostgREST manda el
-        # mensaje de Postgres ahí). Sin esto, un fallo del lote se lee como un
-        # "HTTP 500" pelado y no hay por dónde agarrarlo.
-        detalle = e.read()[:400].decode(errors="replace")
-        raise RuntimeError(f"HTTP {e.code}: {detalle}") from None
-    return len(filas)
+    # Reintentos: la base a veces corta UN lote con statement timeout (57014)
+    # si anda ocupada — autovacuum digiriendo una carga previa, el espejo
+    # horario. Es transitorio: el mismo lote pasa segundos después. Sin esto,
+    # la corrida mensual —que va sola, sin nadie mirando— muere por un lote
+    # (pasó en el estreno de la Action, 2026-08-20, run 32403275061).
+    ESPERAS = (5, 20, 60)
+    for intento in range(len(ESPERAS) + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=180) as r:
+                if r.status >= 300:
+                    raise RuntimeError(f"HTTP {r.status}")
+            return len(filas)
+        except urllib.error.HTTPError as e:
+            # El cuerpo del error es lo único que dice QUÉ pasó (PostgREST
+            # manda el mensaje de Postgres ahí). Sin esto, un fallo del lote
+            # se lee como un "HTTP 500" pelado y no hay por dónde agarrarlo.
+            detalle = e.read()[:400].decode(errors="replace")
+            transitorio = e.code in (502, 503, 504) or (e.code == 500 and "57014" in detalle)
+            if not transitorio or intento == len(ESPERAS):
+                raise RuntimeError(f"HTTP {e.code}: {detalle}") from None
+            print(f"  lote reintenta tras HTTP {e.code} (espero {ESPERAS[intento]}s)", flush=True)
+            time.sleep(ESPERAS[intento])
+        except (urllib.error.URLError, TimeoutError) as e:
+            if intento == len(ESPERAS):
+                raise
+            print(f"  lote reintenta tras error de red: {e} (espero {ESPERAS[intento]}s)", flush=True)
+            time.sleep(ESPERAS[intento])
 
 def limpio(v):
     v = v.strip()
