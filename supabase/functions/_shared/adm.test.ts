@@ -99,20 +99,34 @@ Deno.test('readback: data null es error, no ausencia (🪦 NCP00000006)', async 
   await assertRejects(() => cli.readback('VendorBills', 'uuid-de-una-ncp'), Error, 'readback vacío');
 });
 
-Deno.test('paginar desanida tuplas Item1 y corta cuando la página viene corta', async () => {
+Deno.test('paginar entiende la tupla {Item1:[filas], Item2:total} de BankBankTransfers', async () => {
+  // Forma medida contra producción el 2026-08-20: data NO es la lista — es un
+  // objeto con las filas en Item1 y el conteo total en Item2.
   let llamadas = 0;
   const stub = (() => {
     llamadas++;
     const filas = llamadas === 1
-      ? Array.from({ length: 50 }, (_, i) => ({ Item1: { n: i } }))
-      : [{ Item1: { n: 50 } }];
-    return Promise.resolve(new Response(JSON.stringify({ success: true, data: filas })));
+      ? Array.from({ length: 50 }, (_, i) => ({ DocID: `TE${i}` }))
+      : [{ DocID: 'TE50' }];
+    return Promise.resolve(
+      new Response(JSON.stringify({ success: true, data: { Item1: filas, Item2: 216 } })),
+    );
   }) as typeof fetch;
   const cli = new AdmCliente(CRED, stub);
   const filas = await cli.paginar('BankBankTransfers');
   assertEquals(filas.length, 51);
-  assertEquals(filas[0], { n: 0 });
+  assertEquals(filas[0], { DocID: 'TE0' });
   assertEquals(llamadas, 2);
+});
+
+Deno.test('paginar sigue entendiendo la lista plana', async () => {
+  const stub = (() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ success: true, data: [{ DocID: 'FP1' }, { DocID: 'FP2' }] })),
+    )) as typeof fetch;
+  const cli = new AdmCliente(CRED, stub);
+  const filas = await cli.paginar('VendorBills');
+  assertEquals(filas.map((f) => f.DocID), ['FP1', 'FP2']);
 });
 
 Deno.test('sanear borra la company de los textos', () => {

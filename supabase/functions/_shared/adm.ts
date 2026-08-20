@@ -156,7 +156,11 @@ export class AdmCliente {
    * Paginado del fuente: `skip` es obligatorio y `take` se ignora; ADM
    * devuelve 50 por página SIEMPRE y se avanza por lo devuelto. `cortar`
    * permite parar temprano (el barrido de duplicados corta a 6 meses).
-   * Algunos recursos devuelven tuplas `{Item1, Item2}`: se desanidan acá.
+   *
+   * La tupla de BankBankTransfers, medida el 2026-08-20 contra producción:
+   * `data` NO es la lista — es `{Item1: [filas], Item2: <total>}`. La primera
+   * versión de esto asumía tupla POR FILA y desanidaba `f.Item1` de cada
+   * elemento: el cuadre gritó deriva_api en su corrida inaugural.
    */
   // deno-lint-ignore no-explicit-any
   async paginar(ruta: string, cortar?: (lote: any[]) => boolean): Promise<any[]> {
@@ -166,9 +170,9 @@ export class AdmCliente {
     for (let pagina = 0; pagina < MAX_PAGINAS; pagina++) {
       const d = await this.get(ruta, { skip });
       let lote = d.data ?? [];
-      if (!Array.isArray(lote)) lote = [lote];
-      // deno-lint-ignore no-explicit-any
-      lote = lote.map((f: any) => (f && typeof f === 'object' && 'Item1' in f ? f.Item1 : f));
+      if (!Array.isArray(lote)) {
+        lote = lote && typeof lote === 'object' && Array.isArray(lote.Item1) ? lote.Item1 : [lote];
+      }
       if (!lote.length) break;
       filas.push(...lote);
       if (cortar && cortar(lote)) break;
