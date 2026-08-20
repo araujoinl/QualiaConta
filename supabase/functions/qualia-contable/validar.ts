@@ -17,6 +17,7 @@ import {
   evaluarBrechaItbis,
   type LineaItems,
   MOTIVO_SIN_ITBIS,
+  netoCent,
   NOMBRE_RENGLON_AJUSTE,
   type PrecedenteBrecha,
   textoDetalleBrecha,
@@ -31,6 +32,14 @@ export const UMBRAL_CUADRE = 0.05;
 // Los documentos que se arman con líneas de ITEMS (como la pantalla de compras
 // de ADM). El resto va en partida doble.
 const DOC_ITEMS = new Set(['VendorBills', 'VendorCreditNotes']);
+// Los que CONSUMEN `tasa_usd` antes del POST: `registrar-en-adm.py` (facturas y
+// notas de crédito) y `registrar-cargo-bancario.py:335`, todos con fallback
+// silencioso a la tasa de sistema de ADM cuando el campo falta.
+const DOC_TASA_USD = new Set(['VendorBills', 'VendorCreditNotes', 'BankCharges']);
+// El piso de plausibilidad del registrador (`if tasa < 5`, registrar-en-adm.py):
+// ninguna moneda extranjera que esta empresa toca baja de 5. Si allá cambia,
+// acá también — son LA misma regla en dos runtimes.
+const TASA_USD_PISO = 5;
 // El ÚNICO que se registra sin `lineas[]`: `registrar-pago-factura.py` no lee
 // `p["lineas"]` en ninguna línea del archivo —arma `Documents[]` desde
 // `asignacion.facturas` y manda el payload SIN `Accounts[]`, «el asiento lo
@@ -285,10 +294,24 @@ export function validarPropuesta(
       // el 2026-08-19, FP00001122: 600 al 10% → neto 540, total 637.20). En la
       // nota de crédito el descuento se endereza con abs() igual que precio e
       // itbis (normalizar_nota_credito).
+      // Y se redondea half-up POR RENGLÓN antes de sumar, con la misma
+      // aritmética exacta que la brecha (`netoCent`): sumar los productos sin
+      // redondear acumula hasta medio centavo por renglón, y con 11+ renglones
+      // descontados en frontera .xx5 el float rechazaba un papel que ADM
+      // reproduce exacto. Un renglón no representable (signo raro, decimales
+      // de más) cae al producto en float — su error lo nombran las otras
+      // compuertas.
       const base = filas.reduce((s, l) => {
+        const cantidad = numeroDe(l.cantidad) ?? 0;
+        const precio = numeroDe(l.precio) ?? 0;
         const d = numeroDe(l.descuento) ?? 0;
         const desc = abs ? Math.abs(d) : d;
-        return s + (numeroDe(l.precio) ?? 0) * (numeroDe(l.cantidad) ?? 0) * (1 - desc / 100);
+        try {
+          const signo = precio * cantidad < 0 ? -1 : 1;
+          return s + signo * Number(netoCent(Math.abs(cantidad), Math.abs(precio), desc)) / 100;
+        } catch {
+          return s + precio * cantidad * (1 - desc / 100);
+        }
       }, 0);
       const itbis = filas.reduce((s, l) => s + (numeroDe(l.itbis) ?? 0), 0);
       const total = round2(base + itbis);
@@ -422,34 +445,48 @@ function huecosDeRegistro(
   // Los seis scripts caen a `p.get("moneda") or "DOP"`: ausente y DOP son
   // indistinguibles para ellos, así que una factura en USD (PIER 17, flete de
   // importación) quedaría registrada en pesos sin que nadie se entere.
-  const moneda = String(p.moneda ?? '').trim().toUpperCase();
+  const monedaCruda = String(p.moneda ?? '').trim();
+  const moneda = monedaCruda.toUpperCase();
   if (moneda === '') {
     falta('moneda', 'falta `moneda`: el registrador cae a "DOP" en silencio, y un documento en USD registrado en pesos no se descubre hasta la conciliación');
-  } else if (moneda !== 'DOP' && DOC_ITEMS.has(doc)) {
-    // ── tasa_usd: la exigencia temprana de la tasa de cambio ────────────────
-    // El registrador tiene fallback —cae a la tasa de sistema de ADM, sólo
-    // avisando por consola— pero esa tasa puede no ser la que el proveedor
-    // imprimió, y nadie lee esa consola. La que manda es la IMPRESA en el
-    // papel (Account One la imprime como «Tasa»), así que se exige acá, antes
-    // de que un humano apruebe. Y con el piso de plausibilidad del registrador:
-    // `tasa_usd: 1` reproduce exactamente la FP00001118 (US$2,306.15 asentados
-    // como RD$2,306 en vez de ~RD$134,000); ninguna moneda extranjera que esta
-    // empresa toca baja de 5.
-    const tasaUsd = numeroDe(p.tasa_usd);
-    if (tasaUsd === null) {
+  } else {
+    // La moneda es el CurrencyID LITERAL de ADM y no todos los registradores
+    // la normalizan: `registrar-cargo-bancario.py` la manda cruda (línea 354)
+    // y su `tasa_cambio()` matchea case-sensitive — con 'usd' no encuentra la
+    // moneda, devuelve 0 y el documento sale con ExchangeRate 0 en silencio.
+    if (monedaCruda !== moneda) {
       falta(
-        'tasa_usd',
-        `la factura está en ${moneda} y no trae \`tasa_usd\`: es la tasa de cambio IMPRESA en el papel. ` +
-          'Sin ella el registrador cae a la tasa de sistema de ADM avisando sólo por consola — y con tasa 1.0 ' +
-          'el gasto queda dividido por ~60 (la FP00001118 quedó asentada por RD$2,306 siendo ~RD$134,000). ' +
-          'Si el papel no la imprime, preguntá',
+        'moneda',
+        `\`moneda\` '${monedaCruda}' va en MAYÚSCULAS ('${moneda}'): es el CurrencyID literal de ADM, ` +
+          'y el registrador de cargos bancarios la manda cruda — en minúsculas la tasa de ADM no matchea y el documento sale con ExchangeRate 0',
       );
-    } else if (tasaUsd < 5) {
-      falta(
-        'tasa_usd',
-        `\`tasa_usd\` ${tasaUsd} no es plausible (piso 5 del registrador): parece el 1.0 del bug FP00001118 ` +
-          'o un placeholder. La tasa real está impresa en el papel',
-      );
+    }
+    if (moneda !== 'DOP' && DOC_TASA_USD.has(doc)) {
+      // ── tasa_usd: la exigencia temprana de la tasa de cambio ──────────────
+      // Los registradores que la consumen (facturas, notas de crédito y cargos
+      // bancarios) tienen fallback —caen a la tasa de sistema de ADM, sólo
+      // avisando por consola— pero esa tasa puede no ser la que el papel
+      // imprimió, y nadie lee esa consola. La que manda es la IMPRESA (Account
+      // One la imprime como «Tasa»), así que se exige acá, antes de que un
+      // humano apruebe. Y con el piso de plausibilidad del registrador:
+      // `tasa_usd: 1` reproduce exactamente la FP00001118 (US$2,306.15
+      // asentados como RD$2,306 en vez de ~RD$134,000).
+      const tasaUsd = numeroDe(p.tasa_usd);
+      if (tasaUsd === null) {
+        falta(
+          'tasa_usd',
+          `el documento está en ${moneda} y no trae \`tasa_usd\`: es la tasa de cambio IMPRESA en el papel. ` +
+            'Sin ella el registrador cae a la tasa de sistema de ADM avisando sólo por consola — y con tasa 1.0 ' +
+            'el gasto queda dividido por ~60 (la FP00001118 quedó asentada por RD$2,306 siendo ~RD$134,000). ' +
+            'Si el papel no la imprime, preguntá',
+        );
+      } else if (tasaUsd < TASA_USD_PISO) {
+        falta(
+          'tasa_usd',
+          `\`tasa_usd\` ${tasaUsd} no es plausible (piso ${TASA_USD_PISO} del registrador): parece el 1.0 del ` +
+            'bug FP00001118 o un placeholder. La tasa real está impresa en el papel',
+        );
+      }
     }
   }
 

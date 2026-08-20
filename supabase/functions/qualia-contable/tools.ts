@@ -1030,7 +1030,7 @@ const PROPUESTA_SCHEMA = (description: string): Dic => ({
     documento_adm: texto('VendorBills | VendorCreditNotes | BankCharges | BankBankTransfers | BillPayments | AccountPayments | Journals'),
     fecha: texto('AAAA-MM-DD, la del documento'),
     moneda: texto('DOP | USD…'),
-    tasa_usd: { type: 'number', description: 'moneda ≠ DOP: la tasa de cambio IMPRESA en el papel (obligatoria en factura; nunca 1.0)' },
+    tasa_usd: { type: 'number', description: 'moneda ≠ DOP: la tasa de cambio IMPRESA en el papel (obligatoria en factura, nota de crédito y cargo bancario; nunca 1.0)' },
     monto: { type: 'number', description: 'el total del documento (en Journals, la suma de los débitos)' },
     itbis: { type: 'number' },
     proveedor: texto('en factura: el nombre del emisor'),
