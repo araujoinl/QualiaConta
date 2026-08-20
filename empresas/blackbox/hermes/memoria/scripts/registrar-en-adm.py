@@ -434,8 +434,12 @@ def normalizar_nota_credito(p):
     p = dict(p)
     p["monto"] = abs(float(p.get("monto") or 0))
     p["itbis"] = abs(float(p.get("itbis") or 0))
+    # `descuento` se endereza igual que precio/itbis: una NC capturada toda en
+    # negativo trae -10 ahi, y sin el abs() moriria en el guard del porcentaje
+    # con un mensaje que culpa a la captura estando bien capturada.
     p["lineas"] = [dict(l, precio=abs(float(l.get("precio") or 0)),
-                        itbis=abs(float(l.get("itbis") or 0)))
+                        itbis=abs(float(l.get("itbis") or 0)),
+                        descuento=abs(float(l.get("descuento") or 0)))
                    for l in (p.get("lineas") or [])]
     return p
 
@@ -544,7 +548,9 @@ def armar_payload(p, relationship_id, payment_term_id,
     # quedo asentada por RD$2,306 siendo ~RD$134,000). Manda la tasa del papel
     # (`tasa_usd`); sin ella, la configurada en ADM, avisando — es una tasa de
     # sistema y puede no ser la que el proveedor imprimio.
-    moneda = p.get("moneda") or "DOP"
+    # Normalizada: "dop" o "DOP " del modelo no puede mandar una factura en
+    # pesos por la rama de moneda extranjera (donde moriria sin tasa).
+    moneda = str(p.get("moneda") or "DOP").strip().upper() or "DOP"
     tasa = 1.0
     if moneda != "DOP":
         tasa = float(p.get("tasa_usd") or 0)
@@ -557,6 +563,13 @@ def armar_payload(p, relationship_id, payment_term_id,
                       "dividido por ~60; no registro asi." % moneda)
             print("  tasa: la propuesta no trae `tasa_usd`; va la de ADM (%.4f). "
                   "Si el papel imprime otra, corregi la propuesta." % tasa)
+        # Piso de plausibilidad: `tasa_usd: 1` pasa el guard de arriba y
+        # reproduce exactamente la FP00001118 (US$2,306 asentados como
+        # RD$2,306). Ninguna moneda extranjera que esta empresa toca baja de 5.
+        if tasa < 5:
+            morir("tasa %.4f para %s no es plausible (parece el 1.0 del bug "
+                  "FP00001118 o un placeholder). La tasa real esta impresa en "
+                  "el papel; corregi `tasa_usd` en la propuesta." % (tasa, moneda))
 
     payload = {
         "DocDate": p.get("fecha"),
@@ -649,8 +662,10 @@ def verificar_cuadre(p, payload):
     base_gravada = 0.0
     exento = 0.0
     for item in payload["Items"]:
-        neto = float(cuadre.r2(item["Quantity"] * item["Price"]
-                               * (1 - float(item.get("DiscountPercent") or 0) / 100.0)))
+        # La MISMA implementacion que uso el cuadre, en Decimal: una segunda
+        # formula en float diverge un centavo en fronteras .xx5 y este chequeo
+        # rechazaria la factura que cuadrar_items acababa de arreglar.
+        neto = float(cuadre.neto_linea(item))
         if item["TaxScheduleID"]:
             base_gravada += neto
             itbis_adm += float(cuadre.r2(neto * item["TaxPercent"] / 100.0))

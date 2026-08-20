@@ -356,7 +356,15 @@ es el banco, y ya perdiste en la pregunta 1. Eso salió como CB00000258.
   no el monto). Aplastar el neto en el precio deja Subtotal/Descuento del
   documento distintos a los del papel: la FP00001065 salió con 540 pelado
   siendo 600 al 10% y la contable la corrigió a mano. El ITBIS del papel
-  cruza contra la base DESCONTADA (97.20 = 18% de 540, no de 600).
+  cruza contra la base DESCONTADA (97.20 = 18% de 540, no de 600) —
+  verificado contra ADM el 2026-08-19 (FP00001122) y en el precedente del
+  libro `2026-08-03-account-one-outsourcing-fiscal-contable.md`.
+  **OJO — transición**: la compuerta de cuadre del validador aún no conoce
+  `descuento` (suma `precio×cantidad` bruto) y va a responder «no cuadra»
+  a una propuesta bien capturada. Si te pasa, NO aplastes el neto en el
+  precio para complacerla: es exactamente el error que esto corrige —
+  `preguntar_al_humano` citando esta regla, hasta que el validador se
+  actualice.
 
 Si tu razonamiento nombra una cuenta que no le toca al tipo que elegiste, **la
 propuesta no sale**: estás describiendo un documento y etiquetando otro. Pasó el

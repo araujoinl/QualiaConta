@@ -34,19 +34,30 @@ def r2(x):
     return Decimal(str(x)).quantize(CENTAVO, rounding=ROUND_HALF_UP)
 
 
-def total_segun_adm(items):
-    """Lo que ADM va a guardar como total, dados los renglones que se le mandan.
+def neto_linea(item):
+    """El neto de UN renglon como ADM lo guarda: cantidad x precio x
+    (1 - descuento/100), redondeado half-up, TODO en Decimal.
 
-    El descuento entra ANTES del redondeo del neto: en la FP00001065 (600.00 al
-    10%) ADM guarda neto 540.00 y cobra el ITBIS sobre eso, que es tambien como
-    lo imprime el papel de Account One (Subtotal 600 / Descuento 60 / Neto 540).
-    Es la unica evidencia que hay; si un descuento con decimales descuadra por
-    un centavo, sospechar del orden del redondeo."""
+    Es la unica implementacion a proposito: verificar_cuadre (en el
+    registrador) la comparte con total_segun_adm para que la prediccion y el
+    chequeo pre-POST no puedan divergir. En float divergen de verdad:
+    3 x 111.10 al 5% da 316.63499... que redondea a 316.63, mientras el
+    Decimal exacto 316.635 redondea a 316.64 — un centavo que hace morir con
+    "NO CUADRA" una factura que el cuadre acababa de arreglar.
+
+    El descuento entra ANTES del redondeo: verificado en vivo el 2026-08-19
+    con la FP00001122 (600.00 al 10% via API) y la FP00001065 (por UI) — ADM
+    recalculo Subtotal 600 / Descuento 60 / Neto 540 / Total 637.20 exactos."""
+    desc = Decimal(str(item.get("DiscountPercent") or 0))
+    return r2(Decimal(str(item["Quantity"])) * Decimal(str(item["Price"]))
+              * (Decimal("1") - desc / Decimal("100")))
+
+
+def total_segun_adm(items):
+    """Lo que ADM va a guardar como total, dados los renglones que se le mandan."""
     total = Decimal("0")
     for it in items:
-        desc = Decimal(str(it.get("DiscountPercent") or 0))
-        net = r2(Decimal(str(it["Quantity"])) * Decimal(str(it["Price"]))
-                 * (Decimal("1") - desc / Decimal("100")))
+        net = neto_linea(it)
         pct = Decimal(str(it.get("TaxPercent") or 0))
         tax = r2(net * pct / Decimal("100")) if it.get("TaxScheduleID") else Decimal("0")
         total += net + tax
@@ -114,10 +125,13 @@ def cuadrar_items(items, total_papel, margen_centavos=25):
     # Los EXENTOS primero: mover su precio cambia el total uno a uno, sin que el
     # ITBIS se mueva atras. Despues los demas, del mas grande al mas chico,
     # donde un centavo pesa relativamente menos.
+    # El importe que ordena es el NETO (con descuento): con el bruto, una linea
+    # de 5.000 al 40% (neto 3.000) le ganaria el puesto a una de 4.000 sin
+    # descuento y el centavo se moveria en el renglon equivocado.
     orden = sorted(
         range(len(items)),
         key=lambda i: (bool(items[i].get("TaxScheduleID")),
-                       -abs(float(items[i]["Quantity"]) * float(items[i]["Price"]))),
+                       -abs(float(neto_linea(items[i])))),
     )
     # El barrido va por PRECISION, despues por PASO y despues por renglon. Ese
     # orden es el que decide cual de todos los arreglos posibles gana, y esta
@@ -129,7 +143,6 @@ def cuadrar_items(items, total_papel, margen_centavos=25):
         for paso in range(1, margen_centavos + 1):
             for idx in orden:
                 original = Decimal(str(items[idx]["Price"]))
-                cantidad = Decimal(str(items[idx]["Quantity"])) or Decimal("1")
                 for signo in (1, -1):
                     candidato = redondear(
                         original + Decimal(signo * paso) * unidad, decimales)
@@ -138,12 +151,13 @@ def cuadrar_items(items, total_papel, margen_centavos=25):
                     prueba = [dict(x) for x in items]
                     prueba[idx]["Price"] = float(candidato)
                     if total_segun_adm(prueba) == objetivo:
-                        desc = Decimal(str(items[idx].get("DiscountPercent") or 0))
+                        # `movido` es cuanto se movio EL TOTAL, no el precio:
+                        # se deriva de la misma aritmetica que decidio el
+                        # ajuste, asi no hay una segunda formula que mantener.
                         return prueba, {
                             "renglon": idx,
                             "antes": original,
                             "despues": candidato,
-                            "movido": r2((candidato - original) * cantidad
-                                         * (Decimal("1") - desc / Decimal("100"))),
+                            "movido": objetivo - total_segun_adm(items),
                         }
     return items, None

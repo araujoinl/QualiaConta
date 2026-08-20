@@ -53,12 +53,15 @@ def items_de(caso):
     ITBIS capturado — que es lo que hace `resolver_tasa_linea` alla."""
     items = []
     for l in caso["lineas"]:
-        base = float(l.get("cantidad") or 1) * float(l.get("precio") or 0)
+        desc = float(l.get("descuento") or 0)
+        base = (float(l.get("cantidad") or 1) * float(l.get("precio") or 0)
+                * (1 - desc / 100.0))
         imp = float(l.get("itbis") or 0)
         pct = round(imp / base * 100) if base > 0 and imp > 0 else 0
         items.append({
             "Quantity": float(l.get("cantidad") or 1),
             "Price": float(l.get("precio") or 0),
+            "DiscountPercent": desc,
             "TaxScheduleID": ("sched" if pct else None),
             "TaxPercent": pct,
         })
