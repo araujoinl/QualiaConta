@@ -297,6 +297,12 @@ export async function registrarTrabajo(
     resultado,
     detalle,
   });
+  // El motivo de un freno o un error va TAMBIÉN a la fila (`error_detalle`),
+  // no solo a la bitácora: la mesa muestra la fila, y un freno que queda solo
+  // en qualia_eventos es un freno mudo — la pantalla decía «sin registrar» sin
+  // decir por qué (pedido de Carlos, 2026-08-20). El éxito lo limpia.
+  const anotar = (texto: string) =>
+    db.from('qualia_trabajos').update({ error_detalle: texto.slice(0, 500) }).eq('id', trabajoId);
 
   const { data: fila, error } = await db
     .from('qualia_trabajos')
@@ -321,6 +327,7 @@ export async function registrarTrabajo(
 
   if (!(await escrituraEncendida(db, empresaId))) {
     await evento(db, trabajoId, 'registro_frenado: el kill-switch de escritura está apagado (qualia_config escritura)');
+    await anotar('registro_frenado: el kill-switch de escritura está apagado');
     await db.from('qualia_escrituras').insert({
       empresa_id: empresaId,
       trabajo_id: trabajoId,
@@ -345,6 +352,7 @@ export async function registrarTrabajo(
     const motivo = String((claim as Dic)?.motivo ?? 'sin_claim');
     if (motivo === 'tope_diario') {
       await evento(db, trabajoId, `registro_frenado: tope diario de escrituras alcanzado (${tope})`);
+      await anotar(`registro_frenado: tope diario de escrituras alcanzado (${tope})`);
     }
     return salir(motivo);
   }
@@ -369,14 +377,16 @@ export async function registrarTrabajo(
 
     // Guardas duras ANTES de armar nada.
     const fechaDoc = String(p.fecha ?? '').slice(0, 10);
-    const bd = backdatingOk(fechaDoc, p.waiver_backdating === true);
+    const bd = backdatingOk(fechaDoc);
     if (!bd.ok) {
       await evento(db, trabajoId, `registro_frenado: ${bd.motivo}`);
+      await anotar(`registro_frenado: ${bd.motivo}`);
       return salir('frenada', bd.motivo);
     }
     const per = await periodoAbierto(adm, documento, fechaDoc);
     if (!per.ok) {
       await evento(db, trabajoId, `registro_frenado: ${per.motivo}`);
+      await anotar(`registro_frenado: ${per.motivo}`);
       return salir('frenada', per.motivo);
     }
     const tMonto = await topeMonto(empresaId);
@@ -386,6 +396,10 @@ export async function registrarTrabajo(
         trabajoId,
         `registro_frenado: el monto ${Number(p.monto).toFixed(2)} supera el tope de ${tMonto} — ` +
           `doble llave: espera un confirmar humano (subí el tope por config o registralo a mano)`,
+      );
+      await anotar(
+        `registro_frenado: el monto ${Number(p.monto).toFixed(2)} supera el tope de ${tMonto} — ` +
+          `subí el tope por config o registralo a mano`,
       );
       await db.from('qualia_escrituras').insert({
         empresa_id: empresaId,
@@ -419,7 +433,7 @@ export async function registrarTrabajo(
         reference: referencia,
         adoptado: true,
       };
-      await db.from('qualia_trabajos').update({ propuesta: nueva }).eq('id', trabajoId).eq('empresa_id', empresaId);
+      await db.from('qualia_trabajos').update({ propuesta: nueva, error_detalle: null }).eq('id', trabajoId).eq('empresa_id', empresaId);
       await db.from('qualia_trabajos').update({ estado: 'registrada' })
         .eq('id', trabajoId).eq('empresa_id', empresaId).eq('estado', 'aprobada');
       await evento(db, trabajoId, `YA REGISTRADO: ${docid} trae la referencia de este movimiento (${referencia}). Adoptado y cerrado.`);
@@ -442,6 +456,7 @@ export async function registrarTrabajo(
         const nom = candadoNomina(armado.cuentas);
         if (!nom.ok) {
           await evento(db, trabajoId, `registro_frenado: ${nom.motivo}`);
+          await anotar(`registro_frenado: ${nom.motivo}`);
           return salir('frenada', nom.motivo);
         }
         payload = armado.payload;
@@ -575,6 +590,7 @@ export async function registrarTrabajo(
         `el POST murió sin respuesta (${(e as Error).message.slice(0, 150)}): NO reintento — ` +
           `buscá el documento por la referencia '${referencia}' antes de tocar nada`,
       );
+      await anotar(`el POST a ADM murió sin respuesta — buscá el documento por la referencia '${referencia}' antes de tocar nada`);
       return salir('post_sin_respuesta');
     }
 
@@ -595,6 +611,7 @@ export async function registrarTrabajo(
       if (!d.success || typeof d.data !== 'string') {
         await cerrarLedger('fallida', { detalle: String(d.message ?? 'sin mensaje').slice(0, 300) });
         await evento(db, trabajoId, `ADM rechazó el ${recurso}: ${String(d.message ?? '').slice(0, 300)}`);
+        await anotar(`ADM rechazó el ${recurso}: ${String(d.message ?? '').slice(0, 300)}`);
         return salir('rechazada_por_adm', String(d.message ?? '').slice(0, 200));
       }
     }
@@ -605,6 +622,7 @@ export async function registrarTrabajo(
     if (String(doc?.ID ?? '').toLowerCase() !== guid.toLowerCase()) {
       await cerrarLedger('parcial', { adm_uuid: guid, detalle: 'readback devolvió OTRO documento' });
       await evento(db, trabajoId, `el readback devolvió OTRO documento — buscá por NCF antes de reintentar (uuid ${guid})`);
+      await anotar(`el readback devolvió OTRO documento — buscá por NCF antes de reintentar (uuid ${guid})`);
       return salir('readback_raro', guid);
     }
     const docid = String(doc.DocID ?? '');
@@ -663,7 +681,7 @@ export async function registrarTrabajo(
         monto: Number(p.monto ?? 0),
       };
     }
-    await db.from('qualia_trabajos').update({ propuesta: nuevaProp }).eq('id', trabajoId).eq('empresa_id', empresaId);
+    await db.from('qualia_trabajos').update({ propuesta: nuevaProp, error_detalle: null }).eq('id', trabajoId).eq('empresa_id', empresaId);
 
     await cerrarLedger(pendiente ? 'parcial' : 'confirmada', {
       adm_uuid: guid,
@@ -704,9 +722,11 @@ export async function registrarTrabajo(
   } catch (e) {
     if (e instanceof ErrorPropuesta) {
       await evento(db, trabajoId, `no registro: ${e.message}`);
+      await anotar(`no registro: ${e.message}`);
       return salir('propuesta_rechazada', e.message.slice(0, 300));
     }
     await evento(db, trabajoId, `error del registrador: ${(e as Error).message.slice(0, 300)}`);
+    await anotar(`error del registrador: ${(e as Error).message.slice(0, 300)}`);
     return salir('error', (e as Error).message.slice(0, 300));
   } finally {
     await db.rpc('qualia_soltar_turno', { p_empresa: empresaId, p_invocacion: invocacion });

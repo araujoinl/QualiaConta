@@ -39,30 +39,20 @@ export async function topeDiario(empresaId: string): Promise<number> {
 }
 
 /**
- * Backdating (§3.4): un documento del mes M se registra hasta el día 5 del mes
- * M+1, EN HORA LOCAL de República Dominicana. Después, sólo con waiver humano
- * explícito en la propuesta (`waiver_backdating: true`, lo pone la web).
+ * Fecha del documento: legible y no futura, nada más. La regla del día 5
+ * (§3.4 del plan de encendido) se retiró el 2026-08-20 por decisión de Carlos:
+ * la mesa existe justamente para subir papeles de meses anteriores, y el freno
+ * real contra descuadrar lo declarado es el período cerrado en ADM
+ * (`periodoAbierto`), que sigue en pie y no tiene waiver.
  */
-export function backdatingOk(fechaDoc: string, waiver: boolean): Veredicto {
+export function backdatingOk(fechaDoc: string): Veredicto {
   const f = String(fechaDoc ?? '').slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return { ok: false, motivo: `fecha ilegible: '${fechaDoc}'` };
-  if (waiver) return OK;
 
   // Hora local RD (UTC-4, sin horario de verano).
-  const ahora = new Date(Date.now() - 4 * 3600 * 1000);
-  const hoy = ahora.toISOString().slice(0, 10);
-  const [ay, am] = [ahora.getUTCFullYear(), ahora.getUTCMonth()];
-  const [dy, dm] = [Number(f.slice(0, 4)), Number(f.slice(5, 7)) - 1];
-
+  const hoy = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
   if (f > hoy) return { ok: false, motivo: `fecha futura: ${f}` };
-  const mesesAtras = (ay - dy) * 12 + (am - dm);
-  if (mesesAtras === 0) return OK;
-  if (mesesAtras === 1 && ahora.getUTCDate() <= 5) return OK;
-  return {
-    ok: false,
-    motivo: `backdating: el documento es de ${f.slice(0, 7)} y la ventana del mes anterior ` +
-      `cerró el día 5 — sólo un waiver humano explícito lo levanta`,
-  };
+  return OK;
 }
 
 // Qué bandera de cierre de período aplica a cada recurso. GL cierra todo.

@@ -121,7 +121,15 @@ Por tipo, TODAS estas condiciones:
 - **Tope diario**: máx 20 escrituras autónomas/día; superado → el resto del día todo en propuesta + alerta.
 - **Crear maestros (artículos, proveedores, cuentas) siempre pide OK**: mientras el rol lo niegue, lo crea el humano en la UI y el agente lo espera en `esperando_respuesta`; si más adelante se concede `Vendors`/`Items` POST, será solo con OK explícito por pieza en la mesa, jamás autónomo.
 - **Anular/editar jamás autónomo**: el rol no lo permite y el flujo tampoco lo pide.
-- **Sin backdating fiscal**: nada con fecha de un mes anterior después del día 5 del mes siguiente (el 606 de ese mes ya está en manos de la contable externa); períodos cerrados nunca.
+- ~~**Sin backdating fiscal**: nada con fecha de un mes anterior después del día 5 del mes siguiente (el 606 de ese mes ya está en manos de la contable externa); períodos cerrados nunca.~~
+  **Retirada 2026-08-20 por decisión de Carlos**, el mismo día que entró en
+  vigor: la mesa existe justamente para subir papeles de meses anteriores, y la
+  regla frenaba ese flujo (primer caso: factura Tupaq E310000002191 del 31/07).
+  Queda como freno de fechas SOLO fecha ilegible y fecha futura; la protección
+  contra descuadrar lo declarado es el período cerrado en ADM, que sigue en pie
+  y sin waiver. Además, desde esa fecha todo freno o error del registrador se
+  escribe en `error_detalle` de la fila y la mesa lo muestra — un freno mudo
+  parecía atraso.
 - **Emitir, firmar e-CF y declarar: jamás** (rol + flujo + monitoreo).
 
 ### 3.5 Detalle por tipo

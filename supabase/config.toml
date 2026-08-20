@@ -38,3 +38,12 @@ verify_jwt = false
 
 [functions.qualia-padron-dgii]
 verify_jwt = false
+
+[functions.qualia-registrador]
+verify_jwt = false
+
+[functions.qualia-cuadre]
+verify_jwt = false
+
+[functions.qualia-espejo]
+verify_jwt = false
