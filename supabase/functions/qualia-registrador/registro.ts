@@ -360,7 +360,16 @@ export async function registrarTrabajo(
     p_empresa: empresaId,
     p_invocacion: invocacion,
   });
-  if (!turno) return salir('sin_turno');
+  if (!turno) {
+    // Sin turno, el claim propio SE SUELTA antes de irse. Sin esto, la
+    // aprobación en tanda dejaba las filas presas 360s: 3 pokes en paralelo,
+    // cada uno reclamaba SU fila, el turno lo ganaba uno, y los perdedores se
+    // iban con el claim puesto — ni el barrido podía tomarlas (cuota del
+    // préstamo #339547, 2026-08-21). El dueño del turno arrastra la cola en
+    // su misma corrida (ver index.ts), así que soltar acá no pierde nada.
+    await db.rpc('qualia_soltar_claim', { p_trabajo: trabajoId, p_invocacion: invocacion });
+    return salir('sin_turno');
+  }
 
   try {
     const { data: emp, error: eEmp } = await db

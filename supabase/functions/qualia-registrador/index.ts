@@ -251,18 +251,13 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  if (body.accion === 'registrar') {
-    const trabajoId = String(body.trabajo_id ?? '');
-    if (!/^[0-9a-f-]{36}$/.test(trabajoId)) return json({ error: 'trabajo_id inválido' }, 400);
-    const invocacion = `reg-${crypto.randomUUID().slice(0, 8)}`;
-    return json(await registrarTrabajo(sb(), trabajoId, invocacion));
-  }
-
-  if (body.accion === 'barrido') {
-    // La red de seguridad: aprobadas sin docid de los tipos portados, en modo
-    // nube, de a pocas (el turno por empresa las serializa igual). criterio y
-    // caso viven en 'aprobada' para siempre: afuera, como en el poller.
-    const limite = Math.min(Number(body.limite ?? 10), 25);
+  // La cola de aprobadas sin docid, registrada EN SERIE en esta invocación.
+  // La usan el barrido y también el poke puntual: el que llega primero
+  // arrastra la cola completa, y los pokes de más mueren en 'sin_turno' sin
+  // dejar huella (con su claim suelto). Es la cura del 2026-08-21: aprobar 3
+  // filas en tanda disparaba 3 registradores en paralelo y dos quedaban
+  // presas 6 minutos.
+  async function barrerAprobadas(limite: number): Promise<Dic[]> {
     const { data: filas, error } = await sb()
       .from('qualia_trabajos')
       .select('id')
@@ -271,13 +266,47 @@ Deno.serve(async (req: Request) => {
       .is('propuesta->registro_adm->>docid', null)
       .order('updated_at', { ascending: true })
       .limit(limite);
-    if (error) return json({ error: error.message }, 500);
-    const resultados = [];
+    if (error) throw new Error(error.message);
+    const resultados: Dic[] = [];
     for (const f of filas ?? []) {
       const invocacion = `reg-${crypto.randomUUID().slice(0, 8)}`;
       resultados.push(await registrarTrabajo(sb(), String((f as Dic).id), invocacion));
     }
-    return json({ barridos: resultados.length, resultados });
+    return resultados;
+  }
+
+  if (body.accion === 'registrar') {
+    const trabajoId = String(body.trabajo_id ?? '');
+    if (!/^[0-9a-f-]{36}$/.test(trabajoId)) return json({ error: 'trabajo_id inválido' }, 400);
+    const invocacion = `reg-${crypto.randomUUID().slice(0, 8)}`;
+    const propio = await registrarTrabajo(sb(), trabajoId, invocacion);
+    // Si este poke registró de verdad, arrastra a sus hermanas de tanda ahí
+    // mismo: la aprobación en lote dispara un poke por fila, pero el registro
+    // sale entero en la corrida del que ganó el turno. Si salió 'sin_turno',
+    // otro ya está arrastrando y acá no hay nada que hacer.
+    let arrastradas: Dic[] = [];
+    if (propio.resultado !== 'sin_turno') {
+      try {
+        arrastradas = await barrerAprobadas(10);
+      } catch {
+        // El arrastre es cortesía: su falla no puede ensuciar el resultado
+        // del trabajo pedido — el barrido cada 10 minutos sigue de red.
+      }
+    }
+    return json({ ...propio, arrastradas: arrastradas.length ? arrastradas : undefined });
+  }
+
+  if (body.accion === 'barrido') {
+    // La red de seguridad: aprobadas sin docid de los tipos portados, en modo
+    // nube, de a pocas (el turno por empresa las serializa igual). criterio y
+    // caso viven en 'aprobada' para siempre: afuera, como en el poller.
+    const limite = Math.min(Number(body.limite ?? 10), 25);
+    try {
+      const resultados = await barrerAprobadas(limite);
+      return json({ barridos: resultados.length, resultados });
+    } catch (e) {
+      return json({ error: (e as Error).message }, 500);
+    }
   }
 
   return json({ error: `acción desconocida: '${body.accion}'` }, 400);
