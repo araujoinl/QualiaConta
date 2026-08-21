@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manual de Marca — QualiaConta · Glass v1.0</title>
+<style>
+/* ============================================================
+   QUALIACONTA · GLASS SYSTEM v1.0
+   Hereda del Manual de Marca Qualia v1.2.
+   Módulo base: 8px. Todo múltiplo del módulo.
+   ============================================================ */
+:root{
+  /* Marca (heredado de Qualia) */
+  --blue:#1958FF;
+  --blue-focus:#00A6FF;
+  --navy:#0A0F1C;
+  --navy2:#0E1628;
+  --ink:#111827;
+  --white:#FFFFFF;
+  --paper:#F6F7F9;
+  --muted:#7B8494;
+  --line:#DDE2EA;
+  --mono:"IBM Plex Mono","Geist Mono","JetBrains Mono",ui-monospace,monospace;
+  --ok:#2FBF71;
+  --warn:#E8A33D;
+  --err:#E5484D;
+  --action:#12A150;
+
+  /* Escala tonal glass — blancos, grises, azules */
+  --g-white-90:rgba(255,255,255,.90);
+  --g-white-70:rgba(255,255,255,.70);
+  --g-white-40:rgba(255,255,255,.40);
+  --g-white-18:rgba(255,255,255,.18);
+  --g-white-10:rgba(255,255,255,.10);
+  --g-white-06:rgba(255,255,255,.06);
+  --g-white-03:rgba(255,255,255,.03);
+  --g-blue-30:rgba(25,88,255,.30);
+  --g-blue-18:rgba(25,88,255,.18);
+  --g-blue-10:rgba(25,88,255,.10);
+  --g-grey:#9AA5B8;
+  --g-grey-2:#5B6578;
+
+  /* Tokens glass */
+  --glass-bg:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.04));
+  --glass-border:1px solid rgba(255,255,255,.14);
+  --glass-blur:blur(16px) saturate(1.35);
+  --glass-shadow:0 16px 40px rgba(2,6,18,.45);
+  --glass-inset:inset 0 1px 0 rgba(255,255,255,.22);
+  --r-xl:24px; --r-lg:18px; --r-md:12px; --r-sm:8px;
+
+  /* Movimiento (Qualia §13) */
+  --t-fast:140ms; --t-med:200ms; --t-slow:240ms;
+  --ease:cubic-bezier(.2,.7,.3,1); /* ease-out, sin rebote */
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;overflow-x:clip}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--navy);color:#E7ECF5;line-height:1.5;overflow-x:hidden;
+  background-image:
+    radial-gradient(1100px 700px at 80% -10%, #16264D 0%, transparent 55%),
+    radial-gradient(900px 600px at -10% 40%, #0E1B38 0%, transparent 60%),
+    radial-gradient(700px 500px at 60% 110%, rgba(25,88,255,.14) 0%, transparent 60%);
+  background-attachment:fixed;
+}
+section{padding:88px 6vw;border-bottom:1px solid rgba(255,255,255,.07);position:relative}
+.kicker{letter-spacing:.18em;text-transform:uppercase;color:var(--blue-focus);font-weight:800;font-size:13px;margin-bottom:18px}
+h1{font-size:clamp(46px,7vw,110px);letter-spacing:.12em;margin:0;font-weight:900;line-height:.92;color:#fff}
+h2{font-size:clamp(30px,4vw,56px);margin:0 0 18px;font-weight:900;letter-spacing:-.03em;color:#fff}
+h3{font-size:21px;margin:0 0 12px;font-weight:800;color:#fff}
+p{max-width:760px;color:#AEB9CE;font-size:16.5px;margin:0 0 16px}
+.caption{font-size:12px;color:var(--g-grey);letter-spacing:.1em;text-transform:uppercase;font-weight:800}
+.mono{font-family:var(--mono);font-size:13px;color:var(--g-grey)}
+
+/* Entrada suave por sección (animación de asentamiento, no de show) */
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.rise{animation:rise .6s var(--ease) both}
+.rise.d1{animation-delay:.08s}.rise.d2{animation-delay:.16s}.rise.d3{animation-delay:.24s}
+
+/* ---------- Logo Qualia (heredado) ---------- */
+.logoMark{position:relative;width:96px;height:84px;display:inline-block;flex:0 0 auto}
+.ring{position:absolute;left:0;top:0;width:72px;height:72px;border:12px solid var(--blue);border-radius:50%}
+.sq{position:absolute;left:78px;top:58px;width:18px;height:18px;background:var(--blue)}
+.logoMark.sm{width:60px;height:54px}.logoMark.sm .ring{width:44px;height:44px;border-width:8px}.logoMark.sm .sq{left:48px;top:36px;width:12px;height:12px}
+.logoMark.white .ring{border-color:#fff}.logoMark.white .sq{background:#fff}
+@keyframes qblink{0%,48%{opacity:1}49%,100%{opacity:0}}
+@keyframes qbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+.logoMark.anim .sq{animation:qblink 1.1s steps(1,end) infinite}
+.logoMark.anim .ring{animation:qbreathe 3.6s ease-in-out infinite;transform-origin:36px 36px}
+.word{font-weight:900;letter-spacing:.22em;font-size:34px;color:#fff}
+.word .conta{color:var(--blue-focus);font-weight:800}
+.word.small{font-size:20px}
+.logo-row{display:flex;align-items:center;gap:18px}
+
+/* ---------- Vidrio: superficie base ---------- */
+.glass{background:var(--glass-bg);border:var(--glass-border);border-radius:var(--r-xl);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-shadow),var(--glass-inset);
+  transition:transform var(--t-med) var(--ease),box-shadow var(--t-med) var(--ease),border-color var(--t-med) var(--ease)}
+.glass.pad{padding:28px}
+.glass.hover:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.24);
+  box-shadow:0 26px 60px rgba(2,6,18,.55),var(--glass-inset)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:20px}
+.span3{grid-column:span 3}.span4{grid-column:span 4}.span6{grid-column:span 6}.span8{grid-column:span 8}.span12{grid-column:span 12}
+
+/* ---------- HERO ---------- */
+.hero{min-height:94vh;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:48px;border-bottom:1px solid rgba(255,255,255,.07)}
+.hero p{font-size:20px;color:#C4CEE2}
+.hero .orb{position:absolute;right:-160px;top:18%;width:460px;height:460px;border:74px solid rgba(25,88,255,.16);border-radius:50%;pointer-events:none;animation:qbreathe 7s ease-in-out infinite}
+
+/* ============================================================
+   ⭐ SELECTOR DESLIZANTE — GLASS 3D (pieza estrella)
+   ============================================================ */
+.gtabs{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;
+  padding:6px;border-radius:999px;isolation:isolate;
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.045));
+  border:1px solid rgba(255,255,255,.16);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  box-shadow:0 18px 40px rgba(2,6,18,.5), inset 0 1px 0 rgba(255,255,255,.25), inset 0 -1px 0 rgba(2,6,18,.35)}
+.gtabs input{position:absolute;opacity:0;pointer-events:none}
+.gtabs label{position:relative;z-index:2;text-align:center;padding:12px 22px;border-radius:999px;cursor:pointer;
+  font-weight:700;font-size:14.5px;color:var(--g-grey);letter-spacing:.02em;white-space:nowrap;
+  transition:color var(--t-med) var(--ease),transform var(--t-fast) var(--ease)}
+.gtabs label:hover{color:var(--g-white-70)}
+.gtabs label:active{transform:scale(.97)}
+/* Píldora 3D: se desliza; luz superior + sombra inferior = volumen */
+.gtabs .pill{position:absolute;z-index:1;top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/var(--n,4));
+  border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,.10) 38%,rgba(25,88,255,.28));
+  border:1px solid rgba(255,255,255,.35);
+  box-shadow:0 8px 22px rgba(25,88,255,.35), 0 2px 6px rgba(2,6,18,.4),
+             inset 0 1px 0 rgba(255,255,255,.55), inset 0 -6px 12px rgba(25,88,255,.30);
+  transition:transform var(--t-slow) var(--ease)}
+/* Brillo especular que cruza la píldora al moverse */
+.gtabs .pill:after{content:"";position:absolute;inset:0;border-radius:999px;overflow:hidden;
+  background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.35) 46%,transparent 60%);
+  opacity:0;transition:opacity var(--t-slow) var(--ease)}
+.gtabs:hover .pill:after{opacity:.5}
+.gtabs:has(input:nth-of-type(1):checked) .pill{transform:translateX(0)}
+.gtabs:has(input:nth-of-type(2):checked) .pill{transform:translateX(100%)}
+.gtabs:has(input:nth-of-type(3):checked) .pill{transform:translateX(200%)}
+.gtabs:has(input:nth-of-type(4):checked) .pill{transform:translateX(300%)}
+.gtabs:has(input:nth-of-type(5):checked) .pill{transform:translateX(400%)}
+.gtabs:has(input:nth-of-type(1):checked) label:nth-of-type(1),
+.gtabs:has(input:nth-of-type(2):checked) label:nth-of-type(2),
+.gtabs:has(input:nth-of-type(3):checked) label:nth-of-type(3),
+.gtabs:has(input:nth-of-type(4):checked) label:nth-of-type(4),
+.gtabs:has(input:nth-of-type(5):checked) label:nth-of-type(5){color:#fff;text-shadow:0 1px 6px rgba(25,88,255,.5)}
+/* Variante compacta */
+.gtabs.compact label{padding:8px 14px;font-size:13px}
+/* Variante neutra (píldora blanca-gris, sin azul: para filtros secundarios) */
+.gtabs.neutral .pill{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.12));
+  box-shadow:0 8px 20px rgba(2,6,18,.45), inset 0 1px 0 rgba(255,255,255,.6), inset 0 -6px 12px rgba(120,135,165,.25);
+  border-color:rgba(255,255,255,.4)}
+.gtabs.neutral:has(input:checked) label{text-shadow:none}
+/* Demo auto-animada del selector (solo demo del manual) */
+@keyframes autoslide{0%,22%{transform:translateX(0)}28%,47%{transform:translateX(100%)}53%,72%{transform:translateX(200%)}78%,97%{transform:translateX(300%)}100%{transform:translateX(0)}}
+.gtabs.autodemo .pill{animation:autoslide 9s var(--ease) infinite}
+
+/* ---------- Botones ---------- */
+.btn{display:inline-flex;align-items:center;gap:10px;padding:13px 22px;border-radius:var(--r-md);
+  font-weight:800;font-size:15px;cursor:pointer;border:0;font-family:inherit;
+  transition:transform var(--t-fast) var(--ease),box-shadow var(--t-med) var(--ease),background var(--t-med) var(--ease)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:linear-gradient(180deg,#2E6BFF,#1958FF 55%,#1246D6);color:#fff;
+  box-shadow:0 10px 26px rgba(25,88,255,.4), inset 0 1px 0 rgba(255,255,255,.35)}
+.btn.primary:hover{box-shadow:0 14px 34px rgba(25,88,255,.55), inset 0 1px 0 rgba(255,255,255,.35);transform:translateY(-1px)}
+.btn.glass2{background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.06));color:#fff;
+  border:1px solid rgba(255,255,255,.2);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3), 0 8px 20px rgba(2,6,18,.35)}
+.btn.glass2:hover{border-color:rgba(255,255,255,.35);transform:translateY(-1px)}
+.btn.ghost{background:transparent;color:var(--g-white-70);border:1px solid rgba(255,255,255,.14)}
+.btn.ghost:hover{color:#fff;border-color:rgba(255,255,255,.3)}
+.btn.danger{background:linear-gradient(180deg,#F0565B,#E5484D 55%,#C93A3F);color:#fff;
+  box-shadow:0 10px 24px rgba(229,72,77,.35), inset 0 1px 0 rgba(255,255,255,.3)}
+.btn .qdot{width:9px;height:9px;background:currentColor;display:inline-block;animation:qblink 1.1s steps(1,end) infinite}
+
+/* ---------- Inputs ---------- */
+.field{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+.field label{font-size:12.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--g-grey)}
+.input{width:100%;padding:14px 16px;border-radius:var(--r-md);color:#fff;font-size:15px;font-family:inherit;
+  background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.035));
+  border:1px solid rgba(255,255,255,.14);outline:none;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 2px 8px rgba(2,6,18,.25);
+  transition:border-color var(--t-med) var(--ease),box-shadow var(--t-med) var(--ease)}
+.input::placeholder{color:var(--g-grey-2)}
+.input:focus{border-color:var(--blue-focus);box-shadow:0 0 0 4px rgba(0,166,255,.18), inset 0 1px 0 rgba(255,255,255,.12)}
+.input.mono{font-family:var(--mono);letter-spacing:.06em}
+
+/* ---------- Badges de estado (contables) ---------- */
+.badge{display:inline-flex;align-items:center;gap:8px;padding:6px 13px;border-radius:999px;font-size:12.5px;font-weight:800;
+  border:1px solid;letter-spacing:.03em;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.badge i{width:8px;height:8px;flex:0 0 8px}
+.badge.ok{color:#6FE3A5;border-color:rgba(47,191,113,.4);background:rgba(47,191,113,.12)}.badge.ok i{background:var(--ok)}
+.badge.warn{color:#FFC96B;border-color:rgba(232,163,61,.45);background:rgba(232,163,61,.12)}.badge.warn i{background:var(--warn);clip-path:polygon(50% 0,100% 100%,0 100%);animation:qalert 1.3s ease-in-out infinite}
+.badge.err{color:#FF8A8E;border-color:rgba(229,72,77,.45);background:rgba(229,72,77,.12)}.badge.err i{background:var(--err);animation:qheartbeat 1.4s ease-in-out infinite}
+.badge.info{color:#7FD1FF;border-color:rgba(0,166,255,.4);background:rgba(0,166,255,.1)}.badge.info i{background:var(--blue-focus);height:12px;animation:qscan .85s ease-in-out infinite alternate}
+.badge.neutral{color:var(--g-grey);border-color:rgba(255,255,255,.14);background:var(--g-white-06)}.badge.neutral i{background:var(--g-grey);border-radius:50%}
+@keyframes qalert{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes qheartbeat{0%{transform:scale(1)}12%{transform:scale(1.3)}24%{transform:scale(1)}36%{transform:scale(1.22)}48%,100%{transform:scale(1)}}
+@keyframes qscan{0%{transform:translateX(-3px)}100%{transform:translateX(3px)}}
+@keyframes qthink{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+
+/* ---------- Tabla glass ---------- */
+.gtable-wrap{overflow-x:auto;border-radius:var(--r-lg);border:var(--glass-border);
+  background:linear-gradient(170deg,rgba(255,255,255,.07),rgba(255,255,255,.025));
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-shadow),var(--glass-inset)}
+.gtable{width:100%;border-collapse:collapse;min-width:680px}
+.gtable th{padding:16px 20px;text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--g-grey);
+  border-bottom:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);font-weight:800}
+.gtable td{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06);font-size:14.5px;color:#DDE5F2}
+.gtable tr:last-child td{border-bottom:0}
+.gtable tbody tr{transition:background var(--t-fast) var(--ease)}
+.gtable tbody tr:hover{background:rgba(25,88,255,.08)}
+.gtable .num{font-family:var(--mono);font-size:13.5px;text-align:right;letter-spacing:.02em}
+.gtable .ncf{font-family:var(--mono);font-size:12.5px;color:var(--g-grey)}
+
+/* ---------- KPI ---------- */
+.kpi{padding:24px;display:flex;flex-direction:column;gap:6px}
+.kpi .lbl{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--g-grey);font-weight:800}
+.kpi .val{font-family:var(--mono);font-size:30px;font-weight:600;color:#fff;letter-spacing:-.01em}
+.kpi .delta{font-size:13px;font-weight:700}
+.kpi .delta.up{color:#6FE3A5}.kpi .delta.down{color:#FF8A8E}
+.spark{height:34px;margin-top:8px;display:flex;align-items:flex-end;gap:4px}
+.spark i{flex:1;background:linear-gradient(180deg,rgba(0,166,255,.8),rgba(25,88,255,.25));border-radius:3px 3px 0 0;min-height:4px;
+  transition:filter var(--t-fast) var(--ease)}
+.kpi:hover .spark i{filter:brightness(1.25)}
+
+/* ---------- Toast / Modal ---------- */
+.toast{display:flex;align-items:center;gap:14px;padding:16px 20px;border-radius:var(--r-lg);max-width:420px;
+  background:linear-gradient(180deg,rgba(20,30,55,.85),rgba(12,20,40,.85));
+  border:1px solid rgba(255,255,255,.16);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  box-shadow:0 20px 50px rgba(2,6,18,.6), inset 0 1px 0 rgba(255,255,255,.2)}
+.toast .msg b{display:block;color:#fff;font-size:14.5px}.toast .msg span{font-size:13px;color:var(--g-grey)}
+@keyframes toastin{0%,8%{opacity:0;transform:translateY(16px) scale(.98)}16%,80%{opacity:1;transform:none}92%,100%{opacity:0;transform:translateY(16px) scale(.98)}}
+.toast.loop{animation:toastin 5s var(--ease) infinite}
+.modal-demo{position:relative;border-radius:var(--r-xl);overflow:hidden;min-height:380px;display:grid;place-items:center;
+  background:radial-gradient(600px 360px at 70% 20%,#16264D,#0A0F1C 70%);border:1px solid rgba(255,255,255,.09)}
+.modal{width:min(420px,88%);padding:28px;border-radius:var(--r-xl);
+  background:linear-gradient(165deg,rgba(255,255,255,.13),rgba(255,255,255,.05));
+  border:1px solid rgba(255,255,255,.22);-webkit-backdrop-filter:blur(22px) saturate(1.4);backdrop-filter:blur(22px) saturate(1.4);
+  box-shadow:0 32px 80px rgba(2,6,18,.65), inset 0 1px 0 rgba(255,255,255,.3)}
+
+/* ---------- Splash ---------- */
+.splash{position:relative;width:300px;height:620px;border-radius:44px;margin:0 auto;overflow:hidden;
+  background:radial-gradient(340px 480px at 70% 12%,#142450,#0A0F1C 65%,#050812);
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 40px 90px rgba(2,6,18,.7), inset 0 1px 0 rgba(255,255,255,.18)}
+.splash .notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:90px;height:24px;border-radius:14px;background:#04070F}
+.splash .center{position:absolute;inset:0;display:grid;place-items:center}
+.splash .stack{display:flex;flex-direction:column;align-items:center;gap:26px}
+@keyframes s-ring{0%{opacity:0;transform:scale(.6)}10%,90%{opacity:1;transform:scale(1)}50%{transform:scale(1.035)}100%{opacity:1;transform:scale(1)}}
+@keyframes s-sq{0%,12%{opacity:0}14%,60%{opacity:1}62%{opacity:0}64%,86%{opacity:1}88%{opacity:0}90%,100%{opacity:1}}
+@keyframes s-word{0%,18%{opacity:0;letter-spacing:.5em;transform:translateY(8px)}34%,100%{opacity:1;letter-spacing:.24em;transform:none}}
+@keyframes s-sub{0%,30%{opacity:0;transform:translateY(6px)}44%,100%{opacity:.85;transform:none}}
+@keyframes s-card{0%,46%{opacity:0;transform:translateY(40px)}60%,100%{opacity:1;transform:none}}
+.splash .sRing{position:relative;width:96px;height:96px}
+.splash .sRing .ring{width:96px;height:96px;border-width:16px;animation:s-ring 6s var(--ease) infinite}
+.splash .sRing .sq{left:100px;top:76px;width:24px;height:24px;animation:s-sq 6s steps(1,end) infinite}
+.splash .sword{font-weight:900;font-size:21px;color:#fff;letter-spacing:.24em;animation:s-word 6s var(--ease) infinite}
+.splash .sword .conta{color:var(--blue-focus)}
+.splash .ssub{font-family:var(--mono);font-size:11px;color:var(--g-grey);letter-spacing:.18em;text-transform:uppercase;animation:s-sub 6s var(--ease) infinite}
+.splash .scard{position:absolute;left:16px;right:16px;bottom:18px;padding:18px;border-radius:20px;
+  background:linear-gradient(170deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
+  border:1px solid rgba(255,255,255,.2);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25), 0 16px 34px rgba(2,6,18,.5);
+  animation:s-card 6s var(--ease) infinite}
+.splash .scard b{display:block;color:#fff;font-size:13.5px;margin-bottom:4px}
+.splash .scard span{font-size:12px;color:var(--g-grey)}
+
+/* ---------- Login (PIN 6 dígitos) ---------- */
+.login{position:relative;width:300px;height:620px;border-radius:44px;margin:0 auto;overflow:hidden;
+  background:radial-gradient(340px 480px at 30% 8%,#142450,#0A0F1C 65%,#050812);
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 40px 90px rgba(2,6,18,.7), inset 0 1px 0 rgba(255,255,255,.18)}
+.login .notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:90px;height:24px;border-radius:14px;background:#04070F}
+.login .inner{position:absolute;inset:0;padding:64px 26px 30px;display:flex;flex-direction:column;align-items:center;gap:0}
+.login .lgMark{position:relative;width:44px;height:44px;margin-bottom:22px}
+.login .lgMark .ring{width:34px;height:34px;border-width:6px}
+.login .lgMark .sq{left:37px;top:28px;width:9px;height:9px;animation:qblink 1.1s steps(1,end) infinite}
+.login .hi{font-weight:900;font-size:16px;color:#fff;letter-spacing:.18em;margin-bottom:6px}
+.login .hi .conta{color:var(--blue-focus)}
+.login .ask{font-size:12.5px;color:var(--g-grey);margin-bottom:26px;position:relative;width:100%;text-align:center}
+@keyframes askswap{0%,56%{opacity:1}58%,88%{opacity:0}92%,100%{opacity:1}}
+@keyframes okswap{0%,58%{opacity:0;transform:translateY(4px)}62%,86%{opacity:1;transform:none}90%,100%{opacity:0}}
+.login .ask .a1{animation:askswap 8s var(--ease) infinite}
+.login .ask .a2{position:absolute;left:0;right:0;top:0;color:#6FE3A5;font-weight:700;white-space:nowrap;animation:okswap 8s var(--ease) infinite}
+.login .dots{display:flex;gap:14px;margin-bottom:34px}
+.login .dots i{width:13px;height:13px;border-radius:0;border:2px solid rgba(255,255,255,.28);background:transparent}
+@keyframes d1{0%,10%{background:transparent;box-shadow:none}12%,78%{background:var(--blue-focus);border-color:var(--blue-focus);box-shadow:0 0 12px rgba(0,166,255,.6)}86%,100%{background:transparent;box-shadow:none}}
+@keyframes d2{0%,17%{background:transparent;box-shadow:none}19%,78%{background:var(--blue-focus);border-color:var(--blue-focus);box-shadow:0 0 12px rgba(0,166,255,.6)}86%,100%{background:transparent;box-shadow:none}}
+@keyframes d3{0%,24%{background:transparent;box-shadow:none}26%,78%{background:var(--blue-focus);border-color:var(--blue-focus);box-shadow:0 0 12px rgba(0,166,255,.6)}86%,100%{background:transparent;box-shadow:none}}
+@keyframes d4{0%,31%{background:transparent;box-shadow:none}33%,78%{background:var(--blue-focus);border-color:var(--blue-focus);box-shadow:0 0 12px rgba(0,166,255,.6)}86%,100%{background:transparent;box-shadow:none}}
+@keyframes d5{0%,38%{background:transparent;box-shadow:none}40%,78%{background:var(--blue-focus);border-color:var(--blue-focus);box-shadow:0 0 12px rgba(0,166,255,.6)}86%,100%{background:transparent;box-shadow:none}}
+@keyframes d6{0%,45%{background:transparent;box-shadow:none}47%,78%{background:var(--blue-focus);border-color:var(--blue-focus);box-shadow:0 0 12px rgba(0,166,255,.6)}86%,100%{background:transparent;box-shadow:none}}
+.login .dots i:nth-child(1){animation:d1 8s var(--ease) infinite}
+.login .dots i:nth-child(2){animation:d2 8s var(--ease) infinite}
+.login .dots i:nth-child(3){animation:d3 8s var(--ease) infinite}
+.login .dots i:nth-child(4){animation:d4 8s var(--ease) infinite}
+.login .dots i:nth-child(5){animation:d5 8s var(--ease) infinite}
+.login .dots i:nth-child(6){animation:d6 8s var(--ease) infinite}
+.login .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:232px}
+.login .key{height:56px;display:grid;place-items:center;border-radius:18px;font-weight:800;font-size:19px;color:#E7ECF5;
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.04));
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22), 0 6px 14px rgba(2,6,18,.35);
+  transition:transform var(--t-fast) var(--ease)}
+.login .key.zero{grid-column:2}
+@keyframes kp1{0%,9%{transform:scale(1)}10.5%{transform:scale(.9);background:rgba(0,166,255,.28);box-shadow:0 0 18px rgba(0,166,255,.5), inset 0 1px 0 rgba(255,255,255,.3)}13%,100%{transform:scale(1)}}
+@keyframes kp2{0%,16%{transform:scale(1)}17.5%{transform:scale(.9);background:rgba(0,166,255,.28);box-shadow:0 0 18px rgba(0,166,255,.5), inset 0 1px 0 rgba(255,255,255,.3)}20%,100%{transform:scale(1)}}
+@keyframes kp3{0%,23%{transform:scale(1)}24.5%{transform:scale(.9);background:rgba(0,166,255,.28);box-shadow:0 0 18px rgba(0,166,255,.5), inset 0 1px 0 rgba(255,255,255,.3)}27%,100%{transform:scale(1)}}
+@keyframes kp4{0%,30%{transform:scale(1)}31.5%{transform:scale(.9);background:rgba(0,166,255,.28);box-shadow:0 0 18px rgba(0,166,255,.5), inset 0 1px 0 rgba(255,255,255,.3)}34%,100%{transform:scale(1)}}
+@keyframes kp5{0%,37%{transform:scale(1)}38.5%{transform:scale(.9);background:rgba(0,166,255,.28);box-shadow:0 0 18px rgba(0,166,255,.5), inset 0 1px 0 rgba(255,255,255,.3)}41%,100%{transform:scale(1)}}
+@keyframes kp6{0%,44%{transform:scale(1)}45.5%{transform:scale(.9);background:rgba(0,166,255,.28);box-shadow:0 0 18px rgba(0,166,255,.5), inset 0 1px 0 rgba(255,255,255,.3)}48%,100%{transform:scale(1)}}
+.login .key.p1{animation:kp1 8s var(--ease) infinite}
+.login .key.p2{animation:kp2 8s var(--ease) infinite}
+.login .key.p3{animation:kp3 8s var(--ease) infinite}
+.login .key.p4{animation:kp4 8s var(--ease) infinite}
+.login .key.p5{animation:kp5 8s var(--ease) infinite}
+.login .key.p6{animation:kp6 8s var(--ease) infinite}
+/* Éxito: anillo verde que pulsa una vez y abre */
+.login .okring{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.login .okring span{width:120px;height:120px;border:14px solid var(--ok);border-radius:50%;opacity:0}
+@keyframes loginok{0%,55%{opacity:0;transform:scale(.7)}61%{opacity:1;transform:scale(1)}70%{opacity:1;transform:scale(1.04)}80%{opacity:1;transform:scale(1)}88%,100%{opacity:0;transform:scale(1.15)}}
+.login .okring span{animation:loginok 8s var(--ease) infinite}
+@keyframes dimpad{0%,55%{opacity:1}62%,84%{opacity:.14;filter:blur(2px)}92%,100%{opacity:1}}
+.login .pad,.login .dots{transform-origin:center}
+.login .fadegroup{display:contents}
+.login .pad{animation:dimpad 8s var(--ease) infinite}
+
+/* ---------- App icon ---------- */
+.appicon{width:120px;height:120px;border-radius:28px;display:grid;place-items:center;position:relative;overflow:hidden;
+  transition:transform var(--t-med) var(--ease)}
+.appicon:hover{transform:translateY(-4px) scale(1.02)}
+.appicon.navy{background:linear-gradient(160deg,#132247,#0A0F1C 70%);border:1px solid rgba(255,255,255,.12);box-shadow:0 22px 46px rgba(2,6,18,.6), inset 0 1px 0 rgba(255,255,255,.16)}
+.appicon.glassy{background:linear-gradient(160deg,rgba(255,255,255,.18),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.3);
+  -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:0 22px 46px rgba(2,6,18,.5), inset 0 1px 0 rgba(255,255,255,.4)}
+.appicon.blue{background:linear-gradient(160deg,#2E6BFF,#1246D6);box-shadow:0 22px 46px rgba(25,88,255,.45), inset 0 1px 0 rgba(255,255,255,.4)}
+.appicon .logoMark{transform:scale(.72);transform-origin:center}
+.appicon .contaDot{position:absolute;right:14px;bottom:14px;width:10px;height:10px;background:var(--blue-focus)}
+
+/* ---------- Swatches ---------- */
+.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.swatch{border-radius:var(--r-lg);overflow:hidden;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
+  transition:transform var(--t-med) var(--ease)}
+.swatch:hover{transform:translateY(-3px)}
+.swatch .sw{height:84px}
+.swatch .nm{padding:14px 16px;font-weight:800;font-size:14px;color:#fff}
+.swatch .nm span{display:block;font-family:var(--mono);font-size:11.5px;color:var(--g-grey);font-weight:500;margin-top:3px;text-transform:uppercase;letter-spacing:.06em}
+
+/* ---------- Specs / reglas ---------- */
+.specrow{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid rgba(255,255,255,.09);padding:13px 0;font-weight:700;color:#fff;gap:16px}
+.specrow span{color:var(--g-grey);font-weight:500;font-family:var(--mono);font-size:13px;text-align:right}
+.vbox{border-radius:var(--r-lg);padding:22px;border:1px solid}
+.vbox.no{background:rgba(229,72,77,.08);border-color:rgba(229,72,77,.3)}
+.vbox.yes{background:rgba(25,88,255,.1);border-color:rgba(25,88,255,.35)}
+.vlabel{font-size:11.5px;text-transform:uppercase;letter-spacing:.13em;color:var(--g-grey);margin-bottom:10px;font-weight:800}
+.vbox p{font-size:15px;margin:0;color:#D5DCEA}
+
+/* ---------- Nav demo ---------- */
+.navdemo{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:14px 22px;border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.04));
+  border:1px solid rgba(255,255,255,.15);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-shadow),var(--glass-inset)}
+.navdemo .links{display:flex;gap:8px;flex-wrap:wrap}
+.navdemo .links a{color:var(--g-grey);text-decoration:none;font-weight:700;font-size:14px;padding:9px 15px;border-radius:999px;
+  transition:color var(--t-fast) var(--ease),background var(--t-fast) var(--ease)}
+.navdemo .links a:hover{color:#fff;background:var(--g-white-10)}
+.navdemo .links a.active{color:#fff;background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(25,88,255,.25));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 6px 16px rgba(25,88,255,.3)}
+
+.footer{padding:52px 6vw;color:var(--g-grey)}
+.footer p{color:var(--g-grey);font-size:14px}
+
+@media (prefers-reduced-motion: reduce){
+  *,*:before,*:after{animation:none!important;transition:none!important}
+}
+@media(max-width:960px){
+  .hero{grid-template-columns:1fr;min-height:auto}
+  .grid{display:block}.grid>*{margin-bottom:18px}
+  .swatches{grid-template-columns:1fr 1fr}
+  .gtabs label{padding:11px 10px;font-size:13px}
+  section{padding:64px 6vw}
+}
+</style>
+</head>
+<body>
+
+<!-- ======================= HERO ======================= -->
+<section class="hero">
+  <span class="orb"></span>
+  <div>
+    <div class="kicker rise">Manual de marca · Glass v1.0</div>
+    <div class="logo-row rise d1" style="margin-bottom:38px">
+      <div class="logoMark anim"><span class="ring"></span><span class="sq"></span></div>
+      <div class="word">QUALIA<span class="conta">CONTA</span></div>
+    </div>
+    <h1 class="rise d2">CONTA</h1>
+    <p class="rise d3" style="margin-top:22px">La habilidad contable de Qualia, con cara propia. Hereda todo del manual Qualia v1.2 — geometría, color, movimiento, voz — y agrega una capa material: <b style="color:#fff">vidrio sobre profundidad</b>. Blancos, grises y azules. Nada más.</p>
+  </div>
+  <div class="glass pad rise d3">
+    <h3>Principio rector</h3>
+    <p>El vidrio no es decoración: es jerarquía. Lo que flota en vidrio es interfaz; lo que está en el fondo es contexto. Cuando haya duda, quitar — la marca mejora por reducción.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+      <span class="badge ok"><i></i>Registrado</span>
+      <span class="badge warn"><i></i>Sin NCF</span>
+      <span class="badge err"><i></i>Descuadre</span>
+      <span class="badge info"><i></i>Procesando</span>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 00 NÚCLEO ======================= -->
+<section>
+  <div class="kicker">00 / Núcleo</div><h2>Quién es QualiaConta</h2>
+  <p>QualiaConta es el contable de Qualia: registra, cuadra y vigila. No es una app de contabilidad genérica — es criterio contable con memoria. La voz es la de Qualia: precisa, da opciones, explica el porqué y contradice cuando toca.</p>
+  <div class="grid" style="margin-top:26px">
+    <div class="glass pad hover span4"><h3>Registra</h3><p>Cada documento entra una vez, con su NCF, y queda asentado. El sistema muestra qué hizo, no lo esconde.</p></div>
+    <div class="glass pad hover span4"><h3>Cuadra</h3><p>Al centavo. Un descuadre es un estado de error real: rojo, pulso, bloqueo. Nunca se disimula.</p></div>
+    <div class="glass pad hover span4"><h3>Vigila</h3><p>Lápidas, barridos, salud. La advertencia es un triángulo ámbar que parpadea: señal, no espectáculo.</p></div>
+  </div>
+</section>
+
+<!-- ======================= 01 SUB-MARCA ======================= -->
+<section>
+  <div class="kicker">01 / Sub-marca</div><h2>Sistema de logo</h2>
+  <p>El isotipo no cambia: es el de Qualia (anillo + cuadrado, retícula de 8&nbsp;px). La sub-marca vive en el wordmark: <b style="color:#fff">QUALIA</b> en blanco, <b style="color:var(--blue-focus)">CONTA</b> en Focus Blue. Un solo peso, un solo tracking. Nada más se toca.</p>
+  <div class="grid" style="margin-top:26px">
+    <div class="glass pad span6">
+      <div class="caption">Versión principal</div><br>
+      <div class="logo-row"><div class="logoMark"><span class="ring"></span><span class="sq"></span></div><div class="word small">QUALIA<span class="conta">CONTA</span></div></div>
+    </div>
+    <div class="glass pad span3">
+      <div class="caption">Isotipo + punto conta</div><br>
+      <div style="position:relative;display:inline-block">
+        <div class="logoMark"><span class="ring"></span><span class="sq"></span></div>
+      </div>
+      <p style="font-size:13px;margin-top:10px">El isotipo es compartido con Qualia. En contexto app, el ícono lleva un segundo cuadrado Focus Blue (ver §09).</p>
+    </div>
+    <div class="glass pad span3">
+      <div class="caption">Wordmark solo</div><br>
+      <div class="word small">QUALIA<span class="conta">CONTA</span></div>
+      <p style="font-size:13px;margin-top:14px">Junto, sin espacio. CONTA nunca va en otro color, nunca en mono, nunca más pesado que QUALIA.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 02 COLOR ======================= -->
+<section>
+  <div class="kicker">02 / Color</div><h2>Blancos, grises y azules</h2>
+  <p>QualiaConta usa exactamente tres familias tonales sobre Premium Navy. El blanco es material (vidrio, luz, borde). El gris es texto secundario y reposo. El azul es identidad y acción — y solo el azul significa algo.</p>
+  <div class="swatches" style="margin-top:26px">
+    <div class="swatch"><div class="sw" style="background:#1958FF"></div><div class="nm">Intelligence Blue<span>#1958FF · marca y acción</span></div></div>
+    <div class="swatch"><div class="sw" style="background:#00A6FF"></div><div class="nm">Focus Blue<span>#00A6FF · CONTA, foco, proceso</span></div></div>
+    <div class="swatch"><div class="sw" style="background:#0A0F1C"></div><div class="nm">Premium Navy<span>#0A0F1C · el fondo, siempre</span></div></div>
+    <div class="swatch"><div class="sw" style="background:#0E1628"></div><div class="nm">Navy 2<span>#0E1628 · profundidad</span></div></div>
+    <div class="swatch"><div class="sw" style="background:rgba(255,255,255,.9)"></div><div class="nm">White 90<span>texto principal</span></div></div>
+    <div class="swatch"><div class="sw" style="background:rgba(255,255,255,.4)"></div><div class="nm">White 40<span>bordes iluminados</span></div></div>
+    <div class="swatch"><div class="sw" style="background:rgba(255,255,255,.1);backdrop-filter:blur(4px)"></div><div class="nm">White 10<span>superficie de vidrio</span></div></div>
+    <div class="swatch"><div class="sw" style="background:#9AA5B8"></div><div class="nm">Glass Grey<span>#9AA5B8 · texto secundario</span></div></div>
+  </div>
+  <p style="margin-top:24px">Los estados funcionales (verde, ámbar, rojo) no son de marca: aparecen solo cuando comunican un estado contable real — registrado, sin NCF, descuadre. Si un color no comunica un estado, no aparece.</p>
+</section>
+
+<!-- ======================= 03 SISTEMA GLASS ======================= -->
+<section>
+  <div class="kicker">03 / Material</div><h2>Reglas del vidrio</h2>
+  <div class="grid">
+    <div class="glass pad span6">
+      <h3>Receta oficial</h3>
+      <div class="specrow">Fondo <span>linear-gradient 160° · white .10 → .04</span></div>
+      <div class="specrow">Desenfoque <span>blur(16px) saturate(1.35)</span></div>
+      <div class="specrow">Borde <span>1px · white .14</span></div>
+      <div class="specrow">Luz superior <span>inset 0 1px 0 · white .22</span></div>
+      <div class="specrow">Sombra <span>0 16px 40px · navy .45</span></div>
+      <div class="specrow">Radios <span>24 / 18 / 12 / 8 px — módulo 8</span></div>
+      <div class="specrow">Elevación al hover <span>translateY(-3px) · 200ms ease-out</span></div>
+    </div>
+    <div class="glass pad span6">
+      <h3>Tres leyes</h3>
+      <p><b style="color:#fff">1. El vidrio necesita fondo.</b> Solo existe sobre Premium Navy con profundidad (gradientes radiales). Vidrio sobre blanco plano no es vidrio: es una tarjeta lavada.</p>
+      <p><b style="color:#fff">2. Un nivel de vidrio a la vez.</b> Vidrio sobre vidrio solo en modal y toast, nunca tres capas. Cada capa extra resta legibilidad.</p>
+      <p><b style="color:#fff">3. La luz viene de arriba.</b> Borde superior claro, sombra abajo. Siempre. Es lo que hace el 3D creíble sin renders.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 04 ⭐ SELECTOR ======================= -->
+<section>
+  <div class="kicker">04 / Componente estrella</div><h2>El selector deslizante</h2>
+  <p>El control de navegación superior de QualiaConta. Una píldora de vidrio 3D que se desliza entre secciones en 240&nbsp;ms, ease-out, sin rebote. La píldora activa lleva volumen real: luz especular arriba, azul profundo abajo. Probalo — es interactivo.</p>
+
+  <div class="glass pad span12" style="margin-top:26px">
+    <div class="caption" style="margin-bottom:18px">Principal · navegación de la app</div>
+    <div class="gtabs" style="--n:4;max-width:640px">
+      <input type="radio" name="tabs1" id="t1a" checked><input type="radio" name="tabs1" id="t1b"><input type="radio" name="tabs1" id="t1c"><input type="radio" name="tabs1" id="t1d">
+      <span class="pill"></span>
+      <label for="t1a">Resumen</label><label for="t1b">Facturas</label><label for="t1c">Impuestos</label><label for="t1d">Bancos</label>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:20px">
+    <div class="glass pad span6">
+      <div class="caption" style="margin-bottom:18px">Compacto · filtros de vista</div>
+      <div class="gtabs compact" style="--n:3;max-width:360px">
+        <input type="radio" name="tabs2" id="t2a" checked><input type="radio" name="tabs2" id="t2b"><input type="radio" name="tabs2" id="t2c">
+        <span class="pill"></span>
+        <label for="t2a">Mes</label><label for="t2b">Trimestre</label><label for="t2c">Año</label>
+      </div>
+      <p style="font-size:13.5px;margin-top:18px">Misma píldora, padding menor. Para rangos de fecha y filtros dentro de una tarjeta.</p>
+    </div>
+    <div class="glass pad span6">
+      <div class="caption" style="margin-bottom:18px">Neutro · segundo nivel, sin azul</div>
+      <div class="gtabs compact neutral" style="--n:3;max-width:360px">
+        <input type="radio" name="tabs3" id="t3a" checked><input type="radio" name="tabs3" id="t3b"><input type="radio" name="tabs3" id="t3c">
+        <span class="pill"></span>
+        <label for="t3a">Todas</label><label for="t3b">Abiertas</label><label for="t3c">Pagadas</label>
+      </div>
+      <p style="font-size:13.5px;margin-top:18px">Píldora blanco-gris. Se usa cuando el selector principal ya está en pantalla: dos píldoras azules compiten, una manda.</p>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:20px">
+    <div class="glass pad span6">
+      <div class="caption" style="margin-bottom:18px">Movimiento (demo automática)</div>
+      <div class="gtabs autodemo" style="--n:4;max-width:520px">
+        <input type="radio" name="tabs4" id="t4a" checked>
+        <span class="pill"></span>
+        <label style="cursor:default">Resumen</label><label style="cursor:default">Facturas</label><label style="cursor:default">Impuestos</label><label style="cursor:default">Bancos</label>
+      </div>
+      <p style="font-size:13.5px;margin-top:18px">La píldora se asienta, no actúa: un solo deslizamiento ease-out. Sin rebote, sin elástico, sin estela.</p>
+    </div>
+    <div class="glass pad span6">
+      <h3 style="font-size:17px">Especificación</h3>
+      <div class="specrow">Deslizamiento <span>transform · 240ms · ease-out</span></div>
+      <div class="specrow">Altura principal <span>48 px · compacto 36 px</span></div>
+      <div class="specrow">Píldora <span>luz white .30 arriba → blue .28 abajo</span></div>
+      <div class="specrow">Texto activo <span>blanco + halo azul suave</span></div>
+      <div class="specrow">Texto inactivo <span>Glass Grey · hover white 70</span></div>
+      <div class="specrow">Presión <span>scale(.97) · 140ms</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 05 NAV + BOTONES ======================= -->
+<section>
+  <div class="kicker">05 / Navegación y acción</div><h2>Nav, botones y campos</h2>
+
+  <div class="navdemo" style="margin-bottom:26px">
+    <div class="logo-row" style="gap:12px"><div class="logoMark sm anim"><span class="ring"></span><span class="sq"></span></div><div class="word small">QUALIA<span class="conta">CONTA</span></div></div>
+    <div class="links"><a class="active" href="#">Resumen</a><a href="#">Facturas</a><a href="#">Impuestos</a><a href="#">Bancos</a></div>
+    <span class="btn primary" style="padding:10px 18px;font-size:14px">Registrar</span>
+  </div>
+
+  <div class="grid">
+    <div class="glass pad span6">
+      <div class="caption" style="margin-bottom:20px">Botones</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+        <span class="btn primary">Registrar factura</span>
+        <span class="btn glass2">Ver detalle</span>
+        <span class="btn ghost">Cancelar</span>
+        <span class="btn danger">Anular</span>
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:18px">
+        <span class="btn glass2"><span class="qdot"></span>Procesando…</span>
+      </div>
+      <p style="font-size:13.5px;margin-top:20px">Primario azul: máximo uno por vista. Glass: acciones secundarias. Ghost: salidas. Rojo: solo destructivo real. El cuadrado-cursor parpadeando dentro del botón = el sistema trabaja.</p>
+    </div>
+    <div class="glass pad span6">
+      <div class="caption" style="margin-bottom:20px">Campos</div>
+      <div class="field"><label>Proveedor</label><input class="input" placeholder="Claro Dominicana" /></div>
+      <div class="field"><label>NCF</label><input class="input mono" placeholder="B0100000000" /></div>
+      <div class="field" style="margin-bottom:0"><label>Monto RD$</label><input class="input mono" placeholder="0.00" /></div>
+      <p style="font-size:13.5px;margin-top:18px">El foco es un anillo Focus Blue de 4&nbsp;px al 18% — nunca un cambio de fondo. Datos duros (NCF, montos, fechas) siempre en monoespaciada: es la voz del cuadrado.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 06 TABLA ======================= -->
+<section>
+  <div class="kicker">06 / Datos</div><h2>La tabla de vidrio</h2>
+  <p>La tabla es el corazón de una app contable. Superficie de vidrio única, filas separadas por líneas de luz al 6%, hover azul al 8%. Números a la derecha, en mono, alineados al decimal. El estado es un badge, no un color de fila.</p>
+
+  <div class="gtable-wrap" style="margin-top:26px">
+    <table class="gtable">
+      <thead><tr><th>Fecha</th><th>Proveedor</th><th>NCF</th><th>Estado</th><th style="text-align:right">ITBIS</th><th style="text-align:right">Total RD$</th></tr></thead>
+      <tbody>
+        <tr><td>04 ago 2026</td><td>Claro Dominicana</td><td class="ncf">B0100054821</td><td><span class="badge ok"><i></i>Registrado</span></td><td class="num">631.02</td><td class="num">4,136.72</td></tr>
+        <tr><td>07 ago 2026</td><td>Banco Santa Cruz — leasing</td><td class="ncf">—</td><td><span class="badge warn"><i></i>Sin NCF</span></td><td class="num">—</td><td class="num">28,450.00</td></tr>
+        <tr><td>11 ago 2026</td><td>EDESUR</td><td class="ncf">B0100112034</td><td><span class="badge ok"><i></i>Registrado</span></td><td class="num">2,114.90</td><td class="num">13,864.34</td></tr>
+        <tr><td>14 ago 2026</td><td>Ferretería Ochoa</td><td class="ncf">B0100009912</td><td><span class="badge err"><i></i>Descuadre</span></td><td class="num">418.50</td><td class="num">2,743.50</td></tr>
+        <tr><td>18 ago 2026</td><td>Altice — fibra oficina</td><td class="ncf">B0100076218</td><td><span class="badge info"><i></i>Procesando</span></td><td class="num">379.98</td><td class="num">2,489.98</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ======================= 07 KPI ======================= -->
+<section>
+  <div class="kicker">07 / Tablero</div><h2>Tarjetas de indicador</h2>
+  <div class="grid">
+    <div class="glass hover kpi span3"><span class="lbl">ITBIS del mes</span><span class="val">RD$ 41,208</span><span class="delta up">▲ 6.2% vs jul</span>
+      <div class="spark"><i style="height:30%"></i><i style="height:45%"></i><i style="height:38%"></i><i style="height:62%"></i><i style="height:52%"></i><i style="height:74%"></i><i style="height:88%"></i></div></div>
+    <div class="glass hover kpi span3"><span class="lbl">Facturas registradas</span><span class="val">128</span><span class="delta up">▲ 12 esta semana</span>
+      <div class="spark"><i style="height:40%"></i><i style="height:35%"></i><i style="height:55%"></i><i style="height:48%"></i><i style="height:66%"></i><i style="height:60%"></i><i style="height:78%"></i></div></div>
+    <div class="glass hover kpi span3"><span class="lbl">Pendientes de NCF</span><span class="val">11</span><span class="delta down">● requiere acción</span>
+      <div class="spark"><i style="height:80%"></i><i style="height:72%"></i><i style="height:64%"></i><i style="height:58%"></i><i style="height:50%"></i><i style="height:44%"></i><i style="height:38%"></i></div></div>
+    <div class="glass hover kpi span3"><span class="lbl">Cuadre bancario</span><span class="val">100%</span><span class="delta up">✓ al centavo</span>
+      <div class="spark"><i style="height:60%"></i><i style="height:60%"></i><i style="height:60%"></i><i style="height:60%"></i><i style="height:60%"></i><i style="height:60%"></i><i style="height:60%"></i></div></div>
+  </div>
+  <p style="margin-top:24px">El número es lo único grande. La etiqueta arriba en gris, la variación abajo en color de estado. La mini-barra se ilumina al pasar el cursor — 140&nbsp;ms, nada más.</p>
+</section>
+
+<!-- ======================= 08 TOAST + MODAL ======================= -->
+<section>
+  <div class="kicker">08 / Avisos</div><h2>Toast y modal</h2>
+  <div class="grid">
+    <div class="span6">
+      <div class="caption" style="margin-bottom:18px">Toast — entra, informa, se va</div>
+      <div class="toast loop">
+        <span class="badge ok" style="padding:8px"><i></i></span>
+        <div class="msg"><b>Factura registrada</b><span>Claro · B0100054821 · RD$ 4,136.72</span></div>
+      </div>
+      <p style="font-size:13.5px;margin-top:20px">Sube 16&nbsp;px al entrar, se asienta, y se retira igual. Vive 4 segundos. Nunca más de un toast a la vez.</p>
+    </div>
+    <div class="span6">
+      <div class="caption" style="margin-bottom:18px">Modal — vidrio grueso sobre fondo</div>
+      <div class="modal-demo">
+        <div class="modal">
+          <h3 style="font-size:18px">¿Anular esta factura?</h3>
+          <p style="font-size:14px">Ferretería Ochoa · B0100009912 · RD$ 2,743.50. La anulación queda asentada; el documento no se borra.</p>
+          <div style="display:flex;gap:12px;margin-top:20px">
+            <span class="btn danger" style="flex:1;justify-content:center">Anular</span>
+            <span class="btn ghost" style="flex:1;justify-content:center">Volver</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 09 SPLASH + ICON ======================= -->
+<section>
+  <div class="kicker">09 / Arranque</div><h2>Splash screen y app icon</h2>
+  <div class="grid" style="align-items:center">
+    <div class="span6" style="text-align:center">
+      <div class="splash">
+        <span class="notch"></span>
+        <div class="center"><div class="stack">
+          <div class="sRing logoMark"><span class="ring"></span><span class="sq"></span></div>
+          <div class="sword">QUALIA<span class="conta">CONTA</span></div>
+          <div class="ssub">criterio contable</div>
+        </div></div>
+        <div class="scard"><b>Cuadre al centavo</b><span>128 facturas · ITBIS RD$ 41,208 · 0 errores</span></div>
+      </div>
+      <p class="mono" style="margin-top:18px;max-width:none">secuencia 6s en loop (demo) — en producción corre una sola vez, ~2.4s</p>
+    </div>
+    <div class="span6">
+      <h3>La secuencia</h3>
+      <div class="specrow">1 · Anillo <span>escala .6 → 1 · respira una vez</span></div>
+      <div class="specrow">2 · Cuadrado <span>aparece como cursor · parpadeo duro</span></div>
+      <div class="specrow">3 · Wordmark <span>el tracking se cierra .5em → .24em</span></div>
+      <div class="specrow">4 · Subtítulo <span>fade en mono · "criterio contable"</span></div>
+      <div class="specrow">5 · Tarjeta glass <span>sube 40px y se asienta</span></div>
+      <p style="margin-top:20px">Todo ease-out, nada rebota. Si <span class="mono">prefers-reduced-motion</span> está activo, la splash es estática: logo y wordmark ya compuestos.</p>
+      <div class="caption" style="margin:30px 0 16px">App icon — tres fondos permitidos</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div class="appicon navy"><div class="logoMark"><span class="ring"></span><span class="sq"></span></div><span class="contaDot"></span></div>
+        <div class="appicon glassy"><div class="logoMark"><span class="ring"></span><span class="sq"></span></div><span class="contaDot"></span></div>
+        <div class="appicon blue"><div class="logoMark white"><span class="ring"></span><span class="sq"></span></div><span class="contaDot" style="background:#fff"></span></div>
+      </div>
+      <p style="font-size:13.5px;margin-top:16px">El segundo cuadrado Focus Blue en la esquina es la firma de Conta dentro del sistema Qualia: mismo lenguaje, otra habilidad.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 10 LOGIN ======================= -->
+<section>
+  <div class="kicker">10 / Acceso</div><h2>Login — PIN de 6 dígitos</h2>
+  <div class="grid" style="align-items:center">
+    <div class="span6" style="text-align:center">
+      <div class="login">
+        <span class="notch"></span>
+        <div class="inner">
+          <div class="lgMark logoMark"><span class="ring"></span><span class="sq"></span></div>
+          <div class="hi">QUALIA<span class="conta">CONTA</span></div>
+          <div class="ask"><span class="a1">Ingresá tu PIN</span><span class="a2">PIN correcto — bienvenido</span></div>
+          <div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="pad">
+            <span class="key p6">1</span><span class="key p1">2</span><span class="key">3</span>
+            <span class="key p2">4</span><span class="key">5</span><span class="key p3">6</span>
+            <span class="key">7</span><span class="key p4">8</span><span class="key p5">9</span>
+            <span class="key zero">0</span>
+          </div>
+        </div>
+        <div class="okring"><span></span></div>
+      </div>
+      <p class="mono" style="margin-top:18px;max-width:none">ciclo 8s en loop (demo) — teclas, puntos y pulso de acceso</p>
+    </div>
+    <div class="span6">
+      <h3>La coreografía</h3>
+      <div class="specrow">Cursor <span>el cuadrado del logo parpadea: "esperando"</span></div>
+      <div class="specrow">Tecla <span>scale .90 + luz Focus Blue · 140ms</span></div>
+      <div class="specrow">Punto <span>se llena en Focus Blue, cuadrado — no círculo</span></div>
+      <div class="specrow">Éxito <span>anillo verde pulsa una vez y abre</span></div>
+      <div class="specrow">PIN incorrecto <span>los 6 puntos laten en rojo — sin sacudida</span></div>
+      <div class="specrow">Auth real <span>Supabase Auth · cuenta única</span></div>
+      <p style="margin-top:20px">Los puntos del PIN son cuadrados: son seis cuadrados de conciencia esperando. El error nunca sacude la pantalla — late, como todo error en Qualia. El teclado se desenfoca cuando el sistema toma el control.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 11 ESTADOS ======================= -->
+<section>
+  <div class="kicker">11 / Emoción del sistema</div><h2>El cuadrado, en contexto contable</h2>
+  <p>Hereda íntegro el sistema de estados de Qualia v1.2 §07. En Conta, cada estado tiene un significado contable exacto — el color nunca es decorativo.</p>
+  <div class="grid" style="margin-top:26px">
+    <div class="glass pad span3"><span class="badge info" style="margin-bottom:14px"><i></i>Foco</span><p style="font-size:14px">Leyendo un documento, extrayendo NCF y montos. Cuadrado vertical Focus Blue, barrido lento.</p></div>
+    <div class="glass pad span3"><span class="badge ok" style="margin-bottom:14px"><i></i>Acción</span><p style="font-size:14px">Asiento registrado. Verde profundo y medido, no festivo. Un pulso y listo.</p></div>
+    <div class="glass pad span3"><span class="badge warn" style="margin-bottom:14px"><i></i>Advertencia</span><p style="font-size:14px">Falta un NCF, un dato no cruza. Triángulo ámbar parpadeando: pide atención, no pánico.</p></div>
+    <div class="glass pad span3"><span class="badge err" style="margin-bottom:14px"><i></i>Error</span><p style="font-size:14px">Descuadre real o bloqueo. El cuadrado late como pulso. Rojo solo acá — nunca para “pendiente”.</p></div>
+  </div>
+</section>
+
+<!-- ======================= 11 MOVIMIENTO ======================= -->
+<section>
+  <div class="kicker">12 / Movimiento</div><h2>Animación en todos lados, espectáculo en ninguno</h2>
+  <div class="grid">
+    <div class="glass pad span4"><h3>Micro</h3><p style="font-size:14.5px">Hover: elevar 3px. Presión: scale .97. Foco: anillo azul. Todo entre 140 y 200&nbsp;ms, ease-out.</p></div>
+    <div class="glass pad span4"><h3>Transición</h3><p style="font-size:14.5px">La píldora del selector, el toast, el modal: 200–240&nbsp;ms. Las cosas se asientan, no actúan. Sin rebote, sin elástico, sin giros.</p></div>
+    <div class="glass pad span4"><h3>Vida</h3><p style="font-size:14.5px">Solo el cuadrado vive libre: parpadea (presencia), late (error), barre (foco). El anillo respira únicamente al pensar.</p></div>
+  </div>
+  <div class="grid" style="margin-top:20px">
+    <div class="vbox no span6"><div class="vlabel">No</div><p>Rebotes tipo spring, confeti al registrar, gradientes animados de fondo, skeletons brillantes, píldora con estela. Si la animación llama la atención sobre sí misma, sobra.</p></div>
+    <div class="vbox yes span6"><div class="vlabel">Sí</div><p>Deslizar y asentar. Aparecer subiendo 14–16px con fade. Parpadeo duro del cursor. Pulso solo en error. Y siempre: <span class="mono" style="color:#D5DCEA">prefers-reduced-motion</span> apaga todo.</p></div>
+  </div>
+</section>
+
+<!-- ======================= 12 NO HACER ======================= -->
+<section>
+  <div class="kicker">13 / Usos incorrectos</div><h2>No hacer</h2>
+  <div class="grid">
+    <div class="vbox no span4"><div class="vlabel">Vidrio</div><p>Vidrio sobre fondo claro plano. Tres capas de vidrio apiladas. Blur mayor a 22px. Bordes sin luz superior.</p></div>
+    <div class="vbox no span4"><div class="vlabel">Color</div><p>CONTA en otro color que Focus Blue. Verde/ámbar/rojo como decoración. Azules fuera de la pareja #1958FF / #00A6FF.</p></div>
+    <div class="vbox no span4"><div class="vlabel">Selector</div><p>Dos píldoras azules en la misma vista. Píldora con rebote. Más de 5 segmentos — a los 6, es un menú, no un selector.</p></div>
+  </div>
+</section>
+
+<!-- ======================= 14 PANTALLAS ======================= -->
+<section>
+  <div class="kicker">14 / Pantallas</div><h2>Pantallas diseñadas</h2>
+  <p>Los diseños de pantalla completos viven en <span class="mono">docs/brand/pantallas/</span>. Cada uno es un HTML autónomo, interactivo y animado, construido con este sistema.</p>
+  <p style="margin-top:10px">Cada pantalla trae su <b>versión móvil</b> (≤720px) dentro del mismo archivo: barra superior compacta (solo marca, empresa y avatar), tarjetas a una columna, tablas anchas con scroll propio, y la navegación principal como <b>dock flotante inferior translúcido</b> — vidrio con blur, icono sobre etiqueta, la misma píldora transparente para el activo.</p>
+  <div class="glass pad hover" style="margin-top:26px;max-width:560px">
+    <h3>Login web</h3>
+    <p style="font-size:14.5px">Muro claro con el libro fluyendo (asientos, NCF, conciliadas y el cuadre Debe = Haber en vivo) + panel de email y contraseña. Estructura port del login de OrdenPro, piel Qualia clara. Al entrar abre el Resumen. <a href="pantallas/login.html" style="color:var(--blue-focus);font-weight:700">Abrir →</a></p>
+  </div>
+  <div class="glass pad hover" style="margin-top:18px;max-width:560px">
+    <h3>Bandeja (mesa de trabajo)</h3>
+    <p style="font-size:14.5px">La cola de qualia_trabajos con sus estados reales (analizando → propuesta → aprobada → registrada), zona de arrastre, filtros, y el panel de propuesta con NCF, ITBIS, método por precedente y los botones Aprobar / Corregir / Rechazar. <a href="pantallas/bandeja.html" style="color:var(--blue-focus);font-weight:700">Abrir →</a></p>
+  </div>
+  <div class="glass pad hover" style="margin-top:18px;max-width:560px">
+    <h3>Conciliación (Bancos)</h3>
+    <p style="font-size:14.5px">Movimientos del colector OpenBanking cruzados contra el libro de ADM. Tarjetas por cuenta con saldo banco/libro, y el panel de Diferencias — el producto de la conciliación — con su propuesta y su acción en la Bandeja. <a href="pantallas/conciliacion.html" style="color:var(--blue-focus);font-weight:700">Abrir →</a></p>
+  </div>
+  <div class="glass pad hover" style="margin-top:18px;max-width:560px">
+    <h3>Impuestos</h3>
+    <p style="font-size:14.5px">Las obligaciones del período fiscal con monto, vencimiento, estado y volante del contable; la liquidación IT-1 (ventas − compras − importación − saldo a favor); los formatos DGII 606/607/608 y el histórico de pagos. Con selector de empresa multiempresa en la barra. <a href="pantallas/impuestos.html" style="color:var(--blue-focus);font-weight:700">Abrir →</a></p>
+  </div>
+  <div class="glass pad hover" style="margin-top:18px;max-width:560px">
+    <h3>Nómina</h3>
+    <p style="font-size:14.5px">Espejo del NominaPanel real: los meses apilados con su estado (borrador → devengada → en pago → cerrada) y el neto como cifra del mes; el devengo con sus 3 asientos en ADM (sueldos, TSS, Infotep); y la tabla de empleados con Devengado / Retenido / Neto y los pagos por quincena cruzados contra el banco. <a href="pantallas/nomina.html" style="color:var(--blue-focus);font-weight:700">Abrir →</a></p>
+  </div>
+  <div class="glass pad hover" style="margin-top:18px;max-width:560px">
+    <h3>Mi Cuenta Qualia</h3>
+    <p style="font-size:14.5px">La cuenta del usuario: perfil, seguridad (2 pasos, Telegram) y las empresas a las que tiene acceso con su rol — las propias y las compartidas por otros dueños. <a href="pantallas/cuenta.html" style="color:var(--blue-focus);font-weight:700">Abrir →</a></p>
+  </div>
+  <div class="glass pad hover" style="margin-top:18px;max-width:560px">
+    <h3>Plan Qualia</h3>
+    <p style="font-size:14.5px">La suscripción bien definida: plan actual con próximo cobro, cambio entre Base / Pro / Total (precio por empresa), método de pago e historial de pagos con recibos. <a href="pantallas/plan.html" style="color:var(--blue-focus);font-weight:700">Abrir →</a></p>
+  </div>
+  <div class="glass pad hover" style="margin-top:18px;max-width:560px">
+    <h3>Configuración</h3>
+    <p style="font-size:14.5px">Accesible desde el menú del avatar (Mi Cuenta Qualia · Configuración de la empresa · Salir): las empresas de la cuenta (crear y administrar), inicio del período contable (lo anterior se destila, no se registra), usuarios de la empresa con roles (aprobar es siempre humano), el enlace a ADM Cloud con sus requisitos (rol recortado, candado de banco, mapa de cuentas, espejo) y las cuentas de BankingQualia. <a href="pantallas/configuracion.html" style="color:var(--blue-focus);font-weight:700">Abrir →</a></p>
+  </div>
+  <div class="glass pad hover" style="margin-top:18px;max-width:560px">
+    <h3>Log de seguridad</h3>
+    <p style="font-size:14.5px">Historial de solo lectura de todo lo que pasó en la empresa: entradas y entradas fallidas, aprobaciones y rechazos, registros del contable en la nube y cambios de configuración. Filtros cuadrados por tipo, buscador, y lista cronológica agrupada por día con actor (persona o contable QC en morado). Accesible desde el menú del avatar. <a href="pantallas/seguridad.html" style="color:var(--blue-focus);font-weight:700">Abrir →</a></p>
+  </div>
+  <div class="glass pad hover" style="margin-top:18px;max-width:560px">
+    <h3>Resumen (dashboard)</h3>
+    <p style="font-size:14.5px">KPIs con contadores, ITBIS por mes, el día al centavo con estados DGII, últimas facturas y "por hacer". Navegación principal: el deslizador 3D como dock flotante inferior. Datos de muestra. <a href="pantallas/resumen.html" style="color:var(--blue-focus);font-weight:700">Abrir →</a></p>
+  </div>
+</section>
+
+<div class="footer">
+  <div class="logo-row" style="margin-bottom:16px"><div class="logoMark sm"><span class="ring"></span><span class="sq"></span></div><div class="word small">QUALIA<span class="conta">CONTA</span></div></div>
+  <p>Manual de marca Glass v1.0 — hereda de Qualia v1.2. Módulo 8px · vidrio con luz superior · movimiento que se asienta · cuando haya duda, quitar.</p>
+</div>
+
+</body>
+</html>

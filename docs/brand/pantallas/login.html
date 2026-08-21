@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QualiaConta — Login</title>
+<style>
+/* ============================================================
+   QUALIACONTA · LOGIN WEB v2
+   Estructura: port del login de OrdenPro — muro de marca 56%
+   (navy) + panel de formulario claro (Interface Paper).
+   Animación del muro: el libro diario fluyendo — asientos con
+   cuenta y monto, NCF, y el cuadre Debe = Haber cerrando en vivo.
+   Demo: cualquier correo + contraseña "123456" entra;
+   otra contraseña marca error (late, no sacude).
+   ============================================================ */
+:root{
+  --blue:#1958FF;
+  --blue-focus:#00A6FF;
+  --navy:#0A0F1C;
+  --navy2:#0E1628;
+  --ink:#111827;
+  --paper:#F6F7F9;
+  --muted:#7B8494;
+  --line:#DDE2EA;
+  --mono:"IBM Plex Mono","Geist Mono","JetBrains Mono",ui-monospace,monospace;
+  --ok:#2FBF71;
+  --err:#E5484D;
+  --t-fast:140ms; --t-med:200ms; --t-slow:240ms;
+  --ease:cubic-bezier(.2,.7,.3,1);
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font-family:Inter,Arial,sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;overflow:hidden}
+
+.screen{display:flex;height:100vh;min-height:640px}
+
+/* ============ MURO DE MARCA (56%, claro — Qualia es más blanco que negro) ============ */
+.wall{flex:0 0 56%;position:relative;overflow:hidden;display:flex;flex-direction:column;padding:48px 56px;color:var(--ink);
+  background:
+    radial-gradient(900px 620px at 78% -10%, #E3EBFF 0%, transparent 55%),
+    radial-gradient(700px 520px at -10% 55%, #EDF2FB 0%, transparent 60%),
+    radial-gradient(760px 560px at 60% 115%, rgba(25,88,255,.08) 0%, transparent 60%),
+    #FFFFFF}
+.wall .orb{position:absolute;right:-190px;bottom:-230px;width:520px;height:520px;border:86px solid rgba(25,88,255,.08);border-radius:50%;pointer-events:none;animation:breathe 7s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+
+.brand{display:flex;align-items:center;gap:14px;position:relative;z-index:1}
+.mark{position:relative;width:52px;height:46px;flex:0 0 auto}
+.mark .ring{position:absolute;left:0;top:0;width:38px;height:38px;border:7px solid var(--blue);border-radius:50%}
+.mark .sq{position:absolute;left:41px;top:31px;width:10px;height:10px;background:var(--blue);animation:qblink 1.1s steps(1,end) infinite}
+@keyframes qblink{0%,48%{opacity:1}49%,100%{opacity:0}}
+.word{font-weight:900;letter-spacing:.2em;font-size:19px;color:var(--ink)}
+.word .conta{color:var(--blue)}
+
+/* ---- el libro fluyendo: carriles de asientos contables ----
+   cada bloque es un renglón del diario: cuenta · monto, o un NCF.
+   azul = débito · celeste = crédito · blanco = NCF · tenue = papel */
+.flow{position:relative;margin:auto -56px;height:clamp(216px,34vh,340px);
+  display:flex;flex-direction:column;justify-content:space-between;pointer-events:none;
+  -webkit-mask:linear-gradient(90deg,transparent 0,#000 14%,#000 86%,transparent 100%);
+  mask:linear-gradient(90deg,transparent 0,#000 14%,#000 86%,transparent 100%)}
+.lane{position:relative;height:32px;overflow:hidden}
+.train{position:absolute;top:0;height:100%;display:flex;gap:12px;align-items:center;width:max-content;animation:slide linear infinite}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.blk{height:32px;border-radius:9px;flex:0 0 auto;display:flex;align-items:center;padding:0 12px;gap:8px;
+  border:1px solid rgba(10,15,28,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 3px 10px rgba(10,15,28,.05);
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.02em;white-space:nowrap}
+.blk.deb{background:linear-gradient(180deg,#2E6BFF,#1958FF);color:#fff;border-color:rgba(25,88,255,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 4px 12px rgba(25,88,255,.25)}
+.blk.cre{background:linear-gradient(180deg,rgba(0,166,255,.16),rgba(0,166,255,.08));color:#0678B6;border-color:rgba(0,166,255,.3)}
+.blk.ncf{background:#fff;color:var(--muted);border-color:var(--line)}
+.blk.okc{background:#fff;color:#3A4354;border-color:var(--line)}
+.blk.okc svg{color:#2FBF71}
+.blk.doc{background:#fff;color:#3A4354;border-color:var(--line)}
+.blk.dim{background:#EEF2F7;border-color:transparent;box-shadow:none;color:transparent}
+.blk.dim i{width:34px;height:4px;border-radius:999px;background:#DDE2EA}
+.blk .sq2{width:7px;height:7px;background:currentColor;opacity:.75;flex:0 0 auto}
+.blk.deb .sq2{opacity:1;background:#fff}
+.blk svg{display:block;flex:0 0 auto}
+
+/* ---- el cuadre en vivo: Debe = Haber → verde ---- */
+.cuadre{position:relative;z-index:1;display:inline-flex;align-items:center;gap:14px;
+  font-family:var(--mono);font-size:13.5px;letter-spacing:.02em;color:var(--muted);
+  padding:12px 18px;border-radius:12px;width:max-content;max-width:100%;
+  background:#fff;border:1px solid var(--line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9), 0 8px 22px rgba(10,15,28,.06)}
+.cuadre b{color:var(--ink);font-weight:600}
+.cuadre .eq{color:var(--blue);transition:color var(--t-med) var(--ease)}
+.cuadre .chk{width:15px;height:15px;background:var(--ok);display:grid;place-items:center;border-radius:3px;
+  opacity:0;transform:scale(.5);transition:opacity var(--t-med) var(--ease),transform var(--t-med) var(--ease)}
+.cuadre .chk svg{display:block}
+.cuadre.done .eq{color:var(--ok)}
+.cuadre.done .chk{opacity:1;transform:scale(1)}
+.cuadre .lbl{color:#6B7689}
+
+.wall-foot{position:relative;z-index:1;display:flex;flex-direction:column;gap:22px;padding-bottom:6px}
+.head{font-weight:800;font-size:clamp(32px,3.4vw,48px);line-height:1.08;letter-spacing:-.028em;color:var(--ink);max-width:560px}
+.head .hb{color:var(--blue)}
+.head .hm{color:#93A1B5}
+.sub{font-size:15px;color:#3A4354;max-width:440px;line-height:1.6}
+.chips{display:flex;gap:26px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:9px;font-size:13px;color:#3A4354}
+.chip b{color:var(--ink);font-weight:700}
+.chip .cq{width:9px;height:9px;flex:0 0 auto}
+.chip .cq.blue{background:var(--blue)}
+.chip .cq.focus{background:var(--blue-focus);height:13px;animation:scan .85s ease-in-out infinite alternate}
+.chip .cq.ok{background:var(--ok);animation:pulse 2.4s ease-in-out infinite}
+@keyframes scan{from{transform:translateX(-2px)}to{transform:translateX(2px)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(47,191,113,.35)}50%{box-shadow:0 0 0 6px rgba(47,191,113,0)}}
+
+/* ============ PANEL CLARO (Interface Paper, como OrdenPro) ============ */
+.panel{flex:1;display:flex;align-items:center;justify-content:center;position:relative;background:var(--paper);border-left:1px solid var(--line)}
+.card{width:400px;position:relative;animation:rise .6s var(--ease) both .15s}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+.hola{font-size:25px;font-weight:800;letter-spacing:-.022em;color:var(--ink)}
+.invita{font-size:13.5px;color:var(--muted);margin-top:6px;margin-bottom:26px}
+
+.field{display:flex;flex-direction:column;gap:7px;margin-bottom:16px}
+.field label{font-size:12.5px;font-weight:700;color:#3A4354}
+.field .row{display:flex;align-items:baseline}
+.field .olv{margin-left:auto;font-size:12px;color:var(--blue);font-weight:700;cursor:pointer;white-space:nowrap}
+.field .olv:hover{text-decoration:underline}
+.input{width:100%;padding:12px 14px;border-radius:10px;font-size:14.5px;font-family:inherit;color:var(--ink);
+  background:#fff;border:1px solid var(--line);outline:none;
+  transition:border-color var(--t-med) var(--ease),box-shadow var(--t-med) var(--ease)}
+.input::placeholder{color:#A6AEBC}
+.input:focus{border-color:var(--blue-focus);box-shadow:0 0 0 4px rgba(0,166,255,.14)}
+/* error: los campos laten — sin sacudida */
+@keyframes latir{0%{transform:scale(1)}12%{transform:scale(1.012)}24%{transform:scale(1)}36%{transform:scale(1.008)}48%,100%{transform:scale(1)}}
+.card.error .input{border-color:rgba(229,72,77,.65);box-shadow:0 0 0 4px rgba(229,72,77,.10);animation:latir 1s var(--ease) 1}
+
+.msg{min-height:18px;margin:2px 0 6px;font-size:12.5px;font-family:var(--mono);letter-spacing:.02em;color:#A6AEBC;transition:color var(--t-med) var(--ease)}
+.msg.bad{color:var(--err)}
+.msg.good{color:#1E9B5B}
+
+.btn{width:100%;padding:13px;border-radius:10px;border:0;cursor:pointer;margin-top:2px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  font:800 15px Inter,Arial,sans-serif;color:#fff;
+  background:linear-gradient(180deg,#2E6BFF,#1958FF 55%,#1246D6);
+  box-shadow:0 8px 20px rgba(25,88,255,.28), inset 0 1px 0 rgba(255,255,255,.35);
+  transition:transform var(--t-fast) var(--ease),box-shadow var(--t-med) var(--ease)}
+.btn:hover{box-shadow:0 12px 28px rgba(25,88,255,.4), inset 0 1px 0 rgba(255,255,255,.35);transform:translateY(-1px)}
+.btn:active{transform:scale(.97)}
+.btn .qdot{width:9px;height:9px;background:#fff;display:none}
+.btn.busy .qdot{display:inline-block;animation:qblink 1.1s steps(1,end) infinite}
+.btn.busy .arrow{display:none}
+
+.or{display:flex;align-items:center;gap:12px;margin:18px 0 14px}
+.or span:first-child,.or span:last-child{flex:1;height:1px;background:var(--line)}
+.or span:nth-child(2){font-size:11.5px;color:var(--muted)}
+
+.sso{width:100%;padding:12px;border-radius:10px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  font:600 13.5px Inter,Arial,sans-serif;color:var(--ink);
+  background:#fff;border:1px solid var(--line);
+  transition:border-color var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease),transform var(--t-fast) var(--ease)}
+.sso:hover{border-color:#C6CFDC;box-shadow:0 4px 12px rgba(10,15,28,.06)}
+.sso:active{transform:scale(.98)}
+
+.pedi{text-align:center;margin-top:24px;font-size:12.5px;color:var(--muted)}
+.pedi b{color:var(--blue);font-weight:700;cursor:pointer}
+.pedi b:hover{text-decoration:underline}
+.foot{text-align:center;margin-top:38px;font-size:10px;color:#A6AEBC;font-family:var(--mono);letter-spacing:.06em}
+
+/* pulso de acceso al entrar */
+.okring{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:3}
+.okring span{width:110px;height:110px;border:13px solid var(--ok);border-radius:50%;opacity:0;transform:scale(.7)}
+.okring.go span{animation:openok 1s var(--ease) both}
+@keyframes openok{0%{opacity:0;transform:scale(.7)}30%{opacity:1;transform:scale(1)}55%{opacity:1;transform:scale(1.04)}100%{opacity:0;transform:scale(1.5)}}
+
+@media (prefers-reduced-motion: reduce){
+  *,*:before,*:after{animation:none!important;transition:none!important}
+}
+@media(max-width:980px){
+  body{overflow:auto}
+  .screen{flex-direction:column;height:auto}
+  .wall{flex:none;min-height:52vh;padding:32px 28px}
+  .flow{margin:28px -28px}
+  .panel{padding:48px 20px}
+}
+
+/* móvil: el formulario manda; la animación se reduce al cuadre */
+@media(max-width:720px){
+  .wall{min-height:auto;padding:26px 20px 30px}
+  .flow{display:none}
+  .head{font-size:27px;max-width:none}
+  .sub{font-size:13px}
+  .chips{gap:14px}
+  .panel{padding:34px 16px 54px;border-left:0;border-top:1px solid var(--line)}
+  .card{width:100%;max-width:400px}
+}
+</style>
+</head>
+<body>
+<div class="screen">
+
+  <!-- ============ muro de marca ============ -->
+  <div class="wall">
+    <span class="orb"></span>
+
+    <div class="brand">
+      <div class="mark"><span class="ring"></span><span class="sq"></span></div>
+      <div class="word">QUALIA<span class="conta">CONTA</span></div>
+    </div>
+
+    <div class="flow" id="flow"></div>
+
+    <div class="wall-foot">
+      <div class="cuadre" id="cuadre">
+        <span class="lbl" style="color:#6B7689">DEBE</span><b id="debe">0.00</b>
+        <span class="eq">=</span>
+        <span class="lbl" style="color:#6B7689">HABER</span><b id="haber">0.00</b>
+        <span class="chk"><svg width="9" height="8" viewBox="0 0 9 8"><path d="M1 4l2.4 2.4L8 1.4" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </div>
+      <div class="head">Criterio que <span class="hb">cuadra</span>,<br><span class="hm">no que complace.</span></div>
+      <div class="sub">Cada factura, cada NCF y cada asiento de tu contabilidad, registrado con criterio y a la vista — al centavo.</div>
+      <div class="chips">
+        <span class="chip"><span class="cq blue"></span><b>Registra</b> con su NCF</span>
+        <span class="chip"><span class="cq focus"></span><b>Cuadra</b> al centavo</span>
+        <span class="chip"><span class="cq ok"></span><b>Vigila</b> todos los días</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ panel claro: email + contraseña ============ -->
+  <div class="panel">
+    <div class="okring" id="okring"><span></span></div>
+    <div class="card" id="card">
+      <div class="hola">¡Hola de nuevo!</div>
+      <div class="invita">Entrá para ver cómo cierra el día de tu contabilidad.</div>
+
+      <div class="field">
+        <label>Correo electrónico</label>
+        <input class="input" id="email" type="email" placeholder="carlos@qualia.ai" autocomplete="email">
+      </div>
+      <div class="field">
+        <div class="row"><label>Contraseña</label><span class="olv">¿La olvidaste?</span></div>
+        <input class="input" id="pass" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <div class="msg" id="msg">esperando entrada _</div>
+
+      <button class="btn" id="btn">
+        <span class="qdot"></span><span class="lbl">Entrar</span>
+        <svg class="arrow" width="16" height="16" viewBox="0 0 16 16"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+
+      <div class="or"><span></span><span>o</span><span></span></div>
+
+      <button class="sso">
+        <svg viewBox="0 0 24 24" style="width:16;height:16px;width:16px">
+          <path d="M21.6 12.2c0-.7-.06-1.4-.18-2H12v3.9h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.4z" fill="#4285F4"/>
+          <path d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z" fill="#34A853"/>
+          <path d="M6.4 14a6 6 0 0 1 0-3.8V7.6H3.1a10 10 0 0 0 0 8.9L6.4 14z" fill="#FBBC05"/>
+          <path d="M12 5.9c1.5 0 2.8.5 3.8 1.5L18.7 4.6A10 10 0 0 0 3.1 7.6l3.3 2.6C7.2 7.8 9.4 5.9 12 5.9z" fill="#EA4335"/>
+        </svg>
+        Continuar con Google
+      </button>
+
+      <div class="pedi">¿Tu empresa todavía no usa QualiaConta? <b>Pedí acceso</b></div>
+      <div class="foot">© 2026 QUALIACONTA · TÉRMINOS · PRIVACIDAD</div>
+      <div class="foot" style="margin-top:8px;color:#C3CAD6">demo: contraseña 123456 entra · otra late en rojo</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---- el libro fluyendo: la vida contable completa, no solo números ----
+   asientos, facturas con proveedor, NCF, conciliaciones, ITBIS,
+   606/607, retenciones, alertas — cada chip es una pieza real del día */
+(function(){
+  const IC={
+    chk:'<svg width="11" height="10" viewBox="0 0 11 10"><path d="M1.5 5.2 4.2 8 9.5 2" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    doc:'<svg width="10" height="12" viewBox="0 0 10 12"><path d="M1 1h5.2L9 3.8V11H1z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M3 6h4M3 8.3h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
+    tri:'<svg width="11" height="10" viewBox="0 0 11 10"><path d="M5.5 1 10.3 9H.7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+    bank:'<svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 4.2 5.5 1.4 10 4.2M1.8 4.6v3.6M4.3 4.6v3.6M6.7 4.6v3.6M9.2 4.6v3.6M1 9.6h9" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    sq:'<span class="sq2"></span>'
+  };
+  /* catálogo: [clase, icono, texto] — general, sin nombres propios */
+  const CHIPS=[
+    ['deb','sq','601.01 · 4,136.72'],
+    ['cre','sq','110.01 · −4,136.72'],
+    ['doc','doc','Factura · 4,136.72'],
+    ['ncf','doc','NCF B0100054821'],
+    ['okc','chk','Conciliada'],
+    ['cre','sq','ITBIS 18% · 631.02'],
+    ['okc','chk','Asiento registrado'],
+    ['doc','doc','Comprobante fiscal'],
+    ['deb','sq','801.03 · 13,864.34'],
+    ['okc','chk','606 compras · enviado'],
+    ['ncf','doc','Pendiente de NCF'],
+    ['ncf','doc','NCF B0100112034'],
+    ['doc','bank','Banco · −2,743.50'],
+    ['cre','sq','210.03 · −2,743.50'],
+    ['okc','chk','Cuadre al centavo'],
+    ['doc','doc','Retención ISR 2%'],
+    ['deb','sq','150.04 · 28,450.00'],
+    ['okc','chk','607 ventas · enviado'],
+    ['ncf','doc','NCF B0100076218'],
+    ['doc','bank','Banco · +52,318.75'],
+    ['deb','sq','701.01 · 2,489.98'],
+    ['okc','chk','Conciliación bancaria'],
+    ['doc','doc','Factura · 2,489.98'],
+    ['cre','sq','120.01 · −28,450.00'],
+  ];
+  /* carriles: índices del catálogo, con papel (dim) entre medio */
+  const LANES=[
+    {dur:46,seq:[2,-1,0,-1,4,-1,3,-1]},
+    {dur:62,seq:[-1,5,-1,6,-1,7,-1,8]},
+    {dur:38,seq:[9,-1,10,-1,11,-1,12,-1]},
+    {dur:54,seq:[-1,13,-1,14,-1,15,-1,16]},
+    {dur:70,seq:[17,-1,18,-1,19,-1,20,-1]},
+    {dur:58,seq:[-1,21,-1,22,-1,23,-1,1]},
+  ];
+  const flow=document.getElementById('flow');
+  const make=idx=>{
+    const b=document.createElement('div');
+    if(idx<0){b.className='blk dim';b.innerHTML='<i></i>';return b;}
+    const [cls,ic,txt]=CHIPS[idx%CHIPS.length];
+    b.className='blk '+cls;
+    b.innerHTML=IC[ic]+txt;
+    return b;
+  };
+  LANES.forEach(ln=>{
+    const lane=document.createElement('div');lane.className='lane';
+    const train=document.createElement('div');train.className='train';train.style.animationDuration=ln.dur+'s';
+    for(let rep=0;rep<2;rep++)ln.seq.forEach(c=>train.appendChild(make(c)));
+    lane.appendChild(train);flow.appendChild(lane);
+  });
+})();
+
+/* ---- el cuadre en vivo: los totales corren hasta igualarse → ✓ ---- */
+(function(){
+  const fmt=n=>n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const debeEl=document.getElementById('debe'),haberEl=document.getElementById('haber'),box=document.getElementById('cuadre');
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TOTALS=[41208.00,28450.00,13864.34,52318.75];
+  let ti=0;
+  function cycle(){
+    const total=TOTALS[ti++%TOTALS.length];
+    box.classList.remove('done');
+    if(reduced){debeEl.textContent=fmt(total);haberEl.textContent=fmt(total);box.classList.add('done');return;}
+    const t0=performance.now(),D=1600;
+    (function tick(now){
+      const p=Math.min(1,(now-t0)/D),e=1-Math.pow(1-p,3);
+      debeEl.textContent=fmt(total*e);
+      haberEl.textContent=fmt(total*Math.min(1,e*1.06)); /* el haber llega apenas antes: se espera al debe */
+      if(p<1)requestAnimationFrame(tick);
+      else{haberEl.textContent=fmt(total);box.classList.add('done');setTimeout(cycle,2600);}
+    })(t0);
+  }
+  cycle();
+})();
+
+/* ---- login demo: email + contraseña ---- */
+(function(){
+  const card=document.getElementById('card');
+  const email=document.getElementById('email'),pass=document.getElementById('pass');
+  const btn=document.getElementById('btn'),msg=document.getElementById('msg');
+  const okring=document.getElementById('okring');
+  let busy=false;
+
+  function idle(){msg.className='msg';msg.textContent='esperando entrada _';}
+  function submit(){
+    if(busy)return;
+    card.classList.remove('error');
+    if(!email.value||!email.value.includes('@')){msg.className='msg bad';msg.textContent='falta un correo válido';email.focus();return;}
+    if(!pass.value){msg.className='msg bad';msg.textContent='falta la contraseña';pass.focus();return;}
+    busy=true;btn.classList.add('busy');btn.querySelector('.lbl').textContent='Verificando';
+    msg.className='msg';msg.textContent='verificando…';
+    setTimeout(()=>{
+      busy=false;btn.classList.remove('busy');
+      if(pass.value==='123456'){
+        msg.className='msg good';msg.textContent='bienvenido — abriendo tu contabilidad';
+        btn.querySelector('.lbl').textContent='Entrando';
+        okring.classList.remove('go');void okring.offsetWidth;okring.classList.add('go');
+        setTimeout(()=>{window.location.href='resumen.html';},1100);
+      }else{
+        card.classList.add('error');
+        msg.className='msg bad';msg.textContent='correo o contraseña incorrectos';
+        btn.querySelector('.lbl').textContent='Entrar';
+        setTimeout(()=>{card.classList.remove('error');},1200);
+      }
+    },900);
+  }
+  btn.addEventListener('click',submit);
+  [email,pass].forEach(el=>{
+    el.addEventListener('keydown',e=>{if(e.key==='Enter')submit();});
+    el.addEventListener('input',()=>{card.classList.remove('error');idle();});
+  });
+})();
+</script>
+</body>
+</html>

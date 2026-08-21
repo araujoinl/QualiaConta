@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QualiaConta — Impuestos</title>
+<style>
+/* ============================================================
+   QUALIACONTA · IMPUESTOS v1 — datos dummy
+   El dominio real: obligaciones del período fiscal (se declaran
+   el mes siguiente), volantes que sube el contable, liquidación
+   IT-1 (ventas − compras − importación − saldo a favor),
+   formatos DGII 606/607/608 y el histórico de pagos.
+   Piel Qualia clara, esquinas cuadradas, sin ruido.
+   ============================================================ */
+:root{
+  --blue:#1958FF;
+  --blue-focus:#00A6FF;
+  --ink:#111827;
+  --paper:#F6F7F9;
+  --muted:#7B8494;
+  --line:#DDE2EA;
+  --soft:#EEF2F7;
+  --mono:"IBM Plex Mono","Geist Mono","JetBrains Mono",ui-monospace,monospace;
+  --ok:#2FBF71;
+  --ok-ink:#1E9B5B;
+  --err:#E5484D;
+  --t-fast:140ms; --t-med:200ms; --t-slow:240ms;
+  --ease:cubic-bezier(.2,.7,.3,1);
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:Inter,Arial,sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(900px 500px at 85% -10%, #E9EFFF 0%, transparent 60%);
+  background-repeat:no-repeat;min-height:100vh}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.rise{animation:rise .55s var(--ease) both}
+.d1{animation-delay:.06s}.d2{animation-delay:.12s}.d3{animation-delay:.18s}
+
+/* ============ barra superior ============ */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:28px;padding:14px 32px;
+  background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);
+  border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:11px;flex:0 0 auto}
+.mark{position:relative;width:38px;height:34px}
+.mark .ring{position:absolute;left:0;top:0;width:28px;height:28px;border:5px solid var(--blue);border-radius:50%}
+.mark .sq{position:absolute;left:30px;top:23px;width:8px;height:8px;background:var(--blue)}
+.word{font-weight:900;letter-spacing:.18em;font-size:14px;color:var(--ink)}
+.word .conta{color:var(--blue)}
+.topright{display:flex;align-items:center;gap:16px;flex:0 0 auto;margin-left:auto}
+.bell{position:relative;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  background:#fff;border:1px solid var(--line)}
+.bell i{position:absolute;top:7px;right:8px;width:7px;height:7px;background:var(--blue)}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(160deg,#2E6BFF,#1246D6);color:#fff;
+  display:grid;place-items:center;font-weight:800;font-size:13px;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+
+/* ============ selector de empresa (centro) ============ */
+.empresa{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;
+  padding:7px 14px;border-radius:10px;cursor:pointer;font-weight:700;font-size:13px;color:var(--ink);
+  background:#fff;border:1px solid var(--line);white-space:nowrap;user-select:none;
+  transition:border-color var(--t-fast) var(--ease)}
+.empresa:hover{border-color:#C6CFDC}
+.empresa>svg{color:var(--muted);flex:0 0 auto}
+.empresa .caret{font-size:9px;color:#A6AEBC}
+.emenu{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);min-width:240px;
+  background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px;display:none;z-index:40;
+  box-shadow:0 18px 44px rgba(10,15,28,.15), inset 0 1px 0 #fff}
+.emenu.open{display:block;animation:rise .25s var(--ease) both}
+.eopt{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:8px;font-size:12.5px;font-weight:600;color:#3A4354;cursor:pointer;
+  transition:background var(--t-fast) var(--ease)}
+.eopt:hover{background:rgba(25,88,255,.05)}
+.eopt.on{color:var(--blue)}
+.eopt .chk{margin-left:auto;color:var(--blue);font-weight:700}
+.eopt i{width:7px;height:7px;flex:0 0 auto;background:#C3CAD6}
+.eopt.on i{background:var(--blue)}
+
+/* ============ menú del usuario (avatar) ============ */
+.uwrap{position:relative;flex:0 0 auto}
+.umenu{position:absolute;top:calc(100% + 10px);right:0;min-width:252px;background:#fff;border:1px solid var(--line);
+  border-radius:12px;padding:6px;display:none;z-index:50;
+  box-shadow:0 18px 44px rgba(10,15,28,.15), inset 0 1px 0 #fff}
+.umenu.open{display:block;animation:rise .25s var(--ease) both}
+.uhead{display:flex;align-items:center;gap:10px;padding:9px 11px 11px;border-bottom:1px solid var(--soft);margin-bottom:5px}
+.uhead .avatar{width:32px;height:32px;font-size:11.5px;cursor:default}
+.uhead b{display:block;font-size:12.5px;color:var(--ink)}
+.uhead .mail{display:block;font-size:10.5px;color:var(--muted);font-family:var(--mono)}
+.uitem{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;font-size:12.5px;font-weight:600;color:#3A4354;cursor:pointer;
+  transition:background var(--t-fast) var(--ease),color var(--t-fast) var(--ease)}
+.uitem:hover{background:rgba(25,88,255,.05);color:var(--blue)}
+.uitem svg{flex:0 0 auto;color:#8A94A6;transition:color var(--t-fast) var(--ease)}
+.uitem:hover svg{color:var(--blue)}
+.uitem .flecha{margin-left:auto;color:#A6AEBC;font-weight:700}
+.usep{height:1px;background:var(--soft);margin:5px 4px}
+.uitem.salir:hover{background:rgba(229,72,77,.06);color:var(--err)}
+.uitem.salir:hover svg{color:var(--err)}
+
+
+
+/* ============ selector principal (vidrio) ============ */
+.gtabs{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;padding:5px;border-radius:999px;flex:0 0 auto;
+  background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(236,241,250,.14));
+  -webkit-backdrop-filter:blur(14px) saturate(1.35);backdrop-filter:blur(14px) saturate(1.35);
+  border:1px solid rgba(255,255,255,.55);
+  box-shadow:0 10px 26px rgba(10,15,28,.07), inset 0 1px 0 rgba(255,255,255,.6), inset 0 -1px 0 rgba(10,15,28,.03)}
+.gtabs input{position:absolute;opacity:0;pointer-events:none}
+.gtabs label{position:relative;z-index:2;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:8px 14px;border-radius:999px;cursor:pointer;font-weight:700;font-size:13px;color:var(--muted);white-space:nowrap;
+  transition:color var(--t-med) var(--ease),transform var(--t-fast) var(--ease)}
+.gtabs label:hover{color:#3A4354}
+.gtabs label:active{transform:scale(.97)}
+.gtabs .pill{position:absolute;z-index:1;top:5px;bottom:5px;left:5px;width:calc((100% - 10px)/var(--n,4));border-radius:999px;
+  background:rgba(25,88,255,.04);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  border:1px solid rgba(25,88,255,.4);
+  box-shadow:none;
+  transition:transform var(--t-slow) var(--ease)}
+.gtabs:has(input:nth-of-type(1):checked) .pill{transform:translateX(0)}
+.gtabs:has(input:nth-of-type(2):checked) .pill{transform:translateX(100%)}
+.gtabs:has(input:nth-of-type(3):checked) .pill{transform:translateX(200%)}
+.gtabs:has(input:nth-of-type(4):checked) .pill{transform:translateX(300%)}
+.gtabs:has(input:nth-of-type(5):checked) .pill{transform:translateX(400%)}
+.gtabs:has(input:nth-of-type(1):checked) label:nth-of-type(1),
+.gtabs:has(input:nth-of-type(2):checked) label:nth-of-type(2),
+.gtabs:has(input:nth-of-type(3):checked) label:nth-of-type(3),
+.gtabs:has(input:nth-of-type(4):checked) label:nth-of-type(4),
+.gtabs:has(input:nth-of-type(5):checked) label:nth-of-type(5){color:var(--blue)}
+
+/* ============ layout ============ */
+.wrap{max-width:1360px;margin:0 auto;padding:30px 32px 60px}
+.pagehead{display:flex;align-items:center;gap:18px;margin-bottom:22px;flex-wrap:wrap}
+.periodo{margin-left:auto;font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.04em}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px 22px;
+  box-shadow:0 10px 30px rgba(10,15,28,.05), inset 0 1px 0 #fff}
+
+/* ============ línea de período ============ */
+.linea{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.seg{display:inline-flex;flex:0 0 auto;height:28px;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden}
+.seg span{display:inline-flex;align-items:center;gap:4px;padding:0 13px;font-size:11.5px;font-weight:700;color:var(--muted);
+  cursor:pointer;white-space:nowrap;border-left:1px solid var(--line);
+  transition:background var(--t-fast) var(--ease),color var(--t-fast) var(--ease)}
+.seg span:first-child{border-left:0}
+.seg span:hover{color:#3A4354;background:var(--paper)}
+.seg span.on{color:var(--blue);background:rgba(25,88,255,.08)}
+.nota-linea{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+.tag-ok{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--ok-ink);font-family:var(--mono);letter-spacing:.03em}
+
+/* ============ columnas ============ */
+.cols{display:grid;grid-template-columns:1.45fr 1fr;gap:20px;align-items:start;margin-bottom:20px}
+.bloque{border:1px solid var(--soft);border-radius:12px;overflow:hidden}
+.bh{display:flex;align-items:baseline;gap:10px;padding:13px 16px;background:#FBFCFE;border-bottom:1px solid var(--line)}
+.bh h2{font-size:13.5px;font-weight:800}
+.bh .sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.bh .der{margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--muted)}
+
+/* tabla de obligaciones */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{padding:8px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+  background:#FBFCFE;border-bottom:1px solid var(--line);font-weight:800;white-space:nowrap}
+th.num{text-align:right}
+td{padding:10px 12px;border-bottom:1px solid var(--soft);vertical-align:middle;color:#3A4354}
+tbody tr{transition:background var(--t-fast) var(--ease);cursor:pointer}
+tbody tr:hover{background:rgba(25,88,255,.03)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.hot{background:rgba(25,88,255,.05);box-shadow:inset 2.5px 0 0 var(--blue)}
+
+/* condición propia de cada impuesto */
+.cond{margin:12px 16px 0;padding:10px 12px;border-radius:10px;display:flex;gap:9px;align-items:flex-start;
+  background:rgba(25,88,255,.05);border:1px solid rgba(25,88,255,.2);font-size:11.5px;line-height:1.5;color:#2A3F7A}
+.cond i{width:7px;height:7px;background:var(--blue);flex:0 0 auto;margin-top:4px}
+.cond b{color:var(--blue)}
+.imp{display:flex;align-items:center;gap:9px}
+.imp svg{flex:0 0 auto;color:var(--muted)}
+.imp b{font-size:12.5px;color:var(--ink);display:block}
+.imp small{font-size:10.5px;color:var(--muted);font-family:var(--mono);display:block}
+.tnum{font-family:var(--mono);font-size:11.5px;white-space:nowrap;color:var(--muted)}
+.tmonto{font-family:var(--mono);font-size:12px;font-weight:600;text-align:right;white-space:nowrap;color:var(--ink)}
+.est{display:inline-flex;align-items:center;gap:6px;padding:2.5px 9px;border-radius:8px;font-size:11px;font-weight:700;border:1px solid;white-space:nowrap}
+.est.ok{color:var(--ok-ink);border-color:rgba(47,191,113,.35);background:rgba(47,191,113,.07)}
+.est.due{color:var(--blue);border-color:rgba(25,88,255,.35);background:rgba(25,88,255,.06)}
+.est i{width:7px;height:7px;flex:0 0 auto;background:currentColor}
+.vver{font-size:11.5px;font-weight:700;color:var(--blue);cursor:pointer;padding:4px 8px;border-radius:7px;white-space:nowrap;
+  transition:background var(--t-fast) var(--ease)}
+.vver:hover{background:rgba(25,88,255,.08)}
+.vnone{font-size:10.5px;font-family:var(--mono);color:#A6AEBC;white-space:nowrap}
+.pagar{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:8px;border:0;cursor:pointer;
+  font:700 11.5px Inter,Arial,sans-serif;color:#fff;white-space:nowrap;
+  background:linear-gradient(180deg,#2E6BFF,#1958FF 55%,#1246D6);
+  box-shadow:0 5px 12px rgba(25,88,255,.24), inset 0 1px 0 rgba(255,255,255,.35);
+  transition:transform var(--t-fast) var(--ease)}
+.pagar:active{transform:scale(.97)}
+
+/* liquidación IT-1 */
+.liq{padding:14px 16px}
+.liq .lrow{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--soft)}
+.liq .lrow span{font-size:12px;color:var(--muted)}
+.liq .lrow b{font-family:var(--mono);font-size:12px;font-weight:600;color:#3A4354}
+.liq .lrow.tot{border-bottom:0;margin-top:2px;padding-top:9px;border-top:1.5px solid var(--line)}
+.liq .lrow.tot span{color:var(--ink);font-weight:700}
+.liq .lrow.tot b{color:var(--blue);font-weight:700;font-size:14px}
+.borrador{margin:12px 16px 16px;display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;
+  background:var(--paper);border:1px solid var(--line)}
+.borrador .dico{width:30px;height:38px;border-radius:5px;background:#fff;border:1px solid var(--line);position:relative;flex:0 0 auto;
+  box-shadow:0 2px 5px rgba(10,15,28,.06)}
+.borrador .dico:before{content:"";position:absolute;left:5px;right:5px;top:7px;height:2px;background:var(--line)}
+.borrador .dico:after{content:"";position:absolute;left:5px;right:10px;top:12px;height:2px;background:var(--soft)}
+.borrador b{font-size:11.5px;color:var(--ink);display:block}
+.borrador span{font-size:10.5px;color:var(--muted);font-family:var(--mono)}
+.borrador .vver{margin-left:auto}
+
+/* formatos DGII */
+.fmt{padding:6px 16px 12px}
+.frow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--soft)}
+.frow:last-child{border-bottom:0}
+.frow .fsq{width:8px;height:8px;flex:0 0 auto;background:var(--ok)}
+.frow b{font-size:12.5px;color:var(--ink)}
+.frow .fdet{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.frow .vver{margin-left:auto}
+
+/* histórico */
+.hist td,.hist th{padding:8px 12px}
+.hist .chk{color:var(--ok-ink);font-weight:700}
+.foot{margin-top:34px;text-align:center;font-size:10px;color:#A6AEBC;font-family:var(--mono);letter-spacing:.06em}
+
+@media (prefers-reduced-motion: reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+@media(max-width:1080px){.cols{grid-template-columns:1fr}}
+@media(max-width:720px){
+  .top{flex-wrap:wrap;gap:12px}
+  .gtabs{order:3;width:100%}
+  .gtabs label{padding:8px 6px;font-size:12px}
+  .wrap{padding:22px 14px 48px}
+  .card{padding:14px}
+}
+
+/* ============ móvil (diseño, no solo reflow) ============ */
+@media(max-width:720px){
+  /* barra superior compacta: solo la marca, la empresa centrada y el avatar */
+  .top{padding:10px 14px;gap:12px}
+  .word{display:none}
+  .empresa{padding:6px 10px;font-size:12px}
+  .bell{width:32px;height:32px}
+  .avatar{width:32px;height:32px;font-size:12px}
+  /* navegación principal: dock flotante inferior (como define el manual) */
+  .gtabs,.gtabs.main{position:fixed;left:10px;right:10px;bottom:10px;width:auto;z-index:80;order:0;
+    background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(236,241,250,.25));
+    -webkit-backdrop-filter:blur(20px) saturate(1.45);backdrop-filter:blur(20px) saturate(1.45);
+    border:1px solid rgba(255,255,255,.6);
+    box-shadow:0 14px 34px rgba(10,15,28,.14), inset 0 1px 0 rgba(255,255,255,.65)}
+  .gtabs label,.gtabs.main label{flex-direction:column;gap:3px;padding:7px 2px 6px;font-size:9.5px}
+  .gtabs label svg,.gtabs.main label svg{width:17px;height:17px}
+  .wrap{padding:16px 14px 92px}
+  .pagehead{margin-bottom:12px;gap:10px;animation:none;transform:none}
+  .card{padding:14px;border-radius:14px}
+}
+
+/* móvil: las tablas anchas scrollean dentro de su tarjeta */
+@media(max-width:720px){
+  table{display:block;overflow-x:auto}
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand">
+    <div class="mark"><span class="ring"></span><span class="sq"></span></div>
+    <div class="word">QUALIA<span class="conta">CONTA</span></div>
+  </div>
+    <div class="empresa" id="empresa">
+    <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 12.5V2.6c0-.6.5-1.1 1.1-1.1h4.3c.6 0 1.1.5 1.1 1.1v9.9M8.5 5h2.9c.6 0 1.1.5 1.1 1.1v6.4M1 12.5h12M4 4h2.4M4 6.5h2.4M4 9h2.4M10 7.5h.9M10 9.8h.9" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <b id="empresa-nombre">Blackbox SRL</b>
+    <span class="caret">▾</span>
+    <div class="emenu" id="emenu">
+      <div class="eopt on"><i></i>Blackbox SRL<span class="chk">✓</span></div>
+      <div class="eopt"><i></i>Planchas Comerciales SRL</div>
+    </div>
+  </div>
+  <div class="topright">
+    <span class="bell"><svg width="15" height="16" viewBox="0 0 15 16"><path d="M7.5 1.5a4.4 4.4 0 0 0-4.4 4.4c0 3.4-1.4 4.6-1.4 4.6h11.6s-1.4-1.2-1.4-4.6A4.4 4.4 0 0 0 7.5 1.5zM6 13a1.6 1.6 0 0 0 3 0" stroke="#5B6578" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><i></i></span>
+    <span class="uwrap" id="uwrap">
+      <span class="avatar" id="uava">CA</span>
+      <div class="umenu" id="umenu">
+        <div class="uhead"><span class="avatar">CA</span><div><b>Carlos Araujo</b><span class="mail">araujo.inl@gmail.com</span></div></div>
+        <div class="uitem" onclick="location.href='cuenta.html'"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="4.4" r="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2 12.4a5.1 5.1 0 0 1 10 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Mi Cuenta Qualia</div>
+        <div class="uitem" onclick="location.href='plan.html'"><svg width="15" height="12" viewBox="0 0 15 12"><rect x="1" y="1" width="13" height="10" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M1 4.2h13" stroke="currentColor" stroke-width="1.6"/><path d="M3.2 8.2h3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Plan Qualia</div>
+        <div class="uitem" onclick="location.href='configuracion.html'"><svg width="15" height="15" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.1" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.6v2M8 12.4v2M1.6 8h2M12.4 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Configuración de la empresa</div>
+        <div class="uitem" onclick="location.href='seguridad.html'"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1.2 12 3v4.2c0 3-2.1 4.9-5 5.8-2.9-.9-5-2.8-5-5.8V3z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M4.8 7l1.5 1.5 2.9-2.9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Log de seguridad</div>
+        <div class="usep"></div>
+        <div class="uitem salir" onclick="location.href='login.html'"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M5.5 1.5H2.8a1.2 1.2 0 0 0-1.2 1.2v8.6a1.2 1.2 0 0 0 1.2 1.2h2.7M9 4.2 11.8 7 9 9.8M11.5 7H5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Salir<span class="flecha">→</span></div>
+      </div>
+    </span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="pagehead rise">
+    <div class="gtabs" style="--n:5">
+      <input type="radio" name="nav" id="n1"><input type="radio" name="nav" id="n2"><input type="radio" name="nav" id="n3"><input type="radio" name="nav" id="n4" checked><input type="radio" name="nav" id="n5">
+      <span class="pill"></span>
+      <label for="n1" onclick="location.href='resumen.html'"><svg width="15" height="15" viewBox="0 0 15 15"><rect x="1.5" y="1.5" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8.5" y="1.5" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="8.5" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8.5" y="8.5" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Resumen</label>
+      <label for="n2" onclick="location.href='bandeja.html'"><svg width="15" height="14" viewBox="0 0 15 14"><path d="M1.5 8.5 4 2h7l2.5 6.5V12a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M1.5 8.5H5a2.5 2.5 0 0 0 5 0h3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Bandeja</label>
+      <label for="n3" onclick="location.href='conciliacion.html'"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M1.5 5.6 7.5 2l6 3.6M2.6 6.2v5M6 6.2v5M9.4 6.2v5M12.4 6.2v5M1.5 13h12" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Conciliación</label>
+      <label for="n4"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M3.5 11.5 11.5 3.5M5 5.5A1.3 1.3 0 1 0 5 2.9a1.3 1.3 0 0 0 0 2.6zM10 12.1a1.3 1.3 0 1 0 0-2.6 1.3 1.3 0 0 0 0 2.6z" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>Impuestos</label>
+      <label for="n5" onclick="location.href='nomina.html'"><svg width="15" height="13" viewBox="0 0 15 13"><circle cx="5" cy="4" r="2.1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M1.2 11.5a4 4 0 0 1 7.6 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="10.6" cy="4.2" r="1.7" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M10 7.6a3.4 3.4 0 0 1 3.8 3.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>Nómina</label>
+    </div>
+    <span class="periodo">AGOSTO 2026</span>
+  </div>
+
+  <div class="card rise d1">
+    <!-- período fiscal -->
+    <div class="linea">
+      <div class="seg">
+        <span>MAY</span><span>JUN</span><span class="on">JUL</span>
+      </div>
+      <span class="nota-linea">período julio · se declara y paga en agosto</span>
+      <span class="tag-ok">✓ 5/6 pagados · en tiempo</span>
+    </div>
+
+    <div class="cols">
+      <!-- ============ obligaciones del período ============ -->
+      <div class="bloque">
+        <div class="bh"><h2>Obligaciones del período</h2><span class="sub">6 impuestos</span><span class="der">RD$ 63,555 en total</span></div>
+        <table>
+          <thead><tr><th>Impuesto</th><th>Base</th><th class="num">Monto</th><th>Vence</th><th>Estado</th><th>Volante</th></tr></thead>
+          <tbody>
+            <tr data-imp="tss">
+              <td><div class="imp"><svg width="14" height="12" viewBox="0 0 14 12"><circle cx="4.6" cy="3.8" r="1.9" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1.2 10.6a3.6 3.6 0 0 1 6.8 0" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="9.8" cy="3.8" r="1.6" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M9.3 7.2a3.2 3.2 0 0 1 3.5 3.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><div><b>TSS</b><small>seguridad social · nómina</small></div></div></td>
+              <td class="tnum">nómina 212,000</td>
+              <td class="tmonto">28,340.00</td>
+              <td class="tnum">03 AGO</td>
+              <td><span class="est ok"><i></i>Pagado 03 ago</span></td>
+              <td><span class="vver">Ver</span></td>
+            </tr>
+            <tr data-imp="ir3">
+              <td><div class="imp"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="3.6" r="2.1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M1.8 10.6a4.4 4.4 0 0 1 8.4 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><div><b>IR-3</b><small>retenciones asalariados</small></div></div></td>
+              <td class="tnum">salarios gravados</td>
+              <td class="tmonto">5,660.00</td>
+              <td class="tnum">10 AGO</td>
+              <td><span class="est ok"><i></i>Pagado 10 ago</span></td>
+              <td><span class="vver">Ver</span></td>
+            </tr>
+            <tr data-imp="ir17">
+              <td><div class="imp"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 9.5 9.5 2.5M4.2 4.4A1.2 1.2 0 1 0 4.2 2a1.2 1.2 0 0 0 0 2.4zM7.8 10a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4z" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg><div><b>IR-17</b><small>otras retenciones</small></div></div></td>
+              <td class="tnum">alquiler y servicios</td>
+              <td class="tmonto">3,420.00</td>
+              <td class="tnum">10 AGO</td>
+              <td><span class="est ok"><i></i>Pagado 10 ago</span></td>
+              <td><span class="vver">Ver</span></td>
+            </tr>
+            <tr data-imp="infotep">
+              <td><div class="imp"><svg width="13" height="12" viewBox="0 0 13 12"><path d="M6.5 1.5 12 4 6.5 6.5 1 4z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M3.4 5.4v3c0 .9 1.4 1.9 3.1 1.9s3.1-1 3.1-1.9v-3M12 4v3.4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg><div><b>Infotep</b><small>1% de nómina</small></div></div></td>
+              <td class="tnum">nómina 212,000</td>
+              <td class="tmonto">2,080.00</td>
+              <td class="tnum">10 AGO</td>
+              <td><span class="est ok"><i></i>Pagado 10 ago</span></td>
+              <td><span class="vnone">sin volante</span></td>
+            </tr>
+            <tr data-imp="anticipo">
+              <td><div class="imp"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.8" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 3.4V6l1.8 1.4" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>Anticipo ISR</b><small>cuota 7 de 12</small></div></div></td>
+              <td class="tnum">ingresos jun</td>
+              <td class="tmonto">9,850.00</td>
+              <td class="tnum">15 AGO</td>
+              <td><span class="est ok"><i></i>Pagado 15 ago</span></td>
+              <td><span class="vver">Ver</span></td>
+            </tr>
+            <tr class="hot" data-imp="it1">
+              <td><div class="imp"><svg width="12" height="13" viewBox="0 0 12 13" style="color:var(--blue)"><path d="M1.5 1.5h6.5L10.5 4.2V11.5H1.5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M3.5 6.4h5M3.5 8.8h5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><div><b style="color:var(--blue)">IT-1 · ITBIS</b><small>liquidación del mes</small></div></div></td>
+              <td class="tnum">ver liquidación →</td>
+              <td class="tmonto" style="color:var(--blue)">14,205.00</td>
+              <td class="tnum" style="color:var(--blue);font-weight:600">22 AGO</td>
+              <td><span class="est due"><i></i>Por pagar</span></td>
+              <td><button class="pagar">Ver y pagar</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ============ columna derecha ============ -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div class="bloque" id="det"></div>
+      </div>
+    </div>
+
+    <!-- histórico del impuesto seleccionado -->
+    <div class="bloque" id="hist"></div>
+  </div>
+
+  <div class="foot">© 2026 QUALIACONTA · DATOS DE MUESTRA · CADA VOLANTE LO PREPARA TU CONTABLE</div>
+</div>
+<script>
+/* dropdown de empresa */
+(function(){
+  const e=document.getElementById('empresa'),m=document.getElementById('emenu');
+  if(!e||!m)return;
+  e.addEventListener('click',ev=>{ev.stopPropagation();m.classList.toggle('open');});
+  document.addEventListener('click',()=>m.classList.remove('open'));
+  m.querySelectorAll('.eopt').forEach(o=>o.addEventListener('click',ev=>{
+    ev.stopPropagation();
+    m.querySelectorAll('.eopt').forEach(x=>{x.classList.remove('on');const c=x.querySelector('.chk');if(c)c.remove();});
+    o.classList.add('on');
+    const chk=document.createElement('span');chk.className='chk';chk.textContent='✓';o.appendChild(chk);
+    document.getElementById('empresa-nombre').textContent=o.textContent.replace('✓','').trim();
+    m.classList.remove('open');
+  }));
+})();
+</script>
+<script>
+/* detalle por impuesto: cada uno con su forma y su condición propia */
+(function(){
+  const doc=(t,sub,accion)=>`<div class="borrador"><span class="dico"></span><div><b>${t}</b><span>${sub}</span></div><span class="vver">${accion}</span></div>`;
+  const DET={
+    tss:`<div class="bh"><h2>TSS · planilla SUIR</h2><span class="der">período 202607</span></div>
+      <div class="liq">
+        <div class="lrow"><span>Salud (SFS) · aporte patronal</span><b>14,980.00</b></div>
+        <div class="lrow"><span>Pensión (AFP) · aporte patronal</span><b>10,950.00</b></div>
+        <div class="lrow"><span>Riesgos laborales</span><b>2,410.00</b></div>
+        <div class="lrow tot"><span>Pagado 03 ago</span><b style="color:var(--ok-ink)">RD$ 28,340.00</b></div>
+      </div>
+      <div class="cond"><i></i><span>La planilla va etiquetada con su período exacto (<b>202607</b>): un período mal escrito no se encuentra al buscarlo y la planilla termina pagada dos veces.</span></div>
+      ${doc('Notificación de pago SUIR','débito en banco 03 ago · conciliado ✓','Abrir')}`,
+    ir3:`<div class="bh"><h2>IR-3 · retenciones a asalariados</h2><span class="der">2 empleados retienen</span></div>
+      <div class="liq">
+        <div class="lrow"><span>E. Martínez · salario 48,000</span><b>3,120.00</b></div>
+        <div class="lrow"><span>L. Pérez · salario 38,500</span><b>2,540.00</b></div>
+        <div class="lrow"><span>Resto de la nómina · bajo la exención</span><b>0.00</b></div>
+        <div class="lrow tot"><span>Pagado 10 ago</span><b style="color:var(--ok-ink)">RD$ 5,660.00</b></div>
+      </div>
+      <div class="cond"><i></i><span>Solo retiene el salario que pasa la <b>exención anual (RD$ 416,220)</b>, con escala progresiva. Tiene que cuadrar contra la nómina del mes, empleado por empleado.</span></div>
+      ${doc('Volante IR-3 · DGII','declarado y pagado 10 ago','Abrir')}`,
+    ir17:`<div class="bh"><h2>IR-17 · otras retenciones</h2><span class="der">2 conceptos</span></div>
+      <div class="liq">
+        <div class="lrow"><span>Alquiler del local · 10% de 28,000</span><b>2,800.00</b></div>
+        <div class="lrow"><span>Honorarios profesionales · 10% de 6,200</span><b>620.00</b></div>
+        <div class="lrow tot"><span>Pagado 10 ago</span><b style="color:var(--ok-ink)">RD$ 3,420.00</b></div>
+      </div>
+      <div class="cond"><i></i><span>Cada retención nace de una <b>factura con NCF ya registrada</b> — sin el comprobante del gasto no hay retención que declarar. Los conceptos cruzan con el 606 del período.</span></div>
+      ${doc('Volante IR-17 · DGII','declarado y pagado 10 ago','Abrir')}`,
+    infotep:`<div class="bh"><h2>Infotep · 1% de nómina</h2><span class="der">va con la TSS</span></div>
+      <div class="liq">
+        <div class="lrow"><span>Nómina cotizable de julio</span><b>208,000.00</b></div>
+        <div class="lrow"><span>× 1% aporte patronal</span><b>2,080.00</b></div>
+        <div class="lrow tot"><span>Pagado 10 ago</span><b style="color:var(--ok-ink)">RD$ 2,080.00</b></div>
+      </div>
+      <div class="cond"><i></i><span><b>Se liquida dentro de la planilla de la TSS</b>, no tiene volante propio — su comprobante es el de la SUIR. Por eso esta fila dice "sin volante" y no es un pendiente.</span></div>
+      ${doc('Comprobante · planilla SUIR','el mismo de la TSS · 202607','Ver TSS')}`,
+    anticipo:`<div class="bh"><h2>Anticipo ISR</h2><span class="der">crédito contra el IR-2</span></div>
+      <div class="liq">
+        <div class="lrow"><span>Cuota del a\u00f1o</span><b>7 de 12</b></div>
+        <div class="lrow"><span>Ingresos de junio</span><b>656,700.00</b></div>
+        <div class="lrow"><span>× 1.5% ÷ base mensual</span><b>9,850.00</b></div>
+        <div class="lrow"><span>Anticipos acumulados del año</span><b>68,950.00</b></div>
+        <div class="lrow tot"><span>Pagado 15 ago</span><b style="color:var(--ok-ink)">RD$ 9,850.00</b></div>
+      </div>
+      <div class="cond"><i></i><span>No es un gasto: es un <b>crédito a favor</b>. Todo lo anticipado en el año se descuenta del ISR anual (IR-2) al cierre.</span></div>
+      ${doc('Volante Anticipo · DGII','declarado y pagado 15 ago','Abrir')}`,
+    it1:`<div class="bh"><h2>Liquidación IT-1 · julio</h2><span class="der">borrador del contable</span></div>
+      <div class="liq">
+        <div class="lrow"><span>ITBIS en ventas</span><b>58,340.00</b></div>
+        <div class="lrow"><span>ITBIS en compras</span><b>−31,120.00</b></div>
+        <div class="lrow"><span>ITBIS en importación</span><b>−8,905.00</b></div>
+        <div class="lrow"><span>Saldo a favor arrastrado</span><b>−4,110.00</b></div>
+        <div class="lrow tot"><span>A pagar · vence 22 ago</span><b>RD$ 14,205.00</b></div>
+      </div>
+      <div class="cond"><i></i><span>El borrador <b>cruza al centavo con el volante</b> antes de pagarse; si el total no cruza, no se paga. Vence el 20 (corre al 22 por fin de semana).</span></div>
+      ${doc('Borrador IT-1 + volante','subido por el contable · cruza con el volante ✓','Ver y pagar')}`
+  };
+  const F='<span style="color:var(--ok-ink);font-weight:700;font-size:11.5px">\u2713 pagado</span>';
+  const T='<span style="color:var(--ok-ink);font-weight:700;font-size:11.5px">\u2713 v\u00eda TSS</span>';
+  const th=cols=>'<thead><tr>'+cols.map((c,i)=>'<th'+(i>0&&i<cols.length-1?' class="num"':'')+'>'+c+'</th>').join('')+'</tr></thead>';
+  const fila=(per,cells,est)=>'<tr><td class="tnum">'+per+'</td>'+cells.map(c=>'<td class="tmonto">'+c+'</td>').join('')+'<td>'+est+'</td></tr>';
+  const tabla=(titulo,sub,cols,filas)=>'<div class="bh"><h2>Hist\u00f3rico \u00b7 '+titulo+'</h2><span class="sub">'+sub+'</span></div><table class="hist">'+th(cols)+'<tbody>'+filas+'</tbody></table>';
+  const HIST={
+    tss:tabla('TSS','planilla por per\u00edodo',['Per\u00edodo','N\u00f3mina','Salud','Pensi\u00f3n','Riesgos','Total','Estado'],
+      fila('FEB',['206,000','14,560','10,640','2,340','27,540'],F)+fila('MAR',['206,000','14,560','10,640','2,340','27,540'],F)+
+      fila('ABR',['208,000','14,700','10,750','2,370','27,820'],F)+fila('MAY',['208,000','14,700','10,750','2,370','27,820'],F)+
+      fila('JUN',['212,000','14,980','10,950','2,410','28,340'],F)+fila('JUL',['212,000','14,980','10,950','2,410','28,340'],F)),
+    ir3:tabla('IR-3','retenciones a asalariados',['Per\u00edodo','Salarios gravados','Empleados que retienen','Total','Estado'],
+      fila('FEB',['84,200','2','5,390'],F)+fila('MAR',['84,200','2','5,390'],F)+fila('ABR',['86,500','2','5,540'],F)+
+      fila('MAY',['86,500','2','5,540'],F)+fila('JUN',['86,500','2','5,540'],F)+fila('JUL',['86,500','2','5,660'],F)),
+    ir17:tabla('IR-17','otras retenciones por concepto',['Per\u00edodo','Alquiler','Honorarios','Total','Estado'],
+      fila('FEB',['2,800','420','3,220'],F)+fila('MAR',['2,800','750','3,550'],F)+fila('ABR',['2,800','780','3,580'],F)+
+      fila('MAY',['2,800','440','3,240'],F)+fila('JUN',['2,800','720','3,520'],F)+fila('JUL',['2,800','620','3,420'],F)),
+    infotep:tabla('Infotep','1% de n\u00f3mina \u00b7 va con la TSS',['Per\u00edodo','N\u00f3mina cotizable','Aporte 1%','Estado'],
+      fila('FEB',['202,000','2,020'],T)+fila('MAR',['202,000','2,020'],T)+fila('ABR',['204,000','2,040'],T)+
+      fila('MAY',['204,000','2,040'],T)+fila('JUN',['208,000','2,080'],T)+fila('JUL',['208,000','2,080'],T)),
+    anticipo:tabla('Anticipo ISR','cr\u00e9dito acumulado contra el IR-2',['Per\u00edodo','Cuota','Ingresos base','Anticipo','Acumulado del a\u00f1o','Estado'],
+      fila('FEB',['2 / 12','656,700','9,850','19,700'],F)+fila('MAR',['3 / 12','656,700','9,850','29,550'],F)+fila('ABR',['4 / 12','656,700','9,850','39,400'],F)+
+      fila('MAY',['5 / 12','656,700','9,850','49,250'],F)+fila('JUN',['6 / 12','656,700','9,850','59,100'],F)+fila('JUL',['7 / 12','656,700','9,850','68,950'],F)),
+    it1:tabla('IT-1 \u00b7 ITBIS','liquidaci\u00f3n por per\u00edodo',['Per\u00edodo','Ventas','Compras e imp.','Saldo a favor','A pagar','Estado'],
+      fila('FEB',['49,300','\u221236,540','\u2212930','11,830'],F)+fila('MAR',['48,700','\u221236,200','\u22121,200','11,300'],F)+
+      fila('ABR',['55,900','\u221240,300','\u22121,420','14,180'],F)+fila('MAY',['46,100','\u221236,300','\u22121,560','8,240'],F)+
+      fila('JUN',['63,400','\u221244,100','\u22121,480','17,820'],F)+
+      fila('JUL',['58,340','\u221240,025','\u22124,110','14,205'],'<span class="est due" style="font-size:10.5px"><i></i>Por pagar</span>'))
+  };
+  const det=document.getElementById('det');
+  const hist=document.getElementById('hist');
+  function elegir(k){
+    det.innerHTML=DET[k];
+    hist.innerHTML=HIST[k];
+    document.querySelectorAll('tbody tr[data-imp]').forEach(r=>r.classList.toggle('hot',r.dataset.imp===k));
+  }
+  document.querySelectorAll('tbody tr[data-imp]').forEach(r=>{
+    r.addEventListener('click',()=>elegir(r.dataset.imp));
+  });
+  elegir('it1');
+})();
+</script>
+<script>
+/* menú del usuario */
+(function(){
+  const w=document.getElementById('uwrap'),a=document.getElementById('uava'),m=document.getElementById('umenu');
+  if(!w||!m)return;
+  a.addEventListener('click',ev=>{ev.stopPropagation();m.classList.toggle('open');});
+  m.addEventListener('click',ev=>ev.stopPropagation());
+  document.addEventListener('click',()=>m.classList.remove('open'));
+})();
+</script>
+</body>
+</html>
