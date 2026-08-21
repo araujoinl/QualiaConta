@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QualiaConta — NCF Bancos</title>
+<style>
+/* ============================================================
+   QUALIACONTA · NCF BANCOS v1 — espejo de NcfBancosTab
+   (Labs_Inv, mesa Qualia Conta) con la piel Qualia clara.
+   Todos los comprobantes fiscales que el colector baja del
+   banco, cada uno con su hoja (la página PDF) y su estado
+   frente a ADM: registrado, en la mesa, rechazado o SIN APLICAR
+   con el porqué y el botón «Mandar a la mesa». Es la red de
+   seguridad DEBAJO del detector (nació del leasing de Santa
+   Cruz, cuya cuenta no está mapeada y nadie lo registraba).
+   ============================================================ */
+:root{
+  --blue:#1958FF;
+  --blue-focus:#00A6FF;
+  --ink:#111827;
+  --paper:#F6F7F9;
+  --muted:#7B8494;
+  --line:#DDE2EA;
+  --soft:#EEF2F7;
+  --mono:"IBM Plex Mono","Geist Mono","JetBrains Mono",ui-monospace,monospace;
+  --ok:#2FBF71;
+  --ok-ink:#1E9B5B;
+  --err:#E5484D;
+  --amber:#B45309;
+  --t-fast:140ms; --t-med:200ms; --t-slow:240ms;
+  --ease:cubic-bezier(.2,.7,.3,1);
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:Inter,Arial,sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(900px 500px at 85% -10%, #E9EFFF 0%, transparent 60%);
+  background-repeat:no-repeat;min-height:100vh}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.rise{animation:rise .55s var(--ease) both}
+.d1{animation-delay:.06s}.d2{animation-delay:.12s}
+
+/* ============ barra superior ============ */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:28px;padding:14px 32px;
+  background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);
+  border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:11px;flex:0 0 auto}
+.mark{position:relative;width:38px;height:34px}
+.mark .ring{position:absolute;left:0;top:0;width:28px;height:28px;border:5px solid var(--blue);border-radius:50%}
+.mark .sq{position:absolute;left:30px;top:23px;width:8px;height:8px;background:var(--blue)}
+.word{font-weight:900;letter-spacing:.18em;font-size:14px;color:var(--ink)}
+.word .conta{color:var(--blue)}
+.topright{display:flex;align-items:center;gap:16px;flex:0 0 auto;margin-left:auto}
+.bell{position:relative;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  background:#fff;border:1px solid var(--line);transition:border-color var(--t-fast) var(--ease)}
+.bell:hover{border-color:#C6CFDC}
+.bell i{position:absolute;top:7px;right:8px;width:7px;height:7px;background:var(--blue)}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(160deg,#2E6BFF,#1246D6);color:#fff;
+  display:grid;place-items:center;font-weight:800;font-size:13px;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+
+/* ============ selector de empresa (centro) ============ */
+.empresa{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;
+  padding:7px 14px;border-radius:10px;cursor:pointer;font-weight:700;font-size:13px;color:var(--ink);
+  background:#fff;border:1px solid var(--line);white-space:nowrap;user-select:none;
+  transition:border-color var(--t-fast) var(--ease)}
+.empresa:hover{border-color:#C6CFDC}
+.empresa>svg{color:var(--muted);flex:0 0 auto}
+.empresa .caret{font-size:9px;color:#A6AEBC}
+.emenu{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);min-width:240px;
+  background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px;display:none;z-index:40;
+  box-shadow:0 18px 44px rgba(10,15,28,.15), inset 0 1px 0 #fff}
+.emenu.open{display:block;animation:rise .25s var(--ease) both}
+.eopt{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:8px;font-size:12.5px;font-weight:600;color:#3A4354;cursor:pointer;
+  transition:background var(--t-fast) var(--ease)}
+.eopt:hover{background:rgba(25,88,255,.05)}
+.eopt.on{color:var(--blue)}
+.eopt .chk{margin-left:auto;color:var(--blue);font-weight:700}
+.eopt i{width:7px;height:7px;flex:0 0 auto;background:#C3CAD6}
+.eopt.on i{background:var(--blue)}
+
+/* ============ menú del usuario (avatar) ============ */
+.uwrap{position:relative;flex:0 0 auto}
+.umenu{position:absolute;top:calc(100% + 10px);right:0;min-width:252px;background:#fff;border:1px solid var(--line);
+  border-radius:12px;padding:6px;display:none;z-index:50;
+  box-shadow:0 18px 44px rgba(10,15,28,.15), inset 0 1px 0 #fff}
+.umenu.open{display:block;animation:rise .25s var(--ease) both}
+.uhead{display:flex;align-items:center;gap:10px;padding:9px 11px 11px;border-bottom:1px solid var(--soft);margin-bottom:5px}
+.uhead .avatar{width:32px;height:32px;font-size:11.5px;cursor:default}
+.uhead b{display:block;font-size:12.5px;color:var(--ink)}
+.uhead .mail{display:block;font-size:10.5px;color:var(--muted);font-family:var(--mono)}
+.uitem{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;font-size:12.5px;font-weight:600;color:#3A4354;cursor:pointer;
+  transition:background var(--t-fast) var(--ease),color var(--t-fast) var(--ease)}
+.uitem:hover{background:rgba(25,88,255,.05);color:var(--blue)}
+.uitem svg{flex:0 0 auto;color:#8A94A6;transition:color var(--t-fast) var(--ease)}
+.uitem:hover svg{color:var(--blue)}
+.uitem .flecha{margin-left:auto;color:#A6AEBC;font-weight:700}
+.usep{height:1px;background:var(--soft);margin:5px 4px}
+.uitem.salir:hover{background:rgba(229,72,77,.06);color:var(--err)}
+.uitem.salir:hover svg{color:var(--err)}
+
+/* ============ selector principal (vidrio, del manual) ============ */
+.gtabs{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;padding:5px;border-radius:999px;flex:0 0 auto;
+  background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(236,241,250,.14));
+  -webkit-backdrop-filter:blur(14px) saturate(1.35);backdrop-filter:blur(14px) saturate(1.35);
+  border:1px solid rgba(255,255,255,.55);
+  box-shadow:0 10px 26px rgba(10,15,28,.07), inset 0 1px 0 rgba(255,255,255,.6), inset 0 -1px 0 rgba(10,15,28,.03)}
+.gtabs input{position:absolute;opacity:0;pointer-events:none}
+.gtabs label{position:relative;z-index:2;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:8px 14px;border-radius:999px;cursor:pointer;font-weight:700;font-size:13px;color:var(--muted);white-space:nowrap;
+  transition:color var(--t-med) var(--ease),transform var(--t-fast) var(--ease)}
+.gtabs label:hover{color:#3A4354}
+.gtabs label:active{transform:scale(.97)}
+.gtabs .pill{position:absolute;z-index:1;top:5px;bottom:5px;left:5px;width:calc((100% - 10px)/var(--n,7));border-radius:999px;
+  background:rgba(25,88,255,.04);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  border:1px solid rgba(25,88,255,.4);
+  box-shadow:none;
+  transition:transform var(--t-slow) var(--ease)}
+.gtabs:has(input:nth-of-type(1):checked) .pill{transform:translateX(0)}
+.gtabs:has(input:nth-of-type(2):checked) .pill{transform:translateX(100%)}
+.gtabs:has(input:nth-of-type(3):checked) .pill{transform:translateX(200%)}
+.gtabs:has(input:nth-of-type(4):checked) .pill{transform:translateX(300%)}
+.gtabs:has(input:nth-of-type(5):checked) .pill{transform:translateX(400%)}
+.gtabs:has(input:nth-of-type(6):checked) .pill{transform:translateX(500%)}
+.gtabs:has(input:nth-of-type(7):checked) .pill{transform:translateX(600%)}
+.gtabs:has(input:nth-of-type(1):checked) label:nth-of-type(1),
+.gtabs:has(input:nth-of-type(2):checked) label:nth-of-type(2),
+.gtabs:has(input:nth-of-type(3):checked) label:nth-of-type(3),
+.gtabs:has(input:nth-of-type(4):checked) label:nth-of-type(4),
+.gtabs:has(input:nth-of-type(5):checked) label:nth-of-type(5),
+.gtabs:has(input:nth-of-type(6):checked) label:nth-of-type(6),
+.gtabs:has(input:nth-of-type(7):checked) label:nth-of-type(7){color:var(--blue)}
+
+/* ============ layout ============ */
+.wrap{max-width:1280px;margin:0 auto;padding:30px 32px 60px}
+.pagehead{display:flex;align-items:center;gap:18px;margin-bottom:22px;flex-wrap:wrap}
+.periodo{margin-left:auto;font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.04em}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px 22px;
+  box-shadow:0 10px 30px rgba(10,15,28,.05), inset 0 1px 0 #fff}
+.intro{font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.55;max-width:860px}
+.intro b{color:var(--ink)}
+
+/* ============ chips de resumen (filtran) ============ */
+.chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.total-ncf{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;cursor:pointer;
+  font-size:11.5px;font-weight:700;color:var(--muted);background:#fff;border:1px solid var(--line);white-space:nowrap;
+  transition:all var(--t-fast) var(--ease)}
+.chip:hover{color:#3A4354;border-color:#C6CFDC}
+.chip b{font-family:var(--mono);font-weight:700}
+.chip .rd{font-family:var(--mono);font-weight:700;color:var(--err)}
+.chip.on.reg{color:var(--ok-ink);border-color:rgba(47,191,113,.4);background:rgba(47,191,113,.07)}
+.chip.on.mesa{color:var(--blue);border-color:rgba(25,88,255,.4);background:rgba(25,88,255,.06)}
+.chip.on.rech{color:#3A4354;border-color:#C6CFDC;background:var(--paper)}
+.chip.on.sin{color:var(--err);border-color:rgba(229,72,77,.4);background:rgba(229,72,77,.06)}
+.refrescar{margin-left:auto;display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:8px;
+  cursor:pointer;border:1px solid var(--line);background:#fff;font:700 11.5px Inter,Arial,sans-serif;color:#3A4354;
+  transition:border-color var(--t-fast) var(--ease)}
+.refrescar:hover{border-color:#C6CFDC}
+
+/* ============ tabla ============ */
+.twrap{overflow-x:auto;border:1px solid var(--soft);border-radius:12px}
+table{width:100%;border-collapse:collapse;min-width:980px;font-size:12.5px}
+th{padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+  background:#FBFCFE;border-bottom:1px solid var(--line);font-weight:800;white-space:nowrap}
+th.num{text-align:right}
+th.ctr{text-align:center}
+td{padding:9px 10px;border-bottom:1px solid var(--soft);vertical-align:top;color:#3A4354}
+tbody tr{transition:background var(--t-fast) var(--ease)}
+tbody tr:hover{background:rgba(25,88,255,.03)}
+tr.mes td{background:#FBFCFE;font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+  font-weight:800;padding:6px 10px}
+.tncf{font-family:var(--mono);font-size:11.5px;color:var(--ink);white-space:nowrap}
+.tfec{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.tcta{white-space:nowrap}
+.tcta .warn{display:inline-flex;align-items:center;gap:5px;color:var(--amber);font-weight:600;font-size:11.5px;cursor:help}
+.tconc{max-width:300px}
+.tmonto{font-family:var(--mono);font-size:12px;font-weight:600;text-align:right;white-space:nowrap;color:var(--ink)}
+.hoja{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;cursor:pointer;color:#8A94A6;margin:0 auto;
+  transition:color var(--t-fast) var(--ease),background var(--t-fast) var(--ease)}
+.hoja:hover{color:var(--blue);background:rgba(25,88,255,.06)}
+/* estados */
+.est{display:inline-flex;align-items:center;padding:2.5px 9px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid;white-space:nowrap}
+.est.reg{color:var(--ok-ink);border-color:rgba(47,191,113,.35);background:rgba(47,191,113,.07)}
+.est.mesa{color:var(--blue);border-color:rgba(25,88,255,.35);background:rgba(25,88,255,.06)}
+.est.rech{color:var(--muted);border-color:var(--line);background:var(--paper)}
+.est.sin{color:var(--err);border-color:rgba(229,72,77,.35);background:rgba(229,72,77,.06)}
+.doclink{font-family:var(--mono);font-size:11px;color:var(--blue);font-weight:600;cursor:pointer;white-space:nowrap;margin-left:8px}
+.doclink:hover{text-decoration:underline}
+.motivo{display:block;font-size:10.5px;color:var(--muted);margin-top:4px;max-width:230px;line-height:1.45}
+.mandar{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:5px 11px;border-radius:8px;border:0;cursor:pointer;
+  font:700 11px Inter,Arial,sans-serif;color:#fff;background:linear-gradient(180deg,#EF5A5F,#E5484D 55%,#C43A3F);
+  box-shadow:0 5px 12px rgba(229,72,77,.28), inset 0 1px 0 rgba(255,255,255,.3);
+  transition:transform var(--t-fast) var(--ease),box-shadow var(--t-med) var(--ease)}
+.mandar:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(229,72,77,.36), inset 0 1px 0 rgba(255,255,255,.3)}
+.mandar:active{transform:scale(.97)}
+.foot{margin-top:34px;text-align:center;font-size:10px;color:#A6AEBC;font-family:var(--mono);letter-spacing:.06em}
+
+@media (prefers-reduced-motion: reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+@media(max-width:720px){
+  .top{flex-wrap:wrap;gap:12px}
+  .gtabs{order:3;width:100%}
+  .wrap{padding:22px 14px 48px}
+  .card{padding:14px}
+}
+
+/* ============ móvil (diseño, no solo reflow) ============ */
+@media(max-width:720px){
+  .top{padding:10px 14px;gap:12px}
+  .word{display:none}
+  .empresa{padding:6px 10px;font-size:12px}
+  .bell{width:32px;height:32px}
+  .avatar{width:32px;height:32px;font-size:12px}
+  /* navegación principal: dock flotante inferior (como define el manual) */
+  .gtabs{position:fixed;left:10px;right:10px;bottom:10px;width:auto;z-index:80;order:0;
+    background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(236,241,250,.25));
+    -webkit-backdrop-filter:blur(20px) saturate(1.45);backdrop-filter:blur(20px) saturate(1.45);
+    border:1px solid rgba(255,255,255,.6);
+    box-shadow:0 14px 34px rgba(10,15,28,.14), inset 0 1px 0 rgba(255,255,255,.65)}
+  .gtabs label{flex-direction:column;gap:3px;padding:7px 2px 6px;font-size:9.5px}
+  .gtabs label svg{width:17px;height:17px}
+  /* en el celular la app es Resumen + Bandeja: el resto no existe */
+  .gtabs label:nth-of-type(n+3){display:none}
+  .gtabs{--n:2 !important;overflow:hidden}
+  .wrap{padding:16px 14px 92px}
+  .pagehead{margin-bottom:12px;gap:10px;animation:none;transform:none}
+  .card{padding:14px;border-radius:14px}
+  .refrescar{margin-left:0}
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand">
+    <div class="mark"><span class="ring"></span><span class="sq"></span></div>
+    <div class="word">QUALIA<span class="conta">CONTA</span></div>
+  </div>
+    <div class="empresa" id="empresa">
+    <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 12.5V2.6c0-.6.5-1.1 1.1-1.1h4.3c.6 0 1.1.5 1.1 1.1v9.9M8.5 5h2.9c.6 0 1.1.5 1.1 1.1v6.4M1 12.5h12M4 4h2.4M4 6.5h2.4M4 9h2.4M10 7.5h.9M10 9.8h.9" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <b id="empresa-nombre">Blackbox SRL</b>
+    <span class="caret">▾</span>
+    <div class="emenu" id="emenu">
+      <div class="eopt on"><i></i>Blackbox SRL<span class="chk">✓</span></div>
+      <div class="eopt"><i></i>Planchas Comerciales SRL</div>
+    </div>
+  </div>
+  <div class="topright">
+    <span class="bell"><svg width="15" height="16" viewBox="0 0 15 16"><path d="M7.5 1.5a4.4 4.4 0 0 0-4.4 4.4c0 3.4-1.4 4.6-1.4 4.6h11.6s-1.4-1.2-1.4-4.6A4.4 4.4 0 0 0 7.5 1.5zM6 13a1.6 1.6 0 0 0 3 0" stroke="#5B6578" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><i></i></span>
+    <span class="uwrap" id="uwrap">
+      <span class="avatar" id="uava">CA</span>
+      <div class="umenu" id="umenu">
+        <div class="uhead"><span class="avatar">CA</span><div><b>Carlos Araujo</b><span class="mail">araujo.inl@gmail.com</span></div></div>
+        <div class="uitem" onclick="location.href='cuenta.html'"><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="4.4" r="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2 12.4a5.1 5.1 0 0 1 10 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Mi Cuenta Qualia</div>
+        <div class="uitem" onclick="location.href='plan.html'"><svg width="15" height="12" viewBox="0 0 15 12"><rect x="1" y="1" width="13" height="10" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M1 4.2h13" stroke="currentColor" stroke-width="1.6"/><path d="M3.2 8.2h3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Plan Qualia</div>
+        <div class="uitem" onclick="location.href='configuracion.html'"><svg width="15" height="15" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.1" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.6v2M8 12.4v2M1.6 8h2M12.4 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Configuración de la empresa</div>
+        <div class="uitem" onclick="location.href='seguridad.html'"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1.2 12 3v4.2c0 3-2.1 4.9-5 5.8-2.9-.9-5-2.8-5-5.8V3z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M4.8 7l1.5 1.5 2.9-2.9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Log de seguridad</div>
+        <div class="usep"></div>
+        <div class="uitem salir" onclick="location.href='login.html'"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M5.5 1.5H2.8a1.2 1.2 0 0 0-1.2 1.2v8.6a1.2 1.2 0 0 0 1.2 1.2h2.7M9 4.2 11.8 7 9 9.8M11.5 7H5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Salir<span class="flecha">→</span></div>
+      </div>
+    </span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="pagehead rise">
+    <div class="gtabs" style="--n:7">
+      <input type="radio" name="nav" id="n1"><input type="radio" name="nav" id="n2"><input type="radio" name="nav" id="n3"><input type="radio" name="nav" id="n4"><input type="radio" name="nav" id="n5"><input type="radio" name="nav" id="n6"><input type="radio" name="nav" id="n7" checked>
+      <span class="pill"></span>
+      <label for="n1" onclick="location.href='resumen.html'"><svg width="15" height="15" viewBox="0 0 15 15"><rect x="1.5" y="1.5" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8.5" y="1.5" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="8.5" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8.5" y="8.5" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Resumen</label>
+      <label for="n2" onclick="location.href='bandeja.html'"><svg width="15" height="14" viewBox="0 0 15 14"><path d="M1.5 8.5 4 2h7l2.5 6.5V12a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M1.5 8.5H5a2.5 2.5 0 0 0 5 0h3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Bandeja</label>
+      <label for="n3" onclick="location.href='movimientos.html'"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M4.4 2v8.6M4.4 10.6 2.1 8.3M4.4 10.6l2.3-2.3M10.6 13V4.4M10.6 4.4 8.3 6.7M10.6 4.4l2.3 2.3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Movimientos</label>
+      <label for="n4" onclick="location.href='conciliacion.html'"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M1.5 5.6 7.5 2l6 3.6M2.6 6.2v5M6 6.2v5M9.4 6.2v5M12.4 6.2v5M1.5 13h12" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Conciliación</label>
+      <label for="n5" onclick="location.href='impuestos.html'"><svg width="15" height="15" viewBox="0 0 15 15"><path d="M3.5 11.5 11.5 3.5M5 5.5A1.3 1.3 0 1 0 5 2.9a1.3 1.3 0 0 0 0 2.6zM10 12.1a1.3 1.3 0 1 0 0-2.6 1.3 1.3 0 0 0 0 2.6z" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>Impuestos</label>
+      <label for="n6" onclick="location.href='nomina.html'"><svg width="15" height="13" viewBox="0 0 15 13"><circle cx="5" cy="4" r="2.1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M1.2 11.5a4 4 0 0 1 7.6 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="10.6" cy="4.2" r="1.7" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M10 7.6a3.4 3.4 0 0 1 3.8 3.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>Nómina</label>
+      <label for="n7"><svg width="14" height="15" viewBox="0 0 14 15"><path d="M2.5 1.5h9v11.6l-1.5-1.1-1.5 1.1-1.5-1.1-1.5 1.1-1.5-1.1-1.5 1.1z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M4.6 4.6h4.8M4.6 6.9h4.8M4.6 9.2h2.6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>NCF Bancos</label>
+    </div>
+    <span class="periodo">AGOSTO 2026</span>
+  </div>
+
+  <div class="card rise d1">
+    <p class="intro">Todos los <b>comprobantes fiscales que emite el banco</b>, cada uno con su hoja (la
+    página PDF) y su estado frente a ADM. Es la <b>red de seguridad debajo del detector</b>: lo que el
+    detector levanta solo aparece verde; lo que descarta —un leasing, un préstamo, una cuenta sin
+    mapear— queda en rojo con su porqué y el botón para mandarlo a la mesa.</p>
+
+    <div class="chips">
+      <span class="total-ncf">61 NCF</span>
+      <span class="chip reg" data-f="reg">Registrados <b>52</b></span>
+      <span class="chip mesa" data-f="mesa">En la mesa <b>3</b></span>
+      <span class="chip rech" data-f="rech">Rechazados <b>2</b></span>
+      <span class="chip sin" data-f="sin">Sin aplicar <b>4</b> <span class="rd">RD$ 91,471.63</span></span>
+      <button class="refrescar"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M10.4 6a4.4 4.4 0 1 1-1.3-3.1M10.6 .9v2.4H8.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Refrescar</button>
+    </div>
+
+    <div class="twrap">
+      <table id="tabla">
+        <thead>
+          <tr>
+            <th>NCF</th><th>Fecha</th><th>Cuenta</th><th>Concepto</th>
+            <th class="num">Monto</th><th class="ctr" title="La página PDF del comprobante">Hoja</th><th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="mes"><td colspan="7">Agosto 2026</td></tr>
+          <tr data-e="mesa">
+            <td class="tncf">E310004500112</td><td class="tfec">18/08/26</td>
+            <td class="tcta">Cta. Operaciones</td>
+            <td class="tconc">Comisión LBTR transferencia interbancaria</td>
+            <td class="tmonto">RD$ 100.00</td>
+            <td><span class="hoja" title="Abrir la página PDF del comprobante"><svg width="13" height="15" viewBox="0 0 13 15"><path d="M2 1.5h6l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span></td>
+            <td><span class="est mesa">En la mesa · analizando</span></td>
+          </tr>
+          <tr data-e="sin">
+            <td class="tncf">E310004498770</td><td class="tfec">15/08/26</td>
+            <td class="tcta"><span class="warn" title="Esta cuenta no está en las cuentas bancarias mapeadas: suele ser un leasing o un préstamo">⚠ 900481 sin mapear</span></td>
+            <td class="tconc">Intereses leasing — cuota 24 · Santa Cruz</td>
+            <td class="tmonto">RD$ 9,214.77</td>
+            <td><span class="hoja" title="Abrir la página PDF del comprobante"><svg width="13" height="15" viewBox="0 0 13 15"><path d="M2 1.5h6l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span></td>
+            <td>
+              <span class="est sin">Sin aplicar</span>
+              <span class="motivo">La cuenta del leasing no está mapeada: el detector no lo levanta y nadie lo registró.</span>
+              <button class="mandar" title="Sube la hoja a la Bandeja como una factura: el contable la analiza y propone el registro"><svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 5.5h8M6.2 2.2 9.5 5.5 6.2 8.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Mandar a la mesa</button>
+            </td>
+          </tr>
+          <tr data-e="sin">
+            <td class="tncf">E310004498771</td><td class="tfec">15/08/26</td>
+            <td class="tcta"><span class="warn" title="Esta cuenta no está en las cuentas bancarias mapeadas: suele ser un leasing o un préstamo">⚠ 900481 sin mapear</span></td>
+            <td class="tconc">Intereses leasing — cuota 25 · Santa Cruz</td>
+            <td class="tmonto">RD$ 8,987.40</td>
+            <td><span class="hoja" title="Abrir la página PDF del comprobante"><svg width="13" height="15" viewBox="0 0 13 15"><path d="M2 1.5h6l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span></td>
+            <td>
+              <span class="est sin">Sin aplicar</span>
+              <span class="motivo">La cuenta del leasing no está mapeada: el detector no lo levanta y nadie lo registró.</span>
+              <button class="mandar" title="Sube la hoja a la Bandeja como una factura: el contable la analiza y propone el registro"><svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 5.5h8M6.2 2.2 9.5 5.5 6.2 8.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Mandar a la mesa</button>
+            </td>
+          </tr>
+          <tr data-e="reg">
+            <td class="tncf">E310004496230</td><td class="tfec">12/08/26</td>
+            <td class="tcta">Cta. Operaciones</td>
+            <td class="tconc">Comisión manejo de cuenta</td>
+            <td class="tmonto">RD$ 620.00</td>
+            <td><span class="hoja" title="Abrir la página PDF del comprobante"><svg width="13" height="15" viewBox="0 0 13 15"><path d="M2 1.5h6l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span></td>
+            <td><span class="est reg">Registrada</span><span class="doclink" title="Abrir en ADM Cloud">CB00000241 ↗</span></td>
+          </tr>
+          <tr data-e="reg">
+            <td class="tncf">E310004495104</td><td class="tfec">10/08/26</td>
+            <td class="tcta">Cta. Operaciones</td>
+            <td class="tconc">Imp. 2.0 por 1000 s/Ley 30-26</td>
+            <td class="tmonto">RD$ 275.40</td>
+            <td><span class="hoja" title="Abrir la página PDF del comprobante"><svg width="13" height="15" viewBox="0 0 13 15"><path d="M2 1.5h6l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span></td>
+            <td><span class="est reg">Registrada</span><span class="doclink" title="Abrir en ADM Cloud">CB00000238 ↗</span></td>
+          </tr>
+
+          <tr class="mes"><td colspan="7">Julio 2026</td></tr>
+          <tr data-e="mesa">
+            <td class="tncf">E310004434266</td><td class="tfec">31/07/26</td>
+            <td class="tcta"><span class="warn" title="Es el número del crédito, no una cuenta bancaria: lo cruza la caja de préstamos de Movimientos">⚠ 339547 sin mapear</span></td>
+            <td class="tconc">Intereses préstamo comercial — devengación julio · crédito #339547</td>
+            <td class="tmonto">RD$ 40,536.39</td>
+            <td><span class="hoja" title="Abrir la página PDF del comprobante"><svg width="13" height="15" viewBox="0 0 13 15"><path d="M2 1.5h6l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span></td>
+            <td><span class="est mesa">En la mesa · propuesta</span><span class="motivo">Cruzado por la caja «Pagos de préstamos» de Movimientos con el débito del 28/07.</span></td>
+          </tr>
+          <tr data-e="mesa">
+            <td class="tncf">E310004464085</td><td class="tfec">31/07/26</td>
+            <td class="tcta"><span class="warn" title="Es el número del crédito, no una cuenta bancaria: lo cruza la caja de préstamos de Movimientos">⚠ 339547 sin mapear</span></td>
+            <td class="tconc">Intereses préstamo comercial — devengación julio · crédito #339547</td>
+            <td class="tmonto">RD$ 1,345.24</td>
+            <td><span class="hoja" title="Abrir la página PDF del comprobante"><svg width="13" height="15" viewBox="0 0 13 15"><path d="M2 1.5h6l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span></td>
+            <td><span class="est mesa">En la mesa · propuesta</span><span class="motivo">Cruzado por la caja «Pagos de préstamos» de Movimientos con el débito del 28/07.</span></td>
+          </tr>
+          <tr data-e="sin">
+            <td class="tncf">E310004433910</td><td class="tfec">31/07/26</td>
+            <td class="tcta"><span class="warn" title="Esta cuenta no está en las cuentas bancarias mapeadas">⚠ 900481 sin mapear</span></td>
+            <td class="tconc">Intereses leasing — cuota 23 · Santa Cruz</td>
+            <td class="tmonto">RD$ 9,431.02</td>
+            <td><span class="hoja" title="Abrir la página PDF del comprobante"><svg width="13" height="15" viewBox="0 0 13 15"><path d="M2 1.5h6l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span></td>
+            <td>
+              <span class="est sin">Sin aplicar</span>
+              <span class="motivo">La cuenta del leasing no está mapeada: el detector no lo levanta y nadie lo registró.</span>
+              <button class="mandar" title="Sube la hoja a la Bandeja como una factura: el contable la analiza y propone el registro"><svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 5.5h8M6.2 2.2 9.5 5.5 6.2 8.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Mandar a la mesa</button>
+            </td>
+          </tr>
+          <tr data-e="sin">
+            <td class="tncf">E310004430277</td><td class="tfec">28/07/26</td>
+            <td class="tcta">Cta. Nómina</td>
+            <td class="tconc">Comisión pago de nómina electrónica</td>
+            <td class="tmonto">RD$ 33,838.44</td>
+            <td><span class="hoja" title="El export del período todavía no se partió en páginas" style="cursor:help;color:#C3CAD6">—</span></td>
+            <td>
+              <span class="est sin">Sin aplicar</span>
+              <span class="motivo">Sin la hoja PDF no hay qué mandarle al contable: el export del período no se partió en páginas todavía.</span>
+            </td>
+          </tr>
+          <tr data-e="reg">
+            <td class="tncf">E310004429815</td><td class="tfec">28/07/26</td>
+            <td class="tcta">Cta. Operaciones</td>
+            <td class="tconc">Comisión transferencia ACH</td>
+            <td class="tmonto">RD$ 165.20</td>
+            <td><span class="hoja" title="Abrir la página PDF del comprobante"><svg width="13" height="15" viewBox="0 0 13 15"><path d="M2 1.5h6l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span></td>
+            <td><span class="est reg">Registrada</span><span class="doclink" title="Abrir en ADM Cloud">CB00000229 ↗</span></td>
+          </tr>
+          <tr data-e="rech">
+            <td class="tncf">E310004427601</td><td class="tfec">25/07/26</td>
+            <td class="tcta">Cta. Operaciones</td>
+            <td class="tconc">Comisión LBTR duplicada por el banco</td>
+            <td class="tmonto">RD$ 100.00</td>
+            <td><span class="hoja" title="Abrir la página PDF del comprobante"><svg width="13" height="15" viewBox="0 0 13 15"><path d="M2 1.5h6l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span></td>
+            <td><span class="est rech">Rechazada</span><span class="motivo">Superada: un comprobante vivo ya ampara este cargo.</span></td>
+          </tr>
+          <tr data-e="reg">
+            <td class="tncf">E310004421188</td><td class="tfec">22/07/26</td>
+            <td class="tcta">Cta. Operaciones</td>
+            <td class="tconc">Comisión manejo de cuenta</td>
+            <td class="tmonto">RD$ 620.00</td>
+            <td><span class="hoja" title="Abrir la página PDF del comprobante"><svg width="13" height="15" viewBox="0 0 13 15"><path d="M2 1.5h6l3 3v9H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1.5v3h3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span></td>
+            <td><span class="est reg">Registrada</span><span class="doclink" title="Abrir en ADM Cloud">CB00000221 ↗</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="foot">© 2026 QUALIACONTA · DATOS DE MUESTRA · LA DECISIÓN SIEMPRE ES TUYA</div>
+</div>
+
+<script>
+/* chips → filtran la tabla por estado; el chip activo se apaga al re-click.
+   Los divisores de mes se esconden si su grupo queda vacío. */
+(function(){
+  const chips=document.querySelectorAll('.chip[data-f]');
+  let activo=null;
+  function aplicar(){
+    document.querySelectorAll('#tabla tbody tr:not(.mes)').forEach(r=>{
+      r.style.display=(!activo||r.dataset.e===activo)?'':'none';
+    });
+    document.querySelectorAll('#tabla tbody tr.mes').forEach(m=>{
+      let n=m.nextElementSibling,hay=false;
+      while(n&&!n.classList.contains('mes')){if(n.style.display!=='none')hay=true;n=n.nextElementSibling;}
+      m.style.display=hay?'':'none';
+    });
+  }
+  chips.forEach(c=>{
+    c.addEventListener('click',()=>{
+      const f=c.dataset.f;
+      activo=(activo===f)?null:f;
+      chips.forEach(x=>x.classList.toggle('on',x.dataset.f===activo));
+      aplicar();
+    });
+  });
+})();
+</script>
+<script>
+/* dropdown de empresa */
+(function(){
+  const e=document.getElementById('empresa'),m=document.getElementById('emenu');
+  if(!e||!m)return;
+  e.addEventListener('click',ev=>{ev.stopPropagation();m.classList.toggle('open');});
+  document.addEventListener('click',()=>m.classList.remove('open'));
+  m.querySelectorAll('.eopt').forEach(o=>o.addEventListener('click',ev=>{
+    ev.stopPropagation();
+    m.querySelectorAll('.eopt').forEach(x=>{x.classList.remove('on');const c=x.querySelector('.chk');if(c)c.remove();});
+    o.classList.add('on');
+    const chk=document.createElement('span');chk.className='chk';chk.textContent='✓';o.appendChild(chk);
+    document.getElementById('empresa-nombre').textContent=o.textContent.replace('✓','').trim();
+    m.classList.remove('open');
+  }));
+})();
+</script>
+<script>
+/* menú del usuario */
+(function(){
+  const w=document.getElementById('uwrap'),a=document.getElementById('uava'),m=document.getElementById('umenu');
+  if(!w||!m)return;
+  a.addEventListener('click',ev=>{ev.stopPropagation();m.classList.toggle('open');});
+  m.addEventListener('click',ev=>ev.stopPropagation());
+  document.addEventListener('click',()=>m.classList.remove('open'));
+})();
+</script>
+</body>
+</html>
