@@ -232,6 +232,7 @@ interface FilaTrabajo {
   archivo_nombre: string | null;
   grupo: string | null;
   rol: string | null;
+  fecha: string | null;
   ncf: string | null;
   banco_tx_id: string | null;
   documento_adm: string | null;
@@ -256,6 +257,7 @@ async function snapshotTrabajos(supabase: SupabaseClient, empresaId: string): Pr
           'banco_tx_id:propuesta->>banco_tx_id, ' +
           'documento_adm:propuesta->>documento_adm, ' +
           'monto:propuesta->>monto, ' +
+        'fecha:propuesta->>fecha, ' +
           'docid:propuesta->registro_adm->>docid, ' +
           'uuid:propuesta->registro_adm->>uuid, ' +
           'anulado_en:propuesta->registro_adm->>anulado_en, ' +
@@ -442,6 +444,16 @@ export async function detectarPrestamos(
         avisos.push(`grupo ${grupo}: las facturas suman ${fmtMonto(suma)} y el débito es ${fmtMonto(monto)} — el pago no se siembra, revisá el grupo`);
         continue;
       }
+      // La fecha del pago es LA MÁS TARDÍA entre el débito y sus facturas:
+      // ADM rechaza aplicar un pago con fecha anterior a la factura («no debe
+      // ser posterior a la fecha de aplicación», FP00001175 el 2026-08-21) y
+      // los e-NCF de intereses se emiten el 31 mientras el banco debita el
+      // ~28. Tres días de corrimiento que la conciliación absorbe (cruza por
+      // monto con ventana de días).
+      const fechaPago = [tx.fecha_posteo, ...facturasGrupo.map((t) => String(t.fecha ?? ''))]
+        .filter((f) => /^\d{4}-\d{2}-\d{2}/.test(f))
+        .sort()
+        .pop() ?? tx.fecha_posteo;
       const propuesta = stripNulls({
         accion: 'registrar_prestamo',
         grupo_prestamo: grupo,
@@ -449,7 +461,7 @@ export async function detectarPrestamos(
         documento_adm: 'BillPayments',
         direccion: 'cargo',
         banco_tx_id: tx.id,
-        fecha: tx.fecha_posteo,
+        fecha: fechaPago,
         monto,
         moneda: 'DOP',
         banco: cuenta.banco,
