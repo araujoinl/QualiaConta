@@ -34,6 +34,19 @@
 // CORRE TODOS LOS DÍAS y es idempotente: una fila por proveedor y período; si
 // el estado cambió (llegó, se pagó, moneda) la fila se ACTUALIZA — sin eso, un
 // «no llegó» de principio de mes se quedaba mintiendo hasta fin de mes.
+//
+// SERIES POR MONTO (2026-08-21, decisión de Carlos): un proveedor que emite
+// varios papeles al mes (Banco Santa Cruz: cuota de leasing + intereses de
+// cada préstamo + comisiones) falla el corte de 1,3/mes como conjunto y jamás
+// entraría — y aunque entrara, UNA fila para todo el banco mentiría: llega un
+// interés cualquiera y la fila dice «llegó» tapando la cuota que falta. Para
+// esos proveedores se mira ADENTRO: los montos que se repiten mes a mes
+// dentro de un margen (no exacto — «las cosas cambian de cuando en vez»)
+// forman su propia serie, y cada serie es su propia fila en la caja, con su
+// propio día habitual, su propio «no llegó» y su propio rechazo. La
+// regularidad del monto sigue sin ser filtro A NIVEL PROVEEDOR (Humano varía
+// 50% y es el recurrente más claro); acá sólo separa contratos dentro de un
+// proveedor que de otra forma quedaría ciego.
 
 import { registrarSombra } from '../_shared/sombra.ts';
 import {
@@ -53,6 +66,9 @@ import {
 const MESES_MINIMOS = 3; // decisión de Carlos 2026-08-21: con 3 meses ya hay patrón
 const MAX_POR_MES = 1.3;
 const MAX_DISPERSION = 7.0;
+// El margen de una serie: 15% relativo a la mediana. La cuota del leasing
+// sube cuando se renueva el seguro del período y sigue siendo la misma cuota.
+const MARGEN_SERIE = 0.15;
 
 const c2 = (x: unknown): number => pyRoundN(Number(x ?? 0), 2);
 
@@ -77,6 +93,189 @@ const pstdev = (xs: number[]): number => {
   const media = xs.reduce((a, b) => a + b, 0) / xs.length;
   return Math.sqrt(xs.reduce((a, x) => a + (x - media) ** 2, 0) / xs.length);
 };
+
+// ¿Este monto pertenece a la serie cuyo centro es `centro`?
+const enSerie = (monto: number, centro: number): boolean =>
+  centro > 0 && Math.abs(monto - centro) <= MARGEN_SERIE * centro;
+
+// Agrupa las facturas de UN proveedor en series de monto parecido: misma
+// moneda y monto dentro del margen de la mediana de la serie. Greedy sobre
+// los montos ordenados — determinista, y suficiente porque las series reales
+// (una cuota, un interés) están lejos una de otra comparadas con el margen.
+function seriesPorMonto(fs: FacturaMes[]): FacturaMes[][] {
+  const series: { montos: number[]; filas: FacturaMes[] }[] = [];
+  const orden = [...fs].sort((a, b) =>
+    a.moneda === b.moneda ? a.monto - b.monto : a.moneda.localeCompare(b.moneda));
+  for (const f of orden) {
+    const s = series.find((s) =>
+      s.filas[0].moneda === f.moneda && enSerie(f.monto, mediana(s.montos)));
+    if (s) {
+      s.montos.push(f.monto);
+      s.filas.push(f);
+    } else {
+      series.push({ montos: [f.monto], filas: [f] });
+    }
+  }
+  return series.map((s) => s.filas);
+}
+
+interface FilaCaja {
+  resumen: string;
+  propuesta: Record<string, unknown>;
+}
+
+// Arma la fila de la caja para un conjunto de facturas: el proveedor entero
+// (camino original) o una serie suya (`serieMonto` presente). Es el mismo
+// cuerpo que siempre vivió en el loop; se extrajo para que las series no lo
+// dupliquen.
+function armarFila(args: {
+  nombre: string;
+  prov: string | null;
+  fs: FacturaMes[];
+  vigilado: boolean;
+  serieMonto?: number;
+  periodo: string;
+  hoy: string;
+  diaHoy: number;
+}): FilaCaja {
+  const { nombre, prov, fs, vigilado, serieMonto, periodo, hoy, diaHoy } = args;
+  const meses = [...new Set(fs.map((f) => f.fecha.slice(0, 7)))].sort();
+  const dias = fs.map((f) => Number(f.fecha.slice(8, 10)));
+  const dispersion = dias.length > 1 ? pstdev(dias) : 0.0;
+
+  fs.sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const delmes = fs.filter((f) => f.fecha.slice(0, 7) === periodo);
+  const llego = delmes.length > 0;
+
+  // Sin una sola factura previa no hay día ni monto que estimar, y NO se
+  // inventan: con dia_habitual en null la fila nunca se declara vencida.
+  const diaHabitual = dias.length ? pyRound(mediana(dias)) : null;
+  const margen = Math.max(3, pyRound(dispersion));
+  // El margen YA NO decide si la fila existe, sino si la ausencia es un
+  // problema: los recurrentes se muestran desde el día 1 y el margen se
+  // guarda en `vencido` (false = todavía puede llegar).
+  const vencido = diaHabitual !== null && diaHoy >= Math.min(28, diaHabitual + margen);
+
+  // La fila va con la fecha en que ESTE proveedor factura, no con la de la
+  // corrida. Se recorta al último día del mes (quien factura el 31 no tiene
+  // 31 en febrero); sin día conocido, el último del mes — ordena la fila al
+  // final de la caja y no la da por atrasada.
+  const [anio, mes] = [Number(hoy.slice(0, 4)), Number(hoy.slice(5, 7))];
+  const ultimoDelMes = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+  const diaEsperado = diaHabitual ? Math.min(diaHabitual, ultimoDelMes) : ultimoDelMes;
+  const fechaEsperada = `${periodo}-${String(diaEsperado).padStart(2, '0')}`;
+
+  // En qué moneda factura: la de su última factura. Convertir a pesos no es
+  // opción: el volcado no trae la tasa del día de cada factura.
+  const moneda = fs.length ? fs[fs.length - 1].moneda : 'DOP';
+  const sig = moneda === 'USD' ? 'US$' : 'RD$';
+
+  // Lo que suele costar: mediana-alta de los últimos seis, no promedio (un
+  // mes atípico —la nómina de diciembre en Humano— corre el promedio). Sólo
+  // los de SU moneda: una mediana entre 637 dólares y 19.000 pesos no es un
+  // monto típico de nada.
+  const montos = fs.filter((f) => f.moneda === moneda).map((f) => f.monto).slice(-6)
+    .sort((a, b) => a - b);
+  const tipico = montos.length ? montos[Math.floor(montos.length / 2)] : null;
+
+  // Una serie se presenta con su monto: «Banco Santa Cruz — cuota ~RD$51.502»
+  // distingue la cuota del leasing de los intereses del mismo banco.
+  const etiqueta = serieMonto !== undefined
+    ? `${nombre} — cuota ~${sig}${fmtMonto(serieMonto)}`
+    : nombre;
+
+  const propuesta: Record<string, unknown> = {
+    clase: 'factura_faltante',
+    metodo: 'script',
+    proveedor: nombre,
+    proveedor_id: prov,
+    periodo,
+    fecha: fechaEsperada,
+    fecha_esperada: fechaEsperada,
+    moneda,
+    direccion: 'cargo',
+    confianza: 0.7,
+    llego,
+    vencido,
+    // Quién lo puso en la caja: al descubierto se le cree el patrón, a éste
+    // lo sostiene una persona — dos cosas distintas frente a una fila que sobra.
+    vigilado_manual: vigilado,
+    dia_habitual: diaHabitual,
+    // SIEMPRE presente —también en la que ya llegó—: es contra esto que se
+    // mira si el monto de este mes se salió de lo normal. Y su PRESENCIA es
+    // la marca de fila al día (`aldia`).
+    monto_tipico: tipico,
+    // La fila la escribe el proveedor y la lee la pantalla: el nombre no se
+    // repite en `descripcion` (antes el mismo dato se veía dos veces).
+    descripcion: etiqueta,
+    historial: {
+      meses: meses.length,
+      facturas: fs.length,
+      por_mes: meses.length ? pyRoundN(fs.length / meses.length, 2) : 0,
+      dia_habitual: diaHabitual,
+      dispersion_dia: pyRoundN(dispersion, 1),
+    },
+  };
+  // La marca de serie: su presencia dice que la fila vigila UN contrato del
+  // proveedor, no al proveedor entero, y es la llave con la que la próxima
+  // corrida la reencuentra (dentro del margen).
+  if (serieMonto !== undefined) propuesta.serie_monto = pyRoundN(serieMonto, 2);
+
+  let resumen: string;
+  if (llego) {
+    const u = delmes[delmes.length - 1];
+    Object.assign(propuesta, {
+      // La que llegó vale por el día en que facturó de verdad: ahí ya no hay
+      // nada que estimar.
+      fecha: u.fecha,
+      monto: u.monto,
+      pagada: u.pagada,
+      // Cuánto se salió de lo normal, con signo. Se guarda el número y no el
+      // veredicto para que el umbral se pueda mover en la pantalla sin
+      // re-emitir las filas ya escritas.
+      desvio: tipico ? pyRoundN((u.monto - tipico) / tipico, 4) : 0,
+      factura: {
+        docid: u.docid, uuid: u.uuid, fecha: u.fecha,
+        monto: u.monto, moneda: u.moneda, pagada: u.pagada,
+      },
+      detalle: `Ya facturó ${periodo}: ${u.docid} del ${u.fecha} por ` +
+        `${sig}${fmtMonto(u.monto)} (${u.pagada ? 'pagada' : 'sin pagar'}). ` +
+        `Suele costar ${sig}${fmtMonto(tipico!)}. Factura ${meses.length} de los últimos ` +
+        `meses, siempre alrededor del día ${diaHabitual}.`,
+    });
+    resumen = `${etiqueta} facturó ${periodo} (${u.docid})`;
+  } else if (vencido) {
+    Object.assign(propuesta, {
+      monto: tipico,
+      detalle: `Facturó ${meses.length} de los últimos meses, siempre alrededor del día ` +
+        `${diaHabitual}, por unos ${sig}${fmtMonto(tipico!)}. De ${periodo} no hay ninguna y ` +
+        `hoy es ${diaHoy}. Si no corresponde, rechazala con el motivo: no vuelvo ` +
+        `a avisar por ${serieMonto !== undefined ? 'esta serie' : 'este proveedor'}.`,
+    });
+    resumen = `No llegó la factura de ${etiqueta} (${periodo})`;
+  } else if (fs.length === 0) {
+    // Vigilado a mano y sin una sola factura en todo el histórico: la fila
+    // existe para que veas que lo estás siguiendo, y dice eso y nada más.
+    Object.assign(propuesta, {
+      monto: null,
+      detalle: `Lo pusiste a vigilar y todavía no tiene ninguna factura registrada en ` +
+        `ADM, así que no hay con qué estimarle el día ni el monto habitual. ` +
+        `De ${periodo} tampoco hay ninguna.`,
+    });
+    resumen = `${etiqueta} todavía no facturó nunca`;
+  } else {
+    // Todavía en ventana. Se muestra igual pero NO se pide decidir nada: no
+    // hay ausencia que reclamar sobre una factura que aún no debía llegar.
+    Object.assign(propuesta, {
+      monto: tipico,
+      detalle: `Factura ${meses.length} de los últimos meses, alrededor del día ` +
+        `${diaHabitual}, por unos ${sig}${fmtMonto(tipico!)}. De ${periodo} todavía no hay ` +
+        `ninguna, pero hoy es ${diaHoy}: está dentro de su fecha habitual.`,
+    });
+    resumen = `${etiqueta} todavía no facturó ${periodo}`;
+  }
+  return { resumen: resumen.slice(0, 200), propuesta };
+}
 
 export async function detectarRecurrentes(
   cliente: Cliente,
@@ -120,9 +319,40 @@ export async function detectarRecurrentes(
     moneda: string;
     aldia: boolean;
   }>();
+  // Las filas de SERIE llevan su memoria APARTE: si alimentaran los mapas por
+  // proveedor, una serie de Santa Cruz lo volvería «conocido» entero y el
+  // banco entraría con todos sus papeles. El match serie↔serie es por monto
+  // dentro del margen, nunca por igualdad exacta.
+  const rechazosSerie = new Map<string, number[]>();
+  const conocidasSerie = new Map<string, number[]>();
+  const emitidasSerie = new Map<string, {
+    id: string;
+    serieMonto: number;
+    llego: boolean;
+    pagada: boolean;
+    moneda: string;
+  }[]>();
   for (const fila of filasEmitidas) {
     const p = fila.propuesta ?? {};
     const prov = ((p.proveedor_id ?? p.proveedor) as string) ?? null;
+    if (typeof p.serie_monto === 'number') {
+      if (prov == null) continue;
+      if (fila.estado === 'rechazada') {
+        rechazosSerie.set(prov, [...(rechazosSerie.get(prov) ?? []), p.serie_monto]);
+        continue;
+      }
+      conocidasSerie.set(prov, [...(conocidasSerie.get(prov) ?? []), p.serie_monto]);
+      if (p.periodo === periodo) {
+        emitidasSerie.set(prov, [...(emitidasSerie.get(prov) ?? []), {
+          id: fila.id,
+          serieMonto: p.serie_monto,
+          llego: Boolean(p.llego),
+          pagada: Boolean(p.pagada),
+          moneda: (p.moneda as string) ?? 'DOP',
+        }]);
+      }
+      continue;
+    }
     if (fila.estado === 'rechazada') {
       if (prov != null) rechazados.add(prov);
       continue;
@@ -255,168 +485,87 @@ export async function detectarRecurrentes(
     // Sobre un vigilado o un conocido no tienen nada que decidir. Se saltean
     // los tres y no sólo el de meses, porque el caso que motivó todo (Emprendia)
     // falla dos.
-    if (!vigilado && !conocido) {
-      if (meses.length < MESES_MINIMOS) continue;
-      if (fs.length / meses.length > MAX_POR_MES) continue; // factura seguido: es compra, no servicio
-      if (dispersion > MAX_DISPERSION) continue;            // cae cualquier día: no es un contrato
+    const pasaCortes = meses.length >= MESES_MINIMOS &&
+      fs.length / meses.length <= MAX_POR_MES && // factura seguido: es compra, no servicio
+      dispersion <= MAX_DISPERSION;              // cae cualquier día: no es un contrato
+
+    if (vigilado || conocido || pasaCortes) {
+      // El camino original: una fila para el proveedor entero.
+      const { resumen, propuesta } = armarFila({ nombre, prov, fs, vigilado, periodo, hoy, diaHoy });
+      const ya = (prov != null ? emitidas.get(prov) : undefined) ?? emitidas.get(nombre);
+      if (ya === undefined) {
+        inserts.push({ prov, resumen, propuesta });
+      } else if (
+        ya.llego !== Boolean(propuesta.llego) ||
+        ya.pagada !== Boolean(propuesta.pagada) ||
+        ya.moneda !== propuesta.moneda ||
+        !ya.aldia
+      ) {
+        // Cuando el estado CAMBIÓ, o cuando la fila viene de la versión que sólo
+        // emitía ausencias (sin `monto_tipico`). Fuera de esos casos no se toca:
+        // reescribirla todos los días movería updated_at sin que haya pasado
+        // nada y la mesa lo leería como actividad del contable.
+        // PAGARLA TAMBIÉN ES UN CAMBIO DE ESTADO: la factura llega impaga y se
+        // paga días después (la FP00001076 de Humano seguía mostrándose impaga).
+        // Y la MONEDA está acá para que las filas escritas cuando el script la
+        // clavaba en pesos se corrijan solas, sin ir a tocarlas a mano.
+        updates.push({ prov, id: ya.id, resumen, propuesta });
+      }
+      continue;
     }
 
-    fs.sort((a, b) => a.fecha.localeCompare(b.fecha));
-    const delmes = fs.filter((f) => f.fecha.slice(0, 7) === periodo);
-    const llego = delmes.length > 0;
-
-    // Sin una sola factura previa no hay día ni monto que estimar, y NO se
-    // inventan: con dia_habitual en null la fila nunca se declara vencida.
-    const diaHabitual = dias.length ? pyRound(mediana(dias)) : null;
-    const margen = Math.max(3, pyRound(dispersion));
-    // El margen YA NO decide si la fila existe, sino si la ausencia es un
-    // problema: los recurrentes se muestran desde el día 1 y el margen se
-    // guarda en `vencido` (false = todavía puede llegar).
-    const vencido = diaHabitual !== null && diaHoy >= Math.min(28, diaHabitual + margen);
-
-    // La fila va con la fecha en que ESTE proveedor factura, no con la de la
-    // corrida. Se recorta al último día del mes (quien factura el 31 no tiene
-    // 31 en febrero); sin día conocido, el último del mes — ordena la fila al
-    // final de la caja y no la da por atrasada.
-    const [anio, mes] = [Number(hoy.slice(0, 4)), Number(hoy.slice(5, 7))];
-    const ultimoDelMes = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
-    const diaEsperado = diaHabitual ? Math.min(diaHabitual, ultimoDelMes) : ultimoDelMes;
-    const fechaEsperada = `${periodo}-${String(diaEsperado).padStart(2, '0')}`;
-
-    // En qué moneda factura: la de su última factura. Convertir a pesos no es
-    // opción: el volcado no trae la tasa del día de cada factura.
-    const moneda = fs.length ? fs[fs.length - 1].moneda : 'DOP';
-    const sig = moneda === 'USD' ? 'US$' : 'RD$';
-
-    // Lo que suele costar: mediana-alta de los últimos seis, no promedio (un
-    // mes atípico —la nómina de diciembre en Humano— corre el promedio). Sólo
-    // los de SU moneda: una mediana entre 637 dólares y 19.000 pesos no es un
-    // monto típico de nada.
-    const montos = fs.filter((f) => f.moneda === moneda).map((f) => f.monto).slice(-6)
-      .sort((a, b) => a - b);
-    const tipico = montos.length ? montos[Math.floor(montos.length / 2)] : null;
-
-    const propuesta: Record<string, unknown> = {
-      clase: 'factura_faltante',
-      metodo: 'script',
-      proveedor: nombre,
-      proveedor_id: prov,
-      periodo,
-      fecha: fechaEsperada,
-      fecha_esperada: fechaEsperada,
-      moneda,
-      direccion: 'cargo',
-      confianza: 0.7,
-      llego,
-      vencido,
-      // Quién lo puso en la caja: al descubierto se le cree el patrón, a éste
-      // lo sostiene una persona — dos cosas distintas frente a una fila que sobra.
-      vigilado_manual: vigilado,
-      dia_habitual: diaHabitual,
-      // SIEMPRE presente —también en la que ya llegó—: es contra esto que se
-      // mira si el monto de este mes se salió de lo normal. Y su PRESENCIA es
-      // la marca de fila al día (`aldia`).
-      monto_tipico: tipico,
-      // La fila la escribe el proveedor y la lee la pantalla: el nombre no se
-      // repite en `descripcion` (antes el mismo dato se veía dos veces).
-      descripcion: nombre,
-      historial: {
-        meses: meses.length,
-        facturas: fs.length,
-        por_mes: meses.length ? pyRoundN(fs.length / meses.length, 2) : 0,
-        dia_habitual: diaHabitual,
-        dispersion_dia: pyRoundN(dispersion, 1),
-      },
-    };
-
-    let resumen: string;
-    if (llego) {
-      const u = delmes[delmes.length - 1];
-      Object.assign(propuesta, {
-        // La que llegó vale por el día en que facturó de verdad: ahí ya no hay
-        // nada que estimar.
-        fecha: u.fecha,
-        monto: u.monto,
-        pagada: u.pagada,
-        // Cuánto se salió de lo normal, con signo. Se guarda el número y no el
-        // veredicto para que el umbral se pueda mover en la pantalla sin
-        // re-emitir las filas ya escritas.
-        desvio: tipico ? pyRoundN((u.monto - tipico) / tipico, 4) : 0,
-        factura: {
-          docid: u.docid, uuid: u.uuid, fecha: u.fecha,
-          monto: u.monto, moneda: u.moneda, pagada: u.pagada,
-        },
-        detalle: `Ya facturó ${periodo}: ${u.docid} del ${u.fecha} por ` +
-          `${sig}${fmtMonto(u.monto)} (${u.pagada ? 'pagada' : 'sin pagar'}). ` +
-          `Suele costar ${sig}${fmtMonto(tipico!)}. Factura ${meses.length} de los últimos ` +
-          `meses, siempre alrededor del día ${diaHabitual}.`,
+    // ── Series por monto ──────────────────────────────────────────────────
+    // El proveedor como conjunto no pasó los cortes. Antes acá se descartaba;
+    // ahora se mira adentro: cada grupo de montos parecidos se juzga solo,
+    // con LOS MISMOS cortes, y el que pasa vigila su contrato. Sin llave
+    // estable (prov null) no hay serie que recordar entre corridas.
+    if (prov == null) continue;
+    for (const serie of seriesPorMonto(fs)) {
+      const centro = mediana(serie.map((f) => f.monto));
+      // El rechazo de una serie es para siempre, igual que el del proveedor.
+      if ((rechazosSerie.get(prov) ?? []).some((m) => enSerie(centro, m))) continue;
+      // Y una serie que ya entró tampoco se vuelve a juzgar (la lección de
+      // Claro: una factura rara no la puede sacar en silencio).
+      const serieConocida = (conocidasSerie.get(prov) ?? []).some((m) => enSerie(centro, m));
+      if (!serieConocida) {
+        const mesesS = [...new Set(serie.map((f) => f.fecha.slice(0, 7)))];
+        const diasS = serie.map((f) => Number(f.fecha.slice(8, 10)));
+        const dispS = diasS.length > 1 ? pstdev(diasS) : 0.0;
+        if (mesesS.length < MESES_MINIMOS) continue;
+        if (serie.length / mesesS.length > MAX_POR_MES) continue;
+        if (dispS > MAX_DISPERSION) continue;
+      }
+      const { resumen, propuesta } = armarFila({
+        nombre, prov, fs: serie, vigilado: false, serieMonto: centro, periodo, hoy, diaHoy,
       });
-      resumen = `${nombre} facturó ${periodo} (${u.docid})`;
-    } else if (vencido) {
-      Object.assign(propuesta, {
-        monto: tipico,
-        detalle: `Facturó ${meses.length} de los últimos meses, siempre alrededor del día ` +
-          `${diaHabitual}, por unos ${sig}${fmtMonto(tipico!)}. De ${periodo} no hay ninguna y ` +
-          `hoy es ${diaHoy}. Si no corresponde, rechazala con el motivo: no vuelvo ` +
-          `a avisar por este proveedor.`,
-      });
-      resumen = `No llegó la factura de ${nombre} (${periodo})`;
-    } else if (fs.length === 0) {
-      // Vigilado a mano y sin una sola factura en todo el histórico: la fila
-      // existe para que veas que lo estás siguiendo, y dice eso y nada más.
-      Object.assign(propuesta, {
-        monto: null,
-        detalle: `Lo pusiste a vigilar y todavía no tiene ninguna factura registrada en ` +
-          `ADM, así que no hay con qué estimarle el día ni el monto habitual. ` +
-          `De ${periodo} tampoco hay ninguna.`,
-      });
-      resumen = `${nombre} todavía no facturó nunca`;
-    } else {
-      // Todavía en ventana. Se muestra igual pero NO se pide decidir nada: no
-      // hay ausencia que reclamar sobre una factura que aún no debía llegar.
-      Object.assign(propuesta, {
-        monto: tipico,
-        detalle: `Factura ${meses.length} de los últimos meses, alrededor del día ` +
-          `${diaHabitual}, por unos ${sig}${fmtMonto(tipico!)}. De ${periodo} todavía no hay ` +
-          `ninguna, pero hoy es ${diaHoy}: está dentro de su fecha habitual.`,
-      });
-      resumen = `${nombre} todavía no facturó ${periodo}`;
-    }
-    resumen = resumen.slice(0, 200);
-
-    const ya = (prov != null ? emitidas.get(prov) : undefined) ?? emitidas.get(nombre);
-    if (ya === undefined) {
-      inserts.push({ prov, resumen, propuesta });
-    } else if (
-      ya.llego !== llego ||
-      ya.pagada !== Boolean(propuesta.pagada) ||
-      ya.moneda !== moneda ||
-      !ya.aldia
-    ) {
-      // Cuando el estado CAMBIÓ, o cuando la fila viene de la versión que sólo
-      // emitía ausencias (sin `monto_tipico`). Fuera de esos casos no se toca:
-      // reescribirla todos los días movería updated_at sin que haya pasado
-      // nada y la mesa lo leería como actividad del contable.
-      // PAGARLA TAMBIÉN ES UN CAMBIO DE ESTADO: la factura llega impaga y se
-      // paga días después (la FP00001076 de Humano seguía mostrándose impaga).
-      // Y la MONEDA está acá para que las filas escritas cuando el script la
-      // clavaba en pesos se corrijan solas, sin ir a tocarlas a mano.
-      updates.push({ prov, id: ya.id, resumen, propuesta });
+      const ya = (emitidasSerie.get(prov) ?? []).find((m) => enSerie(centro, m.serieMonto));
+      if (ya === undefined) {
+        inserts.push({ prov, resumen, propuesta });
+      } else if (
+        ya.llego !== Boolean(propuesta.llego) ||
+        ya.pagada !== Boolean(propuesta.pagada) ||
+        ya.moneda !== propuesta.moneda
+      ) {
+        updates.push({ prov, id: ya.id, resumen, propuesta });
+      }
     }
   }
 
   if (inserts.length === 0 && updates.length === 0) return conteoVacio(avisos);
 
   if (modo === 'sombra') {
-    // Sólo qualia_sombra: la llave natural es proveedor + período.
+    // Sólo qualia_sombra: la llave natural es proveedor + período — y para
+    // las series, también su monto, o dos series del mismo banco se pisan.
+    const llave = (f: { prov: string | null; propuesta: Record<string, unknown> }): string => {
+      const serie = 'serie_monto' in f.propuesta ? `#${f.propuesta.serie_monto}` : '';
+      return `recurrentes:${f.prov ?? '?'}${serie}:${periodo}`;
+    };
     for (const f of inserts) {
-      await registrarSombra('qualia-sugerencias', empresaId,
-        `recurrentes:${f.prov ?? '?'}:${periodo}`,
+      await registrarSombra('qualia-sugerencias', empresaId, llave(f),
         { accion: 'insertar', resumen: f.resumen, propuesta: f.propuesta });
     }
     for (const f of updates) {
-      await registrarSombra('qualia-sugerencias', empresaId,
-        `recurrentes:${f.prov ?? '?'}:${periodo}`,
+      await registrarSombra('qualia-sugerencias', empresaId, llave(f),
         { accion: 'actualizar', id: f.id, resumen: f.resumen, propuesta: f.propuesta });
     }
     return {
