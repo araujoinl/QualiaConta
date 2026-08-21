@@ -230,6 +230,9 @@ tbody tr:last-child td{border-bottom:0}
     box-shadow:0 14px 34px rgba(10,15,28,.14), inset 0 1px 0 rgba(255,255,255,.65)}
   .gtabs label,.gtabs.main label{flex-direction:column;gap:3px;padding:7px 2px 6px;font-size:9.5px}
   .gtabs label svg,.gtabs.main label svg{width:17px;height:17px}
+  /* en el celular la app es Resumen + Bandeja: el resto no existe */
+  .gtabs label:nth-of-type(n+3),.gtabs.main label:nth-of-type(n+3){display:none}
+  .gtabs,.gtabs.main{--n:2 !important;overflow:hidden}
   .wrap{padding:16px 14px 92px}
   .pagehead{margin-bottom:12px;gap:10px;animation:none;transform:none}
   .card{padding:14px;border-radius:14px}

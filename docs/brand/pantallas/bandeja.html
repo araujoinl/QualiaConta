@@ -274,6 +274,9 @@ body{font-family:Inter,Arial,sans-serif;color:var(--ink);background:var(--paper)
     box-shadow:0 14px 34px rgba(10,15,28,.14), inset 0 1px 0 rgba(255,255,255,.65)}
   .gtabs label,.gtabs.main label{flex-direction:column;gap:3px;padding:7px 2px 6px;font-size:9.5px}
   .gtabs label svg,.gtabs.main label svg{width:17px;height:17px}
+  /* en el celular la app es Resumen + Bandeja: el resto no existe */
+  .gtabs label:nth-of-type(n+3),.gtabs.main label:nth-of-type(n+3){display:none}
+  .gtabs,.gtabs.main{--n:2 !important;overflow:hidden}
   .wrap{padding:16px 14px 92px}
   .pagehead{margin-bottom:12px;gap:10px;animation:none;transform:none}
   .card{padding:14px;border-radius:14px}
@@ -288,6 +291,17 @@ body{font-family:Inter,Arial,sans-serif;color:var(--ink);background:var(--paper)
   .orden{margin-left:0}
   .search{flex:1 1 auto;max-width:none}
   .twhen{display:none}
+}
+
+.d-mov{display:none}
+/* móvil: herramientas para dedo */
+@media(max-width:720px){
+  .d-desk{display:none}
+  .d-mov{display:inline}
+  .fchip{padding:9px 15px;font-size:12.5px}
+  .acciones{flex-wrap:wrap;gap:10px}
+  .btn{padding:14px 16px;font-size:14px}
+  .btn.primary{flex:1 1 100%}
 }
 </style>
 </head>
@@ -349,7 +363,7 @@ body{font-family:Inter,Arial,sans-serif;color:var(--ink);background:var(--paper)
     <div class="card rise d1">
       <div class="drop">
         <span class="dsq"></span>
-        <div><b>Arrastrá tus facturas acá</b><br><span>PDF o foto · el contable las analiza solo</span></div>
+        <div><b class="d-desk">Arrastrá tus facturas acá</b><b class="d-mov">Tocá para subir una factura</b><br><span class="d-desk">PDF o foto · el contable las analiza solo</span><span class="d-mov">sacale foto o elegí el PDF · el contable la analiza solo</span></div>
       </div>
       <div class="filters">
         <span class="fchip on">Todas</span><span class="fchip">Por aprobar</span><span class="fchip">Preguntas</span><span class="fchip">Procesando</span><span class="fchip">Resueltas</span>
