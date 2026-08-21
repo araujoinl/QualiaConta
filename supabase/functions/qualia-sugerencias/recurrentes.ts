@@ -50,7 +50,7 @@ import {
   pyRoundN,
 } from './comun.ts';
 
-const MESES_MINIMOS = 6; // sin media docena de meses no hay patrón, hay casualidad
+const MESES_MINIMOS = 3; // decisión de Carlos 2026-08-21: con 3 meses ya hay patrón
 const MAX_POR_MES = 1.3;
 const MAX_DISPERSION = 7.0;
 
