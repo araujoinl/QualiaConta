@@ -786,6 +786,21 @@ Cr 101.0x  la cuenta de banco que pagó
 la tabla de amortización del préstamo**, y hoy no está cargada en ningún lugar del
 sistema. Sin ella, cualquier reparto está mal.
 
+**Desbloqueado el 2026-08-21 para los préstamos cuyo banco emite e-NCF de
+devengación de intereses** (Santa Cruz los emite el último día del mes, período
+01–fin): esos comprobantes SON la partición, documentada por el propio banco —
+interés = suma de los e-NCF del mes del crédito, capital = débito − intereses.
+Nada que estimar, así que H-04 no aplica. Lo arma el detector
+`qualia-sugerencias/prestamos.ts` (decisión de Carlos: script determinista, sin
+turno del contable), en dos etapas: N facturas de intereses (una por e-NCF, 606
+tipo 07) + 1 factura de abono a capital (sin NCF, referencia
+`PRESTAMO-<credito>-<YYYYMM>`), y cuando el grupo entero vive en ADM, **UN
+BillPayments que las liquida juntas** — un débito del banco → un solo documento
+contra el banco, o la conciliación (monto contra monto, 1 a 1) no lo cruza
+nunca. La aprobación humana en la mesa se mantiene por fila. Config: bloque
+`prestamos` del mapa de cuentas (crédito → cuenta de deuda). El préstamo SIN
+e-NCF sigue bloqueado por H-04, igual que siempre.
+
 Regla dura vigente (doctrina H‑04): si la cuota cae en el estado de cuenta y no está
 registrada, **se pregunta citando la doctrina H‑04 — nunca se estima la partición**. El proponedor determinista
 tiene el corte codificado: cualquier reparto hacia una cuenta `2xx.xx` se manda a sesión

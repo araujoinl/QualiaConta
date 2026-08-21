@@ -47,6 +47,7 @@ import { detectarNotasDebito } from './notas_debito.ts';
 import { detectarTransferencias } from './transferencias.ts';
 import { detectarAsignacion } from './asignacion.ts';
 import { detectarRecurrentes } from './recurrentes.ts';
+import { detectarPrestamos } from './prestamos.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -138,6 +139,10 @@ async function correrEmpresa(
       detectarRecurrentes(cliente, empresaId, m, {
         hoy: body.hoy == null ? undefined : String(body.hoy),
       })],
+    // Sexto detector (2026-08-21): el pago mensual de préstamo, en dos etapas
+    // (facturas por e-NCF + capital, y el pago único cuando el grupo ya vive
+    // en ADM). Opt-in: sin bloque `prestamos` en el mapa no hace nada.
+    ['prestamos', () => detectarPrestamos(cliente, empresaId, m)],
   ];
 
   const normalizar = (r: unknown): Record<string, unknown> => {
