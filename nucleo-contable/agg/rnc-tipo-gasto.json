@@ -1,49 +1,49 @@
 {
  "_meta": {
-  "generado": "2026-08-19T05:20:47Z",
+  "generado": "2026-08-22T16:31:37Z",
   "alcance": "GENERAL (DGII) — vale para cualquier empresa; el tipo de gasto 606 no depende de quién compra. La cuenta contable NO se comparte: vive en cada empresa.",
   "n_empresas_aportantes": 1,
-  "n_suplidores": 165,
-  "n_facturas": 1139,
-  "n_sin_rnc": 28,
-  "n_sin_tipo_gasto": 21,
-  "n_con_dominante": 39
+  "n_suplidores": 167,
+  "n_facturas": 1160,
+  "n_sin_rnc": 29,
+  "n_sin_tipo_gasto": 22,
+  "n_con_dominante": 41
  },
  "catalogo": [
   {
    "codigo": "02",
    "nombre": "Gastos por Trabajos, Suministros y Servicios",
-   "usos": 714,
-   "n_suplidores": 107
+   "usos": 708,
+   "n_suplidores": 97
   },
   {
    "codigo": "07",
    "nombre": "Gastos Financieros",
-   "usos": 197,
+   "usos": 202,
    "n_suplidores": 1
   },
   {
    "codigo": "05",
    "nombre": "Gastos de Representación",
-   "usos": 61,
-   "n_suplidores": 40
+   "usos": 70,
+   "n_suplidores": 45
   },
   {
    "codigo": "01",
    "nombre": "Gastos de Personal",
-   "usos": 42,
-   "n_suplidores": 19
+   "usos": 47,
+   "n_suplidores": 20
   },
   {
    "codigo": "09",
    "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
-   "usos": 41,
-   "n_suplidores": 6
+   "usos": 46,
+   "n_suplidores": 7
   },
   {
    "codigo": "10",
    "nombre": "Adquisición de Activos",
-   "usos": 20,
+   "usos": 21,
    "n_suplidores": 15
   },
   {
@@ -81,14 +81,14 @@
   {
    "rnc": "102012921",
    "nombre": "Banco Multiple Santa Cruz S A",
-   "facturas": 199,
+   "facturas": 204,
    "dominante": "07",
    "tipos": [
     {
      "codigo": "07",
      "nombre": "Gastos Financieros",
-     "usos": 197,
-     "pct": 99.0
+     "usos": 202,
+     "pct": 99
     },
     {
      "codigo": "02",
@@ -107,48 +107,48 @@
   {
    "rnc": "132942248",
    "nombre": "Tupaq Cargo & Courier Srl",
-   "facturas": 133,
+   "facturas": 139,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 132,
-     "pct": 99.2
+     "usos": 138,
+     "pct": 99.3
     },
     {
      "codigo": "09",
      "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
      "usos": 1,
-     "pct": 0.8
+     "pct": 0.7
     }
    ]
   },
   {
    "rnc": "101008172",
    "nombre": "Isla Dominicana De Petroleo Corporation",
-   "facturas": 99,
+   "facturas": 101,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 99,
-     "pct": 100.0
+     "usos": 101,
+     "pct": 100
     }
    ]
   },
   {
    "rnc": "101767766",
    "nombre": "Mecari Srl",
-   "facturas": 91,
+   "facturas": 92,
    "dominante": "02",
    "tipos": [
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 91,
-     "pct": 100.0
+     "usos": 92,
+     "pct": 100
     }
    ]
   },
@@ -182,7 +182,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 41,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -195,14 +195,14 @@
     {
      "codigo": "09",
      "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
-     "usos": 21,
-     "pct": 80.8
+     "usos": 23,
+     "pct": 88.5
     },
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 5,
-     "pct": 19.2
+     "usos": 3,
+     "pct": 11.5
     }
    ]
   },
@@ -216,7 +216,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 23,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -230,7 +230,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 22,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -243,14 +243,8 @@
     {
      "codigo": "01",
      "nombre": "Gastos de Personal",
-     "usos": 17,
-     "pct": 81.0
-    },
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 2,
-     "pct": 9.5
+     "usos": 19,
+     "pct": 90.5
     },
     {
      "codigo": "06",
@@ -276,7 +270,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 15,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -290,7 +284,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 14,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -321,6 +315,20 @@
    ]
   },
   {
+   "rnc": "101099161",
+   "nombre": "Amable Aristy Castro S R L",
+   "facturas": 12,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 12,
+     "pct": 100
+    }
+   ]
+  },
+  {
    "rnc": "133375338",
    "nombre": "JSP EMPRESAS DR SRL",
    "facturas": 12,
@@ -330,21 +338,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 12,
-     "pct": 100.0
-    }
-   ]
-  },
-  {
-   "rnc": "101099161",
-   "nombre": "Amable Aristy Castro S R L",
-   "facturas": 11,
-   "dominante": "02",
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 11,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -384,7 +378,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 11,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -398,7 +392,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 10,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -466,19 +460,19 @@
    "rnc": "130547386",
    "nombre": "Pier 17 Group Dominicana Srl",
    "facturas": 6,
-   "dominante": null,
+   "dominante": "09",
    "tipos": [
     {
      "codigo": "09",
      "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
-     "usos": 4,
-     "pct": 66.7
+     "usos": 5,
+     "pct": 83.3
     },
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 2,
-     "pct": 33.3
+     "usos": 1,
+     "pct": 16.7
     }
    ]
   },
@@ -492,17 +486,17 @@
      "codigo": "04",
      "nombre": "Gastos de Activo Fijo",
      "usos": 3,
-     "pct": 50.0
-    },
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 2,
-     "pct": 33.3
+     "pct": 50
     },
     {
      "codigo": "10",
      "nombre": "Adquisición de Activos",
+     "usos": 2,
+     "pct": 33.3
+    },
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
      "pct": 16.7
     }
@@ -538,13 +532,13 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 3,
-     "pct": 50.0
+     "pct": 50
     },
     {
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 3,
-     "pct": 50.0
+     "pct": 50
     }
    ]
   },
@@ -558,7 +552,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 5,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -572,7 +566,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 5,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -585,14 +579,8 @@
     {
      "codigo": "09",
      "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
-     "usos": 4,
-     "pct": 80.0
-    },
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 1,
-     "pct": 20.0
+     "usos": 5,
+     "pct": 100
     }
    ]
   },
@@ -606,7 +594,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 5,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -620,13 +608,41 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 4,
-     "pct": 80.0
+     "pct": 80
     },
     {
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 20.0
+     "pct": 20
+    }
+   ]
+  },
+  {
+   "rnc": "122024697",
+   "nombre": "Oliver Exterminating Dominicana Corp",
+   "facturas": 5,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 5,
+     "pct": 100
+    }
+   ]
+  },
+  {
+   "rnc": "101744342",
+   "nombre": "Estacion Bella Vista Srl",
+   "facturas": 5,
+   "dominante": "02",
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 5,
+     "pct": 100
     }
    ]
   },
@@ -640,7 +656,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 5,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -653,20 +669,14 @@
     {
      "codigo": "01",
      "nombre": "Gastos de Personal",
-     "usos": 2,
-     "pct": 40.0
-    },
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 2,
-     "pct": 40.0
+     "usos": 3,
+     "pct": 60
     },
     {
      "codigo": "05",
      "nombre": "Gastos de Representación",
-     "usos": 1,
-     "pct": 20.0
+     "usos": 2,
+     "pct": 40
     }
    ]
   },
@@ -680,7 +690,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 5,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -694,7 +704,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 5,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -702,25 +712,19 @@
    "rnc": "131925375",
    "nombre": "Sabores Del Desierto Srl",
    "facturas": 4,
-   "dominante": null,
+   "dominante": "01",
    "tipos": [
     {
      "codigo": "01",
      "nombre": "Gastos de Personal",
-     "usos": 2,
-     "pct": 50.0
-    },
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 1,
-     "pct": 25.0
+     "usos": 3,
+     "pct": 75
     },
     {
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 25.0
+     "pct": 25
     }
    ]
   },
@@ -734,21 +738,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 4,
-     "pct": 100.0
-    }
-   ]
-  },
-  {
-   "rnc": "122024697",
-   "nombre": "Oliver Exterminating Dominicana Corp",
-   "facturas": 4,
-   "dominante": "02",
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 4,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -762,7 +752,7 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 4,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -773,22 +763,22 @@
    "dominante": null,
    "tipos": [
     {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
      "usos": 2,
-     "pct": 50.0
+     "pct": 50
     },
     {
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 25.0
+     "pct": 25
     },
     {
-     "codigo": "05",
-     "nombre": "Gastos de Representación",
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 25.0
+     "pct": 25
     }
    ]
   },
@@ -802,21 +792,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 4,
-     "pct": 100.0
-    }
-   ]
-  },
-  {
-   "rnc": "101744342",
-   "nombre": "Estacion Bella Vista Srl",
-   "facturas": 4,
-   "dominante": "02",
-   "tipos": [
-    {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 4,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -830,7 +806,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 4,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -844,7 +820,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 3,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -878,7 +854,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 3,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -912,7 +888,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 3,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -926,7 +902,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 3,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -940,13 +916,13 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 50.0
+     "pct": 50
     },
     {
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 50.0
+     "pct": 50
     }
    ]
   },
@@ -960,7 +936,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -971,16 +947,10 @@
    "dominante": null,
    "tipos": [
     {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
-     "usos": 1,
-     "pct": 50.0
-    },
-    {
      "codigo": "05",
      "nombre": "Gastos de Representación",
-     "usos": 1,
-     "pct": 50.0
+     "usos": 2,
+     "pct": 100
     }
    ]
   },
@@ -994,7 +964,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1008,7 +978,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1022,7 +992,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1036,13 +1006,13 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 50.0
+     "pct": 50
     },
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 50.0
+     "pct": 50
     }
    ]
   },
@@ -1056,13 +1026,13 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 50.0
+     "pct": 50
     },
     {
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 50.0
+     "pct": 50
     }
    ]
   },
@@ -1076,7 +1046,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1090,7 +1060,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1104,7 +1074,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1118,7 +1088,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1132,7 +1102,7 @@
      "codigo": "10",
      "nombre": "Adquisición de Activos",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1146,7 +1116,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1160,7 +1130,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1174,7 +1144,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1188,7 +1158,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1202,13 +1172,13 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 50.0
+     "pct": 50
     },
     {
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 50.0
+     "pct": 50
     }
    ]
   },
@@ -1222,7 +1192,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1236,7 +1206,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1250,7 +1220,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1264,7 +1234,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1278,7 +1248,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1292,7 +1262,7 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1303,10 +1273,10 @@
    "dominante": null,
    "tipos": [
     {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1320,7 +1290,7 @@
      "codigo": "10",
      "nombre": "Adquisición de Activos",
      "usos": 2,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1334,7 +1304,7 @@
      "codigo": "04",
      "nombre": "Gastos de Activo Fijo",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1348,7 +1318,7 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1362,7 +1332,7 @@
      "codigo": "10",
      "nombre": "Adquisición de Activos",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1376,7 +1346,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1390,7 +1360,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1404,7 +1374,7 @@
      "codigo": "10",
      "nombre": "Adquisición de Activos",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1418,7 +1388,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1432,7 +1402,7 @@
      "codigo": "04",
      "nombre": "Gastos de Activo Fijo",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1446,7 +1416,7 @@
      "codigo": "04",
      "nombre": "Gastos de Activo Fijo",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1460,7 +1430,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1474,7 +1444,7 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1488,7 +1458,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1502,7 +1472,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1516,7 +1486,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1530,7 +1500,7 @@
      "codigo": "11",
      "nombre": "Gastos de Seguros",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1544,7 +1514,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1558,7 +1528,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1572,7 +1542,7 @@
      "codigo": "04",
      "nombre": "Gastos de Activo Fijo",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1586,7 +1556,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1600,7 +1570,7 @@
      "codigo": "10",
      "nombre": "Adquisición de Activos",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1614,7 +1584,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1628,7 +1598,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1642,7 +1612,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1656,7 +1626,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1670,7 +1640,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1684,7 +1654,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1698,7 +1668,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1712,7 +1682,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1726,7 +1696,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1740,7 +1710,7 @@
      "codigo": "10",
      "nombre": "Adquisición de Activos",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1754,7 +1724,7 @@
      "codigo": "10",
      "nombre": "Adquisición de Activos",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1768,7 +1738,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1782,7 +1752,7 @@
      "codigo": "10",
      "nombre": "Adquisición de Activos",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1796,7 +1766,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1810,7 +1780,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1824,7 +1794,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1838,7 +1808,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1852,7 +1822,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1866,7 +1836,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1880,7 +1850,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1894,7 +1864,7 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1908,7 +1878,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1922,7 +1892,7 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1936,7 +1906,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1950,7 +1920,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1964,7 +1934,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1978,7 +1948,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -1992,7 +1962,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2006,7 +1976,7 @@
      "codigo": "10",
      "nombre": "Adquisición de Activos",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2020,7 +1990,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2034,7 +2004,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2048,7 +2018,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2062,7 +2032,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2076,7 +2046,7 @@
      "codigo": "10",
      "nombre": "Adquisición de Activos",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2090,7 +2060,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2104,7 +2074,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2118,7 +2088,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2132,7 +2102,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2146,7 +2116,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2160,7 +2130,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2174,7 +2144,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2188,7 +2158,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2202,7 +2172,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2216,7 +2186,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2230,7 +2200,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2244,7 +2214,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2258,7 +2228,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2272,7 +2242,7 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2286,7 +2256,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2300,7 +2270,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2314,7 +2284,7 @@
      "codigo": "10",
      "nombre": "Adquisición de Activos",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2328,7 +2298,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2342,7 +2312,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2356,7 +2326,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2370,7 +2340,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2384,7 +2354,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2398,7 +2368,7 @@
      "codigo": "10",
      "nombre": "Adquisición de Activos",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2412,7 +2382,7 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2426,7 +2396,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2440,7 +2410,7 @@
      "codigo": "01",
      "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2454,7 +2424,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2468,7 +2438,7 @@
      "codigo": "05",
      "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2479,10 +2449,10 @@
    "dominante": null,
    "tipos": [
     {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2493,10 +2463,10 @@
    "dominante": null,
    "tipos": [
     {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "codigo": "01",
+     "nombre": "Gastos de Personal",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2507,10 +2477,10 @@
    "dominante": null,
    "tipos": [
     {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2524,7 +2494,7 @@
      "codigo": "09",
      "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2535,10 +2505,10 @@
    "dominante": null,
    "tipos": [
     {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2549,10 +2519,10 @@
    "dominante": null,
    "tipos": [
     {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "codigo": "05",
+     "nombre": "Gastos de Representación",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2566,7 +2536,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2580,7 +2550,7 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
     }
    ]
   },
@@ -2594,7 +2564,35 @@
      "codigo": "02",
      "nombre": "Gastos por Trabajos, Suministros y Servicios",
      "usos": 1,
-     "pct": 100.0
+     "pct": 100
+    }
+   ]
+  },
+  {
+   "rnc": "131019422",
+   "nombre": "PASTORIZA PLASTICS SRL",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100
+    }
+   ]
+  },
+  {
+   "rnc": "130058032",
+   "nombre": "DUME PAPELERIA SRL",
+   "facturas": 1,
+   "dominante": null,
+   "tipos": [
+    {
+     "codigo": "02",
+     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "usos": 1,
+     "pct": 100
     }
    ]
   }
