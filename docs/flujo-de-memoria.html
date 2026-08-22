@@ -8,614 +8,680 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-/* Tokens del manual de marca Qualia v2 — docs/brand/qualia_manual_marca_v2.html.
-   No se inventa ningún color: los cinco de marca, los neutrales sesgados a azul
-   y los de estado. El azul es el único que significa algo. */
+/* ============================================================================
+   Sistema tomado de docs/brand/qualia_manual_marca_v2.html — VERBATIM.
+   Ni un color, ni un radio, ni un componente fuera del manual. El vocabulario
+   usado acá es: .sec .sec-head .kicker .lede .note .plate .pad .grid .g2 .g3
+   .stack .row .rule .spec .specrow .badge .tblwrap .tbl .kpi .chip .mono .tnum
+   .hint .caption. Nada más.
+   ========================================================================== */
 :root{
+  /* --- Marca --- */
   --blue:#1958FF; --blue-focus:#00A6FF; --blue-lite:#2E6BFF; --blue-deep:#1246D6;
   --navy:#0A0F1C; --navy2:#0E1628;
+  /* --- Neutrales --- */
   --white:#FFFFFF; --snow:#FBFCFE; --paper:#F6F7F9; --soft:#EEF2F7;
   --line:#DDE2EA; --line-hi:#C6CFDC; --dim2:#C3CAD6; --dim:#A6AEBC;
   --muted:#7B8494; --ink3:#6B7689; --ink2:#3A4354; --ink:#111827;
+  /* --- Estados de sistema --- */
   --ok:#2FBF71; --ok-ink:#1E9B5B;
   --warn:#E8A33D; --warn-ink:#B45309;
   --err:#E5484D; --err-ink:#C43A3F;
+  --info-ink:#0678B6;
   --ai:#8B5CF6; --ai-ink:#6D3FD4;
+  /* --- Tipografía --- */
   --sans:"Inter","Inter Tight",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+  --mono:"IBM Plex Mono","Geist Mono","JetBrains Mono",ui-monospace,SFMono-Regular,monospace;
+  /* --- Módulo y radios --- */
   --m:8px; --r-xl:18px; --r-lg:12px; --r-md:10px; --r-sm:8px; --r-xs:6px;
+  /* --- Sombras --- */
   --sh-card:0 10px 30px rgba(10,15,28,.05), inset 0 1px 0 #fff;
+  --sh-card-hi:0 18px 40px rgba(10,15,28,.09), inset 0 1px 0 #fff;
   --sh-blue:0 8px 18px rgba(25,88,255,.26), inset 0 1px 0 rgba(255,255,255,.35);
+  /* --- Movimiento --- */
+  --t-fast:140ms; --t-med:200ms; --ease:cubic-bezier(.2,.7,.3,1);
   --maxw:1080px;
 }
-*{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+*{box-sizing:border-box;margin:0}
 body{
-  margin:0; background:var(--paper); color:var(--ink);
-  font-family:var(--sans); font-weight:400; line-height:1.62;
-  font-size:16px; -webkit-font-smoothing:antialiased;
+  font-family:var(--sans);color:var(--ink);background:var(--paper);
+  line-height:1.55;-webkit-font-smoothing:antialiased;min-height:100vh;
+  font-variant-numeric:tabular-nums;
 }
-.wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px 96px}
+.main{min-width:0;padding:0 0 80px;max-width:1240px;margin:0 auto}
 
-/* ── Cabecera ─────────────────────────────────────────────────────────── */
-.head{padding:64px 0 40px; border-bottom:1px solid var(--line); margin-bottom:48px}
-.eyebrow{
-  font-family:var(--mono); font-size:11px; font-weight:600;
-  letter-spacing:.16em; text-transform:uppercase; color:var(--blue); margin:0 0 16px;
-}
-h1{
-  font-size:clamp(32px,5.2vw,52px); line-height:1.06; letter-spacing:-.035em;
-  font-weight:800; margin:0 0 20px; max-width:16ch;
-}
-.lede{font-size:19px; line-height:1.55; color:var(--ink2); max-width:62ch; margin:0}
-.meta{
-  margin-top:28px; font-family:var(--mono); font-size:12px; color:var(--muted);
-  display:flex; gap:20px; flex-wrap:wrap;
-}
+h1{font-size:clamp(44px,7vw,92px);font-weight:900;letter-spacing:.1em;line-height:.94;text-wrap:balance}
+h2{font-size:clamp(26px,3.2vw,42px);font-weight:900;letter-spacing:-.03em;line-height:1.06;text-wrap:balance;color:var(--ink)}
+h3{font-size:17px;font-weight:800;letter-spacing:-.01em;color:var(--ink);margin-bottom:8px}
+h4{font-size:13px;font-weight:800;letter-spacing:.02em;color:var(--ink)}
 
-/* ── Secciones ────────────────────────────────────────────────────────── */
-section{margin:0 0 72px; scroll-margin-top:24px}
-h2{
-  font-size:clamp(23px,3vw,30px); line-height:1.18; letter-spacing:-.03em;
-  font-weight:750; margin:0 0 8px; display:flex; align-items:baseline; gap:14px;
-}
-h2 .num{
-  font-family:var(--mono); font-size:13px; font-weight:600; color:var(--blue);
-  letter-spacing:0; flex:none;
-}
-.sub{color:var(--muted); font-size:15px; margin:0 0 28px; max-width:64ch}
-h3{font-size:17px; font-weight:650; letter-spacing:-.015em; margin:34px 0 10px}
-p{margin:0 0 16px; max-width:70ch}
-strong{font-weight:650; color:var(--ink)}
-code,.mono{font-family:var(--mono); font-size:.885em}
-code{
-  background:var(--soft); border:1px solid var(--line); border-radius:var(--r-xs);
-  padding:1px 5px; color:var(--ink2); white-space:nowrap;
-}
-a{color:var(--blue); text-decoration:none; border-bottom:1px solid rgba(25,88,255,.28)}
+.sec{padding:78px clamp(24px,4.4vw,64px);border-bottom:1px solid var(--line);scroll-margin-top:24px}
+.sec:last-of-type{border-bottom:0}
+.sec>*{max-width:var(--maxw)}
+.sec>p{max-width:68ch}
+.sec>.lede{max-width:64ch}
+.sec>.note{max-width:66ch}
+.sec-head{margin-bottom:34px}
+.sec-head p{margin-top:14px}
 
-.card{
-  background:var(--white); border:1px solid var(--line); border-radius:var(--r-xl);
-  box-shadow:var(--sh-card); padding:28px 30px; margin:0 0 20px;
+.kicker{
+  display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;
+  font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--blue);margin-bottom:14px;
 }
-.note{
-  border-left:3px solid var(--blue); background:var(--snow);
-  border-radius:0 var(--r-lg) var(--r-lg) 0; padding:16px 20px; margin:22px 0;
-}
-.note p:last-child{margin-bottom:0}
-.note.warn{border-left-color:var(--warn)}
-.note.err{border-left-color:var(--err)}
+.kicker i{width:7px;height:7px;background:var(--blue);flex:0 0 auto}
+.lede{font-size:17.5px;color:var(--ink2);max-width:64ch;line-height:1.62}
+.note{font-size:12.5px;color:var(--muted);line-height:1.6;max-width:66ch}
+.caption{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:var(--mono);font-size:12.5px;color:var(--muted);letter-spacing:.02em}
+.tnum{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.hint{font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:6px}
+.rule{height:1px;background:var(--line);border:0;margin:40px 0}
+p{font-size:15px;color:var(--ink2);line-height:1.62}
+p + p{margin-top:14px}
+b,strong{font-weight:700;color:var(--ink)}
 
-/* ── Diagrama 1 · las capas ───────────────────────────────────────────── */
-.capas{display:flex; flex-direction:column; gap:0; margin:8px 0 4px}
-.capa{
-  display:grid; grid-template-columns:118px 1fr 220px; gap:20px; align-items:center;
-  background:var(--white); border:1px solid var(--line); border-radius:var(--r-lg);
-  padding:15px 20px; position:relative;
-}
-.capa + .capa{margin-top:18px}
-.capa + .capa::before{
-  content:""; position:absolute; left:59px; top:-18px; width:1px; height:18px;
-  background:var(--line-hi);
-}
-.capa .tag{
-  font-family:var(--mono); font-size:10.5px; font-weight:600; letter-spacing:.1em;
-  text-transform:uppercase; color:var(--blue);
-}
-.capa .qué{font-size:15px}
-.capa .qué b{font-weight:650}
-.capa .quién{font-size:12.5px; color:var(--muted); font-family:var(--mono); line-height:1.45}
-.capa.candado{border-color:var(--navy); background:var(--navy); }
-.capa.candado .tag{color:var(--blue-focus)}
-.capa.candado .qué{color:var(--white)}
-.capa.candado .qué b{color:var(--white)}
-.capa.candado .quién{color:var(--dim2)}
+.plate{background:var(--white);border:1px solid var(--line);border-radius:var(--r-xl);box-shadow:var(--sh-card)}
+.plate.pad{padding:22px 24px}
+.plate.hov{transition:transform var(--t-med) var(--ease),box-shadow var(--t-med) var(--ease)}
+.plate.hov:hover{transform:translateY(-3px);box-shadow:var(--sh-card-hi)}
 
-/* ── Diagrama 2 · las dos memorias ────────────────────────────────────── */
-.dos{display:grid; grid-template-columns:1fr 1fr; gap:22px; margin:8px 0 0}
-.via{
-  background:var(--white); border:1px solid var(--line); border-radius:var(--r-xl);
-  box-shadow:var(--sh-card); overflow:hidden; display:flex; flex-direction:column;
-}
-.via .top{padding:22px 24px 18px; border-bottom:1px solid var(--soft)}
-.via h4{margin:0 0 4px; font-size:18px; font-weight:750; letter-spacing:-.02em}
-.via .quien{font-size:13.5px; color:var(--muted); margin:0}
-.via .body{padding:20px 24px 24px; flex:1; display:flex; flex-direction:column; gap:0}
-.paso{
-  border:1px solid var(--line); border-radius:var(--r-md); padding:11px 14px;
-  background:var(--snow); font-size:13.5px; line-height:1.45;
-}
-.paso .rot{
-  display:block; font-family:var(--mono); font-size:10px; font-weight:600;
-  letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:3px;
-}
-.paso .mono{color:var(--ink2); font-size:12.5px}
-.flecha{
-  height:22px; position:relative; margin:0 auto; width:1px; background:var(--line-hi);
-}
-.flecha::after{
-  content:""; position:absolute; bottom:0; left:-3.5px;
-  border-left:4px solid transparent; border-right:4px solid transparent;
-  border-top:6px solid var(--line-hi);
-}
-.via.escrita .top{border-top:3px solid var(--blue)}
-.via.destilada .top{border-top:3px solid var(--blue-focus)}
-.via .lector{
-  margin-top:auto; background:var(--navy); color:var(--white);
-  border-radius:var(--r-md); padding:13px 15px; font-size:13.5px;
-}
-.via .lector b{display:block; font-family:var(--mono); font-size:13px; color:var(--blue-focus); margin-bottom:2px}
-.corte{
-  text-align:center; font-family:var(--mono); font-size:12px; color:var(--err-ink);
-  border:1px dashed var(--err); border-radius:var(--r-md); padding:11px 16px;
-  margin:22px 0 0; background:rgba(229,72,77,.04);
-}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.c3{grid-column:span 3}
+.c4{grid-column:span 4}
+.c6{grid-column:span 6}
+.c12{grid-column:span 12}
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.row.tight{gap:8px}
 
-/* ── Compuertas ───────────────────────────────────────────────────────── */
-.compuertas{display:flex; flex-direction:column; gap:10px; margin:4px 0 0}
-.cmp{
-  display:grid; grid-template-columns:210px 1fr; gap:18px; align-items:center;
-  border:1px solid var(--line); border-radius:var(--r-md); padding:13px 18px; background:var(--white);
+.spec{display:flex;flex-direction:column}
+.specrow{
+  display:flex;justify-content:space-between;align-items:baseline;gap:18px;
+  padding:11px 0;border-bottom:1px solid var(--soft);font-size:13px;font-weight:700;color:var(--ink);
 }
-.cmp .cond{font-family:var(--mono); font-size:13px; color:var(--ink2)}
-.cmp .efecto{font-size:14.5px}
-.cmp.manda{border-color:var(--blue); box-shadow:0 0 0 1px rgba(25,88,255,.16)}
-.cmp.manda .efecto b{color:var(--blue)}
+.specrow:last-child{border-bottom:0}
+.specrow span{
+  font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--muted);
+  text-align:right;letter-spacing:.01em;
+}
+.specrow span b{color:var(--blue);font-weight:600}
 
-/* ── Ciclo ────────────────────────────────────────────────────────────── */
-.ciclo{counter-reset:paso; display:flex; flex-direction:column; gap:0; margin:8px 0 0}
-.et{
-  display:grid; grid-template-columns:34px 1fr; gap:16px; align-items:start;
-  padding:14px 0;
+.badge{
+  display:inline-flex;align-items:center;gap:7px;padding:3px 10px;border-radius:999px;
+  font-size:11.5px;font-weight:700;border:1px solid;white-space:nowrap;
 }
-.et + .et{border-top:1px solid var(--soft)}
-.et .n{
-  width:28px; height:28px; border-radius:50%; background:var(--blue); color:var(--white);
-  font-family:var(--mono); font-size:12px; font-weight:600;
-  display:flex; align-items:center; justify-content:center; margin-top:1px;
-  box-shadow:var(--sh-blue);
-}
-.et.freno .n{background:var(--warn); box-shadow:none}
-.et .txt{font-size:15px}
-.et .txt b{font-weight:650}
-.et .txt .det{display:block; color:var(--muted); font-size:13.5px; margin-top:2px}
+.badge i{width:8px;height:8px;flex:0 0 auto;background:currentColor}
+.badge.sq{border-radius:var(--r-sm)}
+.badge.ok{color:var(--ok-ink);border-color:rgba(47,191,113,.35);background:rgba(47,191,113,.07)}
+.badge.ok i{background:var(--ok)}
+.badge.warn{color:var(--warn-ink);border-color:rgba(232,163,61,.45);background:rgba(232,163,61,.1)}
+.badge.warn i{background:var(--warn);clip-path:polygon(50% 0,100% 100%,0 100%)}
+.badge.err{color:var(--err);border-color:rgba(229,72,77,.35);background:rgba(229,72,77,.06)}
+.badge.err i{background:var(--err)}
+.badge.info{color:var(--info-ink);border-color:rgba(0,166,255,.4);background:rgba(0,166,255,.07)}
+.badge.info i{background:var(--blue-focus);height:12px}
+.badge.blue{color:var(--blue);border-color:rgba(25,88,255,.35);background:rgba(25,88,255,.06)}
+.badge.blue i{background:var(--blue)}
+.badge.ai{color:var(--ai-ink);border-color:rgba(139,92,246,.35);background:rgba(139,92,246,.07)}
+.badge.ai i{background:var(--ai)}
+.badge.neutral{color:var(--muted);border-color:var(--line);background:var(--paper)}
+.badge.neutral i{background:var(--dim2);border-radius:50%}
 
-/* ── Chuleta ──────────────────────────────────────────────────────────── */
-.tabla{width:100%; border-collapse:collapse; font-size:14px; margin:6px 0 0}
-.tabla th{
-  text-align:left; font-family:var(--mono); font-size:10.5px; font-weight:600;
-  letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
-  padding:0 14px 10px 0; border-bottom:1px solid var(--line); white-space:nowrap;
+.chip{
+  display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:var(--r-sm);
+  font-size:11.5px;font-weight:700;color:var(--ink2);background:var(--white);border:1px solid var(--line);white-space:nowrap;
 }
-.tabla td{padding:13px 14px 13px 0; border-bottom:1px solid var(--soft); vertical-align:top}
-.tabla td:first-child{font-weight:600; white-space:nowrap}
-.tabla td.ruta{font-family:var(--mono); font-size:12.5px; color:var(--ink2); word-break:break-all}
-.scroll{overflow-x:auto}
+.chip.round{border-radius:999px;color:var(--muted)}
+.chip.on{color:var(--blue);border-color:rgba(25,88,255,.4);background:rgba(25,88,255,.06)}
+.chip b{font-family:var(--mono);font-weight:700}
 
-/* ── Huecos ───────────────────────────────────────────────────────────── */
-.hueco{
-  display:grid; grid-template-columns:auto 1fr; gap:16px; align-items:start;
-  border:1px solid var(--line); border-left:3px solid var(--warn);
-  border-radius:0 var(--r-lg) var(--r-lg) 0; background:var(--white);
-  padding:16px 20px; margin-bottom:12px;
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--white)}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{
+  padding:10px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--muted);background:var(--snow);border-bottom:1px solid var(--line);font-weight:800;white-space:nowrap;
 }
-.hueco .qué{font-family:var(--mono); font-size:13px; font-weight:600; white-space:nowrap; color:var(--warn-ink)}
-.hueco .por{font-size:14.5px}
+.tbl th.num{text-align:right}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--soft);vertical-align:top;color:var(--ink2)}
+.tbl tbody tr{transition:background var(--t-fast) var(--ease)}
+.tbl tbody tr:hover{background:rgba(25,88,255,.03)}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl tbody tr.hot{background:rgba(25,88,255,.05);box-shadow:inset 2.5px 0 0 var(--blue)}
+.tbl .num{font-family:var(--mono);font-size:11.5px;text-align:right;white-space:nowrap;color:var(--ink);font-weight:600}
+.tbl .ref{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.tbl tr.total td{background:var(--snow);border-top:1.5px solid var(--line);font-weight:700}
 
-@media (max-width:820px){
-  .dos{grid-template-columns:1fr}
-  .capa{grid-template-columns:1fr; gap:6px; padding:14px 16px}
-  .capa + .capa::before{left:24px}
-  .cmp{grid-template-columns:1fr; gap:6px}
-  .hueco{grid-template-columns:1fr; gap:6px}
+.kpi{padding:20px 22px;display:flex;flex-direction:column;gap:5px}
+.kpi .lbl{font-size:11.5px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted);font-weight:800}
+.kpi .val{font-family:var(--mono);font-size:27px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.kpi .hint{font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:6px}
+
+@media (max-width:900px){
+  .c3,.c4,.c6{grid-column:span 12}
 }
 </style>
 </head>
 <body>
-<div class="wrap">
+<main class="main">
 
-<header class="head">
-  <p class="eyebrow">QualiaConta · Documentación interna</p>
-  <h1>Flujo de memoria</h1>
-  <p class="lede">
-    Cómo el contable sabe lo que sabe, cómo aprende algo nuevo y por qué
-    hay <strong>dos memorias</strong> que no se hablan entre sí.
-  </p>
-  <p class="meta">
-    <span>v1 · 2026-08-22</span>
-    <span>Fuente: <span class="mono">docs/como-funciona-la-doctrina.md</span></span>
-    <span>Marca: manual v2</span>
-  </p>
-</header>
+<!-- Portada ─────────────────────────────────────────────────────────────── -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="kicker"><i></i>QualiaConta · documentación interna</span>
+    <h1>FLUJO<br>DE MEMORIA</h1>
+    <p class="lede">
+      Cómo el contable sabe lo que sabe, cómo aprende algo nuevo, y por qué hay
+      <b>dos memorias</b> que no se hablan entre sí.
+    </p>
+  </div>
+  <div class="row tight">
+    <span class="chip round">v1 · 2026-08-22</span>
+    <span class="chip round">fuente: <b>docs/como-funciona-la-doctrina.md</b></span>
+    <span class="chip round">marca: <b>manual v2</b></span>
+  </div>
+</section>
 
-<!-- 1 ───────────────────────────────────────────────────────────────── -->
-<section>
-  <h2><span class="num">01</span> La idea en una frase</h2>
-  <p class="sub">Lo que hace a este sistema distinto de un modelo entrenado.</p>
-
-  <div class="card">
-    <p style="font-size:19px; line-height:1.5; margin:0; max-width:58ch">
-      El contable <strong>no decide de memoria</strong>. Decide leyendo capas de
-      reglas escritas. Cuando ninguna capa contesta, no adivina: pregunta. Y ese
-      dictamen, si vale para siempre, se escribe y pasa a ser una capa.
+<!-- 01 ──────────────────────────────────────────────────────────────────── -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="kicker"><i></i>01 · La idea</span>
+    <h2>No decide de memoria: decide leyendo</h2>
+    <p class="lede">
+      El contable lee capas de reglas escritas. Cuando ninguna capa contesta, no
+      adivina: pregunta. Ese dictamen, si vale para siempre, se escribe y pasa a
+      ser una capa.
     </p>
   </div>
 
   <p>
-    El sistema no aprende entrenando un modelo. Aprende <strong>escribiendo reglas
-    que cualquiera puede leer y auditar</strong>. Es más lento y es a propósito: una
-    regla escrita se defiende ante un auditor, un peso en una red neuronal no.
+    El sistema no aprende entrenando un modelo. Aprende <b>escribiendo reglas que
+    cualquiera puede leer y auditar</b>. Es más lento, y es a propósito: una regla
+    escrita se defiende ante un auditor; un peso en una red neuronal, no.
   </p>
-</section>
 
-<!-- 2 ───────────────────────────────────────────────────────────────── -->
-<section>
-  <h2><span class="num">02</span> Las seis capas</h2>
-  <p class="sub">De la ley a la práctica. Cada capa contesta una pregunta distinta,
-  y la jerarquía entre ellas la fija P&#8209;003.</p>
+  <hr class="rule">
 
-  <div class="capas">
-    <div class="capa">
-      <span class="tag">La ley</span>
-      <span class="qué"><b>Normas DGII + NIIF-PYMES</b> — qué exige el fisco, qué dice la norma contable</span>
-      <span class="quién">solo lectura · rango y vigencia obligatorios</span>
+  <div class="grid">
+    <div class="plate kpi c4">
+      <span class="lbl">Capas de doctrina</span>
+      <span class="val">6</span>
+      <span class="hint">de la ley al candado</span>
     </div>
-    <div class="capa">
-      <span class="tag">El método</span>
-      <span class="qué"><b>P-001 … P-005</b> — cómo se razona cualquier asiento, en cualquier empresa</span>
-      <span class="quién">ratificados 2026-08-07 · cambiarlos es un evento</span>
+    <div class="plate kpi c4">
+      <span class="lbl">Entradas del libro</span>
+      <span class="val">323</span>
+      <span class="hint">una por decisión, solo se agrega</span>
     </div>
-    <div class="capa">
-      <span class="tag">Los hechos</span>
-      <span class="qué"><b>H-01 … H-13</b> — este hecho del banco lleva este asiento</span>
-      <span class="quién">fijos de por vida · uno nuevo se agrega, no se edita</span>
+    <div class="plate kpi c4">
+      <span class="lbl">Facturas destiladas</span>
+      <span class="val">1 160</span>
+      <span class="hint">el precedente real de ADM</span>
     </div>
-    <div class="capa">
-      <span class="tag">La empresa</span>
-      <span class="qué"><b>C-001 … C-007</b> — lo que decide Blackbox y otra empresa podría decidir distinto</span>
-      <span class="quién">nacen BORRADOR · los ratifica Carlos</span>
-    </div>
-    <div class="capa">
-      <span class="tag">El diario</span>
-      <span class="qué"><b>Libro de acción</b> — qué se decidió tal día y por qué. 323 entradas</span>
-      <span class="quién">solo se AGREGA · un archivo por decisión</span>
-    </div>
-    <div class="capa candado">
-      <span class="tag">El candado</span>
-      <span class="qué"><b>Triggers en la base</b> — lo que no se puede ni por error</span>
-      <span class="quién">código, no texto · no escucha argumentos</span>
-    </div>
-  </div>
-
-  <div class="note">
-    <p><strong>La DGII nunca decide una cuenta.</strong> La norma fiscal dice qué
-    reportar y qué documentar; el asiento lo deciden las capas contables. Confundir
-    esos dos ejes es el error más común del sistema.</p>
-  </div>
-
-  <div class="note">
-    <p><strong>«ABIERTO» es una instrucción, no un hueco.</strong> Un hecho marcado
-    ABIERTO ordena preguntar. No es que falte terminarlo: es que nadie dictó todavía,
-    y hasta que alguien dicte, la regla <em>es</em> preguntar.</p>
-  </div>
-
-  <div class="note warn">
-    <p><strong>Un candado que frena no se rodea.</strong> La doctrina dice: el tipo de
-    documento está mal elegido, o esto no lo registrás vos. Nunca «buscá otro tipo que
-    pase». Los límites viven en los permisos, no en el prompt — una regla escrita se
-    racionaliza, un trigger no.</p>
   </div>
 </section>
 
-<!-- 3 ───────────────────────────────────────────────────────────────── -->
-<section>
-  <h2><span class="num">03</span> Las dos memorias</h2>
-  <p class="sub">Lo menos obvio del sistema, y de donde salen los errores más caros.
-  Hay dos memorias, con dueños distintos, que viajan por caminos distintos y las lee
-  gente distinta.</p>
+<!-- 02 ──────────────────────────────────────────────────────────────────── -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="kicker"><i></i>02 · Las capas</span>
+    <h2>Seis capas, seis preguntas distintas</h2>
+    <p class="lede">
+      La jerarquía entre ellas la fija P-003. A la izquierda qué contesta cada
+      capa; a la derecha quién la puede cambiar.
+    </p>
+  </div>
 
-  <div class="dos">
-    <div class="via escrita">
-      <div class="top">
-        <h4>Memoria escrita</h4>
-        <p class="quien">Lo que decidimos · la escriben personas</p>
-      </div>
-      <div class="body">
-        <div class="paso">
-          <span class="rot">Fuente</span>
-          <span class="mono">nucleo-contable/</span> · <span class="mono">memoria/criterios.md</span> · <span class="mono">libro-de-accion/</span>
-        </div>
-        <div class="flecha"></div>
-        <div class="paso">
-          <span class="rot">Se empaqueta</span>
-          <span class="mono">deploy/generar-tajadas.sh</span>
-        </div>
-        <div class="flecha"></div>
-        <div class="paso">
-          <span class="rot">Viaja como</span>
-          <span class="mono">nucleo.ts</span> + <span class="mono">tajadas.ts</span> — dentro del deploy
-        </div>
-        <div class="flecha"></div>
-        <div class="lector"><b>qualia-contable</b>El que razona el caso nuevo</div>
-      </div>
-    </div>
-
-    <div class="via destilada">
-      <div class="top">
-        <h4>Memoria destilada</h4>
-        <p class="quien">Lo que de hecho hicimos · la calcula una máquina</p>
-      </div>
-      <div class="body">
-        <div class="paso">
-          <span class="rot">Fuente</span>
-          1.160 facturas reales de ADM — el espejo, <span class="mono">vendor-bills-detalle.jsonl</span>
-        </div>
-        <div class="flecha"></div>
-        <div class="paso">
-          <span class="rot">Se destila</span>
-          <span class="mono">qualia-espejo</span> · modo completo, 02:00 RD
-        </div>
-        <div class="flecha"></div>
-        <div class="paso">
-          <span class="rot">Viaja como</span>
-          <span class="mono">proveedor-cuentas.json</span> (179) + <span class="mono">rnc-tipo-gasto.json</span> (167) — en el bucket
-        </div>
-        <div class="flecha"></div>
-        <div class="lector"><b>qualia-proponedor</b>El que clasifica la factura que entra</div>
-      </div>
+  <div class="plate pad">
+    <div class="spec">
+      <div class="specrow">Normas DGII + NIIF-PYMES · qué exige el fisco
+        <span>solo lectura · <b>rango y vigencia</b></span></div>
+      <div class="specrow">P-001 … P-005 · cómo se razona un asiento
+        <span>ratificados <b>2026-08-07</b></span></div>
+      <div class="specrow">H-01 … H-13 · este hecho lleva este asiento
+        <span>fijos de por vida · uno nuevo <b>se agrega</b></span></div>
+      <div class="specrow">C-001 … C-007 · lo que decide Blackbox
+        <span>nacen borrador · <b>los ratifica Carlos</b></span></div>
+      <div class="specrow">Libro de acción · qué se decidió tal día
+        <span>solo se agrega · <b>323 entradas</b></span></div>
+      <div class="specrow">Candados · lo que no se puede ni por error
+        <span>triggers en la base · <b>no es texto</b></span></div>
     </div>
   </div>
 
-  <div class="corte">
-    Las dos vías NO se cruzan en ningún punto
+  <hr class="rule">
+
+  <div class="grid">
+    <div class="plate pad c4">
+      <div class="row tight"><span class="badge blue"><i></i>Eje fiscal</span></div>
+      <h3>La DGII nunca decide una cuenta</h3>
+      <p class="note">
+        La norma fiscal dice qué reportar y qué documentar. El asiento lo deciden
+        las capas contables. Confundir los dos ejes es el error más común.
+      </p>
+    </div>
+    <div class="plate pad c4">
+      <div class="row tight"><span class="badge info"><i></i>Instrucción</span></div>
+      <h3>«ABIERTO» no es un hueco</h3>
+      <p class="note">
+        Un hecho marcado ABIERTO ordena preguntar. No falta terminarlo: nadie
+        dictó todavía, y hasta que alguien dicte, la regla <b>es</b> preguntar.
+      </p>
+    </div>
+    <div class="plate pad c4">
+      <div class="row tight"><span class="badge err"><i></i>Límite duro</span></div>
+      <h3>Un candado no se rodea</h3>
+      <p class="note">
+        Si frena: el tipo de documento está mal elegido, o esto no lo registrás vos.
+        Nunca «buscá otro que pase». Una regla escrita se racionaliza; un trigger no.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 03 ──────────────────────────────────────────────────────────────────── -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="kicker"><i></i>03 · Las dos memorias</span>
+    <h2>Dos memorias que no se cruzan</h2>
+    <p class="lede">
+      Lo menos obvio del sistema, y de donde salen los errores más caros. Dos
+      memorias con dueños distintos, que viajan por caminos distintos y las lee
+      gente distinta.
+    </p>
   </div>
 
-  <div class="note err">
-    <p><strong>La consecuencia práctica.</strong> Escribir doctrina no cambia lo que
-    propone el clasificador. Corregir una factura en ADM no cambia lo que razona el
-    contable. Arreglar un lado y dar el trabajo por cerrado es el error clásico —
-    pasó el 2026-08-22 con la comisión de corretaje de FREEWAY: la doctrina ya decía
-    <code>511.07</code> y el clasificador seguía proponiendo <code>611.02</code>.</p>
+  <div class="grid">
+    <div class="plate pad c6">
+      <div class="row tight">
+        <span class="badge blue"><i></i>Memoria escrita</span>
+        <span class="mono">la escriben personas</span>
+      </div>
+      <h3>Lo que decidimos</h3>
+      <div class="spec">
+        <div class="specrow">Fuente <span>nucleo-contable/ · criterios.md · libro-de-accion/</span></div>
+        <div class="specrow">Se empaqueta <span>deploy/generar-tajadas.sh</span></div>
+        <div class="specrow">Viaja como <span>nucleo.ts + tajadas.ts · en el deploy</span></div>
+        <div class="specrow">La lee <span><b>qualia-contable</b></span></div>
+        <div class="specrow">Su trabajo <span>razonar el caso nuevo</span></div>
+      </div>
+    </div>
+
+    <div class="plate pad c6">
+      <div class="row tight">
+        <span class="badge info"><i></i>Memoria destilada</span>
+        <span class="mono">la calcula una máquina</span>
+      </div>
+      <h3>Lo que de hecho hicimos</h3>
+      <div class="spec">
+        <div class="specrow">Fuente <span>vendor-bills-detalle.jsonl · 1 160 facturas</span></div>
+        <div class="specrow">Se destila <span>qualia-espejo · 02:00 RD</span></div>
+        <div class="specrow">Viaja como <span>proveedor-cuentas.json + rnc-tipo-gasto.json</span></div>
+        <div class="specrow">La lee <span><b>qualia-proponedor</b></span></div>
+        <div class="specrow">Su trabajo <span>clasificar la factura que entra</span></div>
+      </div>
+    </div>
   </div>
 
-  <h3>Al corregir la cuenta de un proveedor, se tocan los dos lados</h3>
-  <p>
+  <hr class="rule">
+
+  <div class="plate pad">
+    <div class="row tight">
+      <span class="badge err"><i></i>Las dos vías no se cruzan en ningún punto</span>
+    </div>
+    <p class="note">
+      Escribir doctrina no cambia lo que propone el clasificador. Corregir una
+      factura en ADM no cambia lo que razona el contable. Arreglar un lado y dar
+      el trabajo por cerrado es el error clásico: pasó el 2026-08-22 con la
+      comisión de corretaje de FREEWAY — la doctrina ya decía 511.07 y el
+      clasificador seguía proponiendo 611.02.
+    </p>
+  </div>
+
+  <h3>Al corregir un proveedor se tocan los dos lados</h3>
+  <p class="note">
     Lado escrito: entrada nueva en el libro, criterio si es regla, dictado en
-    <code>cuentas-en-uso.md</code>, y regenerar el paquete. Lado destilado: se corrige en
-    ADM y el espejo lo trae solo esa madrugada — salvo
-    <code>proveedores.md</code>, que va a mano (ver §07).
+    cuentas-en-uso.md, y regenerar el paquete. Lado destilado: se corrige en ADM
+    y el espejo lo trae solo esa madrugada — salvo proveedores.md, que va a mano
+    (ver 07).
   </p>
 </section>
 
-<!-- 4 ───────────────────────────────────────────────────────────────── -->
-<section>
-  <h2><span class="num">04</span> Cuánto pesa un precedente</h2>
-  <p class="sub">Las compuertas del clasificador, en
-  <span class="mono">qualia-proponedor/compuertas.ts</span>.</p>
-
-  <div class="compuertas">
-    <div class="cmp manda">
-      <span class="cond">usos &gt;= 3  Y  pct &gt;= 70%</span>
-      <span class="efecto"><b>Manda.</b> Es precedente citable: la cuenta sale de ahí sin razonar.</span>
-    </div>
-    <div class="cmp">
-      <span class="cond">usos &lt; 3  Y  pct &gt;= 5%</span>
-      <span class="efecto">Se <strong>ofrece</strong> como opción al modelo. No decide, pero tira.</span>
-    </div>
-    <div class="cmp">
-      <span class="cond">sin precedente</span>
-      <span class="efecto">Se razona con la doctrina. Si la doctrina calla, se <strong>pregunta</strong>.</span>
-    </div>
+<!-- 04 ──────────────────────────────────────────────────────────────────── -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="kicker"><i></i>04 · El precedente</span>
+    <h2>Cuánto pesa lo que ya hicimos</h2>
+    <p class="lede">
+      Las compuertas del clasificador, en qualia-proponedor/compuertas.ts.
+    </p>
   </div>
 
-  <div class="note warn">
-    <p><strong>Una sola factura mal clasificada sigue tirando.</strong> No manda, pero
-    aparece en el menú de opciones. FREEWAY tenía exactamente una, y alcanzó para
-    torcer la propuesta.</p>
-  </div>
-</section>
-
-<!-- 5 ───────────────────────────────────────────────────────────────── -->
-<section>
-  <h2><span class="num">05</span> El ciclo de aprendizaje</h2>
-  <p class="sub">Cómo una decisión sube de caso puntual a regla permanente.</p>
-
-  <div class="card">
-    <div class="ciclo">
-      <div class="et">
-        <span class="n">1</span>
-        <span class="txt"><b>Llega algo a la mesa</b>
-        <span class="det">Una factura, un caso de conciliación, una nota de débito.</span></span>
-      </div>
-      <div class="et">
-        <span class="n">2</span>
-        <span class="txt"><b>¿Qué documento es?</b>
-        <span class="det">Primero el documento, después la cuenta. El documento lo decide el rol del
-        hecho, nunca el NCF — hay 96 contraejemplos medidos en el propio histórico.</span></span>
-      </div>
-      <div class="et">
-        <span class="n">3</span>
-        <span class="txt"><b>¿Qué cuenta?</b>
-        <span class="det">Hecho H aplicable + criterios C + precedente destilado + plan de cuentas vivo.</span></span>
-      </div>
-      <div class="et">
-        <span class="n">4</span>
-        <span class="txt"><b>¿Qué exige la DGII?</b>
-        <span class="det">NCF, retención, tipo de gasto 606.</span></span>
-      </div>
-      <div class="et freno">
-        <span class="n">!</span>
-        <span class="txt"><b>Si ninguna capa contesta: no adivina</b>
-        <span class="det">Abre una pregunta y espera el dictamen. Ese freno es la pieza que hace
-        que el sistema sea auditable.</span></span>
-      </div>
-      <div class="et">
-        <span class="n">5</span>
-        <span class="txt"><b>Propuesta en la mesa</b>
-        <span class="det">Carlos aprueba o rechaza. Un rechazo con motivo legisla; un rechazo mudo
-        no enseña nada.</span></span>
-      </div>
-      <div class="et">
-        <span class="n">6</span>
-        <span class="txt"><b>Registro en ADM</b>
-        <span class="det">Script por tipo de documento, con los candados puestos.</span></span>
-      </div>
-      <div class="et">
-        <span class="n">7</span>
-        <span class="txt"><b>Si hubo dictamen nuevo, se escribe</b>
-        <span class="det">Entrada en el libro siempre. Criterio C además, solo si la regla vale para
-        siempre. Sin Alcance, la entrada documenta pero no automatiza.</span></span>
-      </div>
-    </div>
+  <div class="tblwrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>Condición</th><th>Efecto</th><th>Qué significa</th></tr>
+      </thead>
+      <tbody>
+        <tr class="hot">
+          <td class="ref">usos &gt;= 3 &nbsp;Y&nbsp; pct &gt;= 70%</td>
+          <td><span class="badge blue"><i></i>Manda</span></td>
+          <td>Precedente citable: la cuenta sale de ahí sin razonar.</td>
+        </tr>
+        <tr>
+          <td class="ref">usos &lt; 3 &nbsp;Y&nbsp; pct &gt;= 5%</td>
+          <td><span class="badge warn"><i></i>Se ofrece</span></td>
+          <td>No decide, pero entra al menú de opciones del modelo.</td>
+        </tr>
+        <tr>
+          <td class="ref">sin precedente</td>
+          <td><span class="badge neutral"><i></i>Se razona</span></td>
+          <td>Va a la doctrina; si la doctrina calla, pregunta.</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 
-  <h3>La segunda vía, silenciosa</h3>
-  <p>
-    Hay un camino de aprendizaje que <strong>no pasa por nadie escribiendo</strong>:
-    cada factura que la contadora corrige a mano en ADM también enseña. Esa noche el
-    espejo la relee, el destilado la cuenta, y el clasificador ya la usa como
-    precedente. Nadie tocó un archivo.
+  <p class="note">
+    Una sola factura mal clasificada sigue tirando: no manda, pero aparece en el
+    menú. FREEWAY tenía exactamente una, y alcanzó para torcer la propuesta.
   </p>
+</section>
 
-  <div class="note">
-    <p><strong>El ciclo de vida de un criterio.</strong> Nace <code>[BORRADOR]</code>.
-    No es precedente hasta que lleve la línea <code>Aprobó:</code> con fecha. Y si un día
-    resulta falso <strong>no se borra: se corrige dejando dicho qué decía y por qué era
-    falso</strong> — el error documentado impide repetirlo, el error borrado no.</p>
+<!-- 05 ──────────────────────────────────────────────────────────────────── -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="kicker"><i></i>05 · El ciclo</span>
+    <h2>De caso puntual a regla permanente</h2>
+    <p class="lede">
+      El recorrido completo de algo que llega a la mesa, con el freno que hace
+      auditable al sistema.
+    </p>
+  </div>
+
+  <div class="tblwrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>Paso</th><th>Qué pasa</th><th>Detalle</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="ref">1</td>
+          <td><b>Llega algo a la mesa</b></td>
+          <td>Una factura, un caso de conciliación, una nota de débito.</td>
+        </tr>
+        <tr>
+          <td class="ref">2</td>
+          <td><b>¿Qué documento es?</b></td>
+          <td>Primero el documento, después la cuenta. Lo decide el rol del hecho,
+              nunca el NCF: hay 96 contraejemplos medidos en el propio histórico.</td>
+        </tr>
+        <tr>
+          <td class="ref">3</td>
+          <td><b>¿Qué cuenta?</b></td>
+          <td>Hecho H aplicable + criterios C + precedente destilado + plan de cuentas vivo.</td>
+        </tr>
+        <tr>
+          <td class="ref">4</td>
+          <td><b>¿Qué exige la DGII?</b></td>
+          <td>NCF, retención, tipo de gasto 606.</td>
+        </tr>
+        <tr class="hot">
+          <td class="ref">—</td>
+          <td><b>Si ninguna capa contesta, no adivina</b></td>
+          <td>Abre una pregunta y espera el dictamen. Este freno es la pieza que
+              hace auditable al sistema.</td>
+        </tr>
+        <tr>
+          <td class="ref">5</td>
+          <td><b>Propuesta en la mesa</b></td>
+          <td>Carlos aprueba o rechaza. Un rechazo con motivo legisla; un rechazo
+              mudo no enseña nada.</td>
+        </tr>
+        <tr>
+          <td class="ref">6</td>
+          <td><b>Registro en ADM</b></td>
+          <td>Script por tipo de documento, con los candados puestos.</td>
+        </tr>
+        <tr>
+          <td class="ref">7</td>
+          <td><b>Si hubo dictamen nuevo, se escribe</b></td>
+          <td>Entrada en el libro siempre. Criterio C además, solo si vale para
+              siempre. Sin Alcance, documenta pero no automatiza.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr class="rule">
+
+  <div class="grid">
+    <div class="plate pad c6">
+      <h3>La segunda vía, silenciosa</h3>
+      <p class="note">
+        Hay un aprendizaje que no pasa por nadie escribiendo: cada factura que la
+        contadora corrige a mano en ADM también enseña. Esa noche el espejo la
+        relee, el destilado la cuenta, y el clasificador ya la usa como
+        precedente. Nadie tocó un archivo.
+      </p>
+    </div>
+    <div class="plate pad c6">
+      <h3>El ciclo de vida de un criterio</h3>
+      <div class="spec">
+        <div class="specrow">Nace <span>[BORRADOR]</span></div>
+        <div class="specrow">Se vuelve precedente <span>con la línea <b>Aprobó:</b> y fecha</span></div>
+        <div class="specrow">Si resulta falso <span>se corrige, <b>nunca se borra</b></span></div>
+      </div>
+      <p class="note">
+        El error documentado impide repetirlo; el error borrado, no.
+      </p>
+    </div>
   </div>
 </section>
 
-<!-- 6 ───────────────────────────────────────────────────────────────── -->
-<section>
-  <h2><span class="num">06</span> Dónde vive cada cosa</h2>
-  <p class="sub">La chuleta. Antes de escribir una regla, mirar acá en qué capa cae.</p>
+<!-- 06 ──────────────────────────────────────────────────────────────────── -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="kicker"><i></i>06 · Chuleta</span>
+    <h2>Dónde vive cada cosa</h2>
+    <p class="lede">
+      Antes de escribir una regla, mirar acá en qué capa cae.
+    </p>
+  </div>
 
-  <div class="card">
-    <div class="scroll">
-      <table class="tabla">
-        <thead>
-          <tr><th>Capa</th><th>Dónde</th><th>Quién la cambia</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Normas DGII</td>
-            <td class="ruta">nucleo-contable/dgii/normas/</td>
-            <td>Compartido entre empresas. Con rango y vigencia, o no entra.</td>
-          </tr>
-          <tr>
-            <td>NIIF-PYMES</td>
-            <td class="ruta">nucleo-contable/niif-pymes/secciones/</td>
-            <td>Nivel 5 de la jerarquía: entra último y da sostén, nunca permiso.</td>
-          </tr>
-          <tr>
-            <td>Principios P</td>
-            <td class="ruta">nucleo-contable/doctrina/principios-de-asiento.md</td>
-            <td>Ratificados. Cambiarlos es un evento.</td>
-          </tr>
-          <tr>
-            <td>Hechos H</td>
-            <td class="ruta">nucleo-contable/doctrina/conciliacion-hechos.md</td>
-            <td>Fijos de por vida. Uno nuevo se agrega.</td>
-          </tr>
-          <tr>
-            <td>Criterios C</td>
-            <td class="ruta">empresas/&lt;e&gt;/hermes/memoria/criterios.md</td>
-            <td>Nacen borrador, los ratifica Carlos.</td>
-          </tr>
-          <tr>
-            <td>Libro de acción</td>
-            <td class="ruta">empresas/&lt;e&gt;/hermes/libro-de-accion/</td>
-            <td>Solo se agrega. Un archivo por decisión, jamás se edita uno viejo.</td>
-          </tr>
-          <tr>
-            <td>Precedente</td>
-            <td class="ruta">bucket qualia-espejos · agg/*.json</td>
-            <td>Nadie a mano: lo destila <span class="mono">qualia-espejo</span> cada madrugada.</td>
-          </tr>
-          <tr>
-            <td>Candados</td>
-            <td class="ruta">triggers en la Supabase de Labs_Inv</td>
-            <td>Migración primero, y con OK explícito.</td>
-          </tr>
-        </tbody>
-      </table>
+  <div class="tblwrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>Capa</th><th>Dónde</th><th>Quién la cambia</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Normas DGII</b></td>
+          <td class="ref">nucleo-contable/dgii/normas/</td>
+          <td>Compartido entre empresas. Con rango y vigencia, o no entra.</td>
+        </tr>
+        <tr>
+          <td><b>NIIF-PYMES</b></td>
+          <td class="ref">nucleo-contable/niif-pymes/secciones/</td>
+          <td>Nivel 5: entra último y da sostén, nunca permiso.</td>
+        </tr>
+        <tr>
+          <td><b>Principios P</b></td>
+          <td class="ref">nucleo-contable/doctrina/principios-de-asiento.md</td>
+          <td>Ratificados. Cambiarlos es un evento.</td>
+        </tr>
+        <tr>
+          <td><b>Hechos H</b></td>
+          <td class="ref">nucleo-contable/doctrina/conciliacion-hechos.md</td>
+          <td>Fijos de por vida. Uno nuevo se agrega.</td>
+        </tr>
+        <tr>
+          <td><b>Criterios C</b></td>
+          <td class="ref">empresas/&lt;e&gt;/hermes/memoria/criterios.md</td>
+          <td>Nacen borrador, los ratifica Carlos.</td>
+        </tr>
+        <tr>
+          <td><b>Libro de acción</b></td>
+          <td class="ref">empresas/&lt;e&gt;/hermes/libro-de-accion/</td>
+          <td>Solo se agrega. Jamás se edita uno viejo.</td>
+        </tr>
+        <tr>
+          <td><b>Precedente</b></td>
+          <td class="ref">bucket qualia-espejos · agg/*.json</td>
+          <td>Nadie a mano: lo destila qualia-espejo cada madrugada.</td>
+        </tr>
+        <tr>
+          <td><b>Candados</b></td>
+          <td class="ref">triggers en la Supabase de Labs_Inv</td>
+          <td>Migración primero, y con OK explícito.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="note">
+    Tres numeraciones que se parecen y no son lo mismo: los <b>P/H/C</b> son las
+    capas de doctrina; los <b>A-01, K-01, M-04</b> de la hoja de ruta son el
+    catálogo por familias para el auditor; los <b>«Caso #N»</b> son hilos de
+    conciliación armados en la web.
+  </p>
+</section>
+
+<!-- 07 ──────────────────────────────────────────────────────────────────── -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="kicker"><i></i>07 · Huecos</span>
+    <h2>Lo que todavía no aprende solo</h2>
+    <p class="lede">
+      Estado al 2026-08-22. Esto caduca cuando alguien lo resuelva: revisar antes
+      de confiar.
+    </p>
+  </div>
+
+  <div class="stack">
+    <div class="plate pad">
+      <div class="row tight">
+        <span class="badge warn"><i></i>proveedores.md</span>
+        <span class="mono">sin generador</span>
+      </div>
+      <p class="note">
+        La tabla de apuntes por proveedor, que el modelo lee tal cual. No la genera
+        ningún script: la escribía Hermes en el server. Al corregir la cuenta de un
+        proveedor hay que tocarla a mano, en git y en el bucket.
+      </p>
+    </div>
+    <div class="plate pad">
+      <div class="row tight">
+        <span class="badge warn"><i></i>plan-cuentas.json</span>
+        <span class="mono">congelado desde 2026-08-20</span>
+      </div>
+      <p class="note">
+        El catálogo de cuentas contra el que se clasifica. Ya causó un problema en
+        agosto, y el síntoma es el peor de todos: <b>no falla, elige la cuenta más
+        parecida</b>.
+      </p>
+    </div>
+    <div class="plate pad">
+      <div class="row tight">
+        <span class="badge warn"><i></i>48 cuentas</span>
+        <span class="mono">semántica en borrador</span>
+      </div>
+      <p class="note">
+        Qué es cada cuenta y qué NO va ahí sigue en borrador en cuentas-en-uso.md,
+        y un borrador no se cita. Se dictan de a una en las ratificaciones.
+      </p>
+    </div>
+    <div class="plate pad">
+      <div class="row tight">
+        <span class="badge warn"><i></i>1 factura</span>
+        <span class="mono">no se puede releer</span>
+      </div>
+      <p class="note">
+        Una de las 118 de la ventana no responde desde ADM. Probablemente anulada
+        o borrada allá, y sigue contando en los precedentes. Sacarla del espejo es
+        una decisión que no se toma sola.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 08 ──────────────────────────────────────────────────────────────────── -->
+<section class="sec">
+  <div class="sec-head">
+    <span class="kicker"><i></i>08 · El espejo</span>
+    <h2>La pieza que alimenta el precedente</h2>
+    <p class="lede">
+      supabase/functions/qualia-espejo/ — un solo programa, dos modos.
+    </p>
+  </div>
+
+  <div class="grid">
+    <div class="plate pad c6">
+      <div class="row tight">
+        <span class="badge neutral"><i></i>Cada hora, al minuto 5</span>
+      </div>
+      <h3>Liviano</h3>
+      <p class="note">
+        Le pregunta a ADM si hay alguna factura que el espejo no tenga. Si no hay,
+        se va.
+      </p>
+      <div class="spec">
+        <div class="specrow">Tope de altas <span><b>200</b> por corrida</span></div>
+        <div class="specrow">Lo que sobra <span>entra en la siguiente</span></div>
+      </div>
+    </div>
+
+    <div class="plate pad c6">
+      <div class="row tight">
+        <span class="badge blue"><i></i>02:00 RD · 06:00 UTC</span>
+      </div>
+      <h3>Pesado</h3>
+      <p class="note">
+        Además de lo anterior, relee la ventana reciente y regenera los dos agg.
+      </p>
+      <div class="spec">
+        <div class="specrow">Ventana de relectura <span><b>60</b> días · 118 facturas</span></div>
+        <div class="specrow">Tope de relecturas <span><b>150</b> por corrida</span></div>
+        <div class="specrow">Si recorta <span>lo avisa en el log</span></div>
+      </div>
     </div>
   </div>
 
-  <div class="note">
-    <p><strong>Tres numeraciones que se parecen y no son lo mismo.</strong> Los
-    <strong>P/H/C</strong> son las capas de doctrina. Los <strong>A-01, K-01, M-04</strong>
-    de la hoja de ruta son el catálogo por familias para el auditor. Los
-    <strong>«Caso #N»</strong> son hilos de conciliación concretos armados en la web.</p>
+  <hr class="rule">
+
+  <div class="grid">
+    <div class="plate pad c4">
+      <div class="row tight"><span class="badge info"><i></i>Por qué relee</span></div>
+      <p class="note">
+        Es la <b>única</b> forma de enterarse de una corrección: ADM no expone fecha
+        de modificación, solo CreationDate. Sin relectura, una factura arreglada a
+        mano queda vieja en el espejo para siempre.
+      </p>
+    </div>
+    <div class="plate pad c4">
+      <div class="row tight"><span class="badge warn"><i></i>Límite de memoria</span></div>
+      <p class="note">
+        Son 22 MB y ~1 200 documentos de 199 campos. Se recorre con generador, nunca
+        se carga entero ni se copia dos veces, o la function muere.
+      </p>
+    </div>
+    <div class="plate pad c4">
+      <div class="row tight"><span class="badge warn"><i></i>URL firmadas</span></div>
+      <p class="note">
+        Los adjuntos vienen con firma de Azure que cambia en cada llamada. Se guarda
+        sin la firma, o toda comparación reporta cambios falsos.
+      </p>
+    </div>
   </div>
+
+  <p class="note">
+    El modo pesado se elige mirando la hora, sobre el cron horario que ya existía:
+    sin migración nueva. Regla de la casa — todo escrito masivo va a las 02:00 RD,
+    nunca en horario de uso.
+  </p>
 </section>
 
-<!-- 7 ───────────────────────────────────────────────────────────────── -->
-<section>
-  <h2><span class="num">07</span> Lo que todavía no aprende solo</h2>
-  <p class="sub">Estado al 2026-08-22. Esto caduca cuando alguien lo resuelva:
-  revisar antes de confiar.</p>
-
-  <div class="hueco">
-    <span class="qué">proveedores.md</span>
-    <span class="por">La tabla de apuntes por proveedor, que el modelo lee tal cual. <strong>No la
-    genera ningún script</strong> — la escribía Hermes en el server. Al corregir la cuenta de un
-    proveedor hay que tocarla a mano, en git y en el bucket.</span>
-  </div>
-  <div class="hueco">
-    <span class="qué">plan-cuentas.json</span>
-    <span class="por">El catálogo de cuentas contra el que se clasifica. Congelado desde que se apagó
-    CodeBox. Ya causó un problema en agosto y el síntoma es el peor de todos:
-    <strong>no falla, elige la cuenta más parecida</strong>.</span>
-  </div>
-  <div class="hueco">
-    <span class="qué">48 cuentas</span>
-    <span class="por">La semántica de <code>cuentas-en-uso.md</code> —qué es cada cuenta y qué NO va ahí—
-    sigue en borrador, y un borrador no se cita. Se dictan de a una en las ratificaciones.</span>
-  </div>
-  <div class="hueco">
-    <span class="qué">1 factura</span>
-    <span class="por">Una de las 118 de la ventana no se puede releer desde ADM. Probablemente anulada
-    o borrada allá, y sigue contando en los precedentes. Sacarla del espejo es una
-    decisión que no se toma sola.</span>
-  </div>
-</section>
-
-<!-- 8 ───────────────────────────────────────────────────────────────── -->
-<section>
-  <h2><span class="num">08</span> El espejo, en detalle</h2>
-  <p class="sub">La pieza que alimenta la memoria destilada:
-  <span class="mono">supabase/functions/qualia-espejo/</span>.</p>
-
-  <div class="card">
-    <h3 style="margin-top:0">Cada hora, al minuto 5 — liviano</h3>
-    <p style="margin-bottom:6px">Le pregunta a ADM si hay alguna factura que el espejo no tenga.
-    Si no hay, se va. Tope de <strong>200 altas</strong> por corrida; lo que sobra entra en la siguiente.</p>
-
-    <h3>A las 02:00 RD (06:00 UTC) — pesado</h3>
-    <p style="margin-bottom:6px">Además de lo anterior, hace dos cosas:</p>
-    <p style="margin-bottom:6px"><strong>Relee.</strong> Pide de nuevo el detalle de las facturas de los
-    últimos <strong>60 días</strong> —hoy 118—, aunque ya las tenga. Es la <strong>única</strong> forma de
-    enterarse de una corrección: ADM no expone fecha de modificación, solo
-    <code>CreationDate</code>. Tope de 150 por corrida, y avisa en el log si recorta.</p>
-    <p style="margin-bottom:0"><strong>Destila.</strong> Con el espejo ya fresco regenera los dos agg y los sube.</p>
-  </div>
-
-  <div class="note">
-    <p><strong>Por qué de madrugada.</strong> Regla de la casa: todo escrito masivo va a
-    las 02:00 RD, nunca en horario de uso. El modo pesado se elige mirando la hora sobre
-    el cron horario que ya existía — sin migración nueva.</p>
-  </div>
-
-  <div class="note warn">
-    <p><strong>Dos límites que ya mordieron.</strong> El espejo son 22 MB y ~1.200
-    documentos de 199 campos: se recorre con generador, nunca se carga entero ni se copia
-    dos veces, o la function muere por memoria. Y los adjuntos vienen con URL firmada que
-    cambia en cada llamada: se guarda sin la firma, o toda comparación reporta cambios
-    falsos.</p>
-  </div>
-</section>
-
-</div>
+</main>
 </body>
 </html>
