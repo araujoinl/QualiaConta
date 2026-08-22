@@ -2521,8 +2521,8 @@
    "dominante": null,
    "tipos": [
     {
-     "codigo": "02",
-     "nombre": "Gastos por Trabajos, Suministros y Servicios",
+     "codigo": "09",
+     "nombre": "Compras y Gastos que Formarán parte del Costo de Venta",
      "usos": 1,
      "pct": 100.0
     }

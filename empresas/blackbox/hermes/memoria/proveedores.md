@@ -920,7 +920,7 @@ Un proveedor cuyo gasto se reparte ~50/50 entre dos cuentas se marca
 | Eco Doa Catalina | sin RNC | 801.01 Gastos sin comprobante de crédito fiscal y/o al exterior | sin | sin NCF | Tarjeta | FP00000836 | 750.00 |
 | Edufinsa Escuela De Negocios & Tecnologia Srl | 132184416 | 611.13 Capacitación | sin | B01 | Transferencia | FP00000572 | 25,485.00 |
 | Effe Pizza Srl | 132624696 | 611.14 Otros gastos de personal, 690.06 Propina Legal | 18% | B01 | Tarjeta | FP00000007 | 3,948.46 |
-| FreeWay Enterprise SRL | 131372228 | 611.02 Comisiones | 18% | B01 | sin registro | FP00001068 | 90,000.00 |
+| FreeWay Enterprise SRL | 131372228 | 511.07 Comisión Servicios Generales (tipo gasto 09) | 18% | B01 | sin registro | FP00001068 | 90,000.00 |
 | El Ferreton Srl | 131667351 | 620.06 Suministros de oficina y otros | 18% | B01 | sin registro | FP00000989 | 620.00 |
 | Electromuebles Kewrys Srl | 131127835 | 160.07 Otros Activos Fijos | 18% | E31 | Transferencia | FP00000488 | 9,500.00 |
 | Gamma Elite Srl | 130518149 | 160.06 Mobiliarios y Equipos de Oficina | 18% | B01 | Transferencia | FP00000684 | 84,866.25 |
