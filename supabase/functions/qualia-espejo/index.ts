@@ -62,6 +62,8 @@ const HORA_COMPLETA_UTC = 6; // 02:00 en RD
 const VENTANA_DIAS = 60;
 /** Tope de relecturas por corrida: una edge function no aguanta mil llamadas. */
 const MAX_RELECTURAS = 150;
+/** Mismo motivo para las altas: sembrar una empresa nueva toma varias corridas. */
+const MAX_ALTAS = 200;
 
 const rutaBills = (e: string) => `espejo-adm/${e}/vendor-bills-detalle.jsonl`;
 const rutaVendors = (e: string) => `espejo-adm/${e}/vendors.jsonl`;
@@ -191,30 +193,46 @@ async function refrescar(adm: AdmCliente, esp: Espejo): Promise<Dic> {
     (lote: any[]) => lote.length > 0 && lote.every((f) => conocidos.has(String(f?.ID ?? ''))),
   );
   const nuevas = listado.filter((f) => f?.ID && !conocidos.has(String(f.ID)));
+  // Con tope, como la relectura. Sin esto una empresa recién activada (espejo
+  // vacío, `conocidos` vacío) intenta mil readbacks en una sola invocación y
+  // muere por WORKER_RESOURCE_LIMIT sin sembrar nada — el mismo modo de falla
+  // que este archivo arregla, entrando por otra puerta. Es incremental: lo que
+  // no entra hoy entra en la corrida siguiente.
+  const tanda = nuevas.slice(0, MAX_ALTAS);
+  const pendientes = nuevas.length - tanda.length;
+  if (pendientes > 0) {
+    console.log(
+      `espejo: ${pendientes} facturas nuevas quedaron para la próxima corrida (tope ${MAX_ALTAS})`,
+    );
+  }
 
   let agregadas = 0, fallidas = 0;
-  for (const f of nuevas) {
+  for (const aTraer of tanda) {
+    // Primero se lee, y SOLO si vino se agrega. La versión anterior reservaba
+    // el lugar antes del await y lo soltaba con pop() en el catch: como
+    // readback lanza ANTES de los push, ese pop se comía la última factura
+    // legítima del espejo y la subía faltando.
+    let det: Dic;
     try {
-      const det = await adm.readback('VendorBills', String(f.ID)) as Dic;
-      esp.lineas.push('');
-      esp.ids.push('');
-      esp.fechas.push('');
-      poner(esp, esp.lineas.length - 1, det);
-      agregadas++;
+      det = await adm.readback('VendorBills', String(aTraer.ID)) as Dic;
     } catch (e) {
       // Una factura ilegible no frena el espejo; la próxima corrida reintenta.
-      esp.lineas.pop();
-      esp.ids.pop();
-      esp.fechas.pop();
       fallidas++;
-      console.error(`espejo: no pude leer ${f.DocID}: ${(e as Error).message}`);
+      console.error(`espejo: no pude leer ${aTraer.DocID}: ${(e as Error).message}`);
+      continue;
     }
+    esp.lineas.push('');
+    esp.ids.push('');
+    esp.fechas.push('');
+    poner(esp, esp.lineas.length - 1, det);
+    agregadas++;
   }
   return {
     conocidas: conocidos.size,
     nuevas: nuevas.length,
     agregadas,
     fallidas,
+    pendientes,
   };
 }
 
@@ -360,8 +378,19 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // El agg de tipo de gasto es COMPARTIDO por todas las empresas y se sobrescribe
+  // entero. Si alguna no aportó —fallo de credenciales, ADM caído— escribirlo
+  // igual le borra los RNC que solo esa empresa conocía, y queda un archivo
+  // sano a la vista con menos precedentes adentro. Se escribe solo si aportaron
+  // todas; si no, se deja el de ayer, que está completo.
+  const esperadas = (empresas ?? []).length;
   let tipoGasto: Dic | null = null;
-  if (completo && acum.nEmpresas > 0 && catalogoTipos) {
+  if (completo && esperadas > 0 && acum.nEmpresas < esperadas) {
+    tipoGasto = {
+      omitido: `aportaron ${acum.nEmpresas} de ${esperadas} empresas; se conserva el agg anterior`,
+    };
+    console.error(`espejo: agg general NO reescrito — aportaron ${acum.nEmpresas}/${esperadas}`);
+  } else if (completo && acum.nEmpresas > 0 && catalogoTipos) {
     try {
       const agg = cerrarTipoGasto(acum, catalogoTipos);
       await subirTexto(
