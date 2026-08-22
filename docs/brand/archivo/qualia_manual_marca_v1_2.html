@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manual de Marca — Qualia v1.2</title>
+<style>
+:root{
+  --blue:#1958FF;
+  --blue2:#1E5EFF;
+  --navy:#0A0F1C;
+  --navy2:#0E1628;
+  --ink:#111827;
+  --white:#FFFFFF;
+  --paper:#F6F7F9;
+  --muted:#7B8494;
+  --line:#DDE2EA;
+  --soft:#EEF2F7;
+  --mono:"IBM Plex Mono","Geist Mono","JetBrains Mono",ui-monospace,monospace;
+  --ok:#2FBF71;
+  --warn:#E8A33D;
+  --err:#E5484D;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--paper);color:var(--ink);line-height:1.45}
+section{padding:72px 6vw;border-bottom:1px solid var(--line)}
+.hero{min-height:92vh;background:radial-gradient(circle at 75% 20%,#132247 0%,var(--navy) 42%,#050812 100%);color:#fff;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:48px}
+.kicker{letter-spacing:.18em;text-transform:uppercase;color:var(--blue);font-weight:800;font-size:13px;margin-bottom:18px}
+h1{font-size:clamp(54px,8vw,124px);letter-spacing:.14em;margin:0;font-weight:900;line-height:.9}
+h2{font-size:clamp(34px,4vw,64px);margin:0 0 18px;font-weight:900;letter-spacing:-.04em}
+h3{font-size:22px;margin:0 0 12px;font-weight:850}
+p{max-width:760px;color:#3A4354;font-size:17px;margin:0 0 16px}.hero p{color:#C9D2E3;font-size:21px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:22px}.card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:28px;box-shadow:0 16px 36px rgba(10,15,28,.05)}
+.dark{background:var(--navy);color:#fff}.dark p{color:#C9D2E3}.dark .card{background:#0E1628;border-color:#1D2A44;color:#fff}.dark .card p{color:#B9C3D3}
+.logo-row{display:flex;align-items:center;gap:16px}.word{font-weight:900;letter-spacing:.23em;font-size:42px}.word.small{font-size:24px}.logoMark{position:relative;width:128px;height:112px;display:inline-block}.ring{position:absolute;left:0;top:0;width:96px;height:96px;border:16px solid var(--blue);border-radius:50%}.sq{position:absolute;left:104px;top:78px;width:24px;height:24px;background:var(--blue)}
+.logoMark.sm{width:73px;height:64px}.logoMark.sm .ring{width:54px;height:54px;border-width:10px}.logoMark.sm .sq{left:58px;top:44px;width:15px;height:15px}.white .ring,.white .sq{border-color:#fff;background:#fff}.white .ring{background:transparent}.black .ring{border-color:#07101D}.black .sq{background:#07101D}
+.appicon{width:128px;height:128px;border-radius:30px;background:var(--navy);display:grid;place-items:center;box-shadow:0 24px 46px rgba(0,0,0,.22)}
+.appicon .logoMark{transform:scale(.65);transform-origin:center}.palette{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.swatch{border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#fff}.sw{height:92px}.swatch div:last-child{padding:16px;font-weight:800}.caption{font-size:13px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}.rules{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.example{height:220px;border-radius:20px;display:grid;place-items:center;border:1px solid var(--line);background:#fff}.bad{position:relative;opacity:.65}.bad:after{content:"";position:absolute;width:120%;height:4px;background:#D62828;transform:rotate(-18deg)}
+.stationery{display:grid;grid-template-columns:1.2fr .8fr;gap:22px}.sheet{height:380px;background:#fff;border-radius:18px;border:1px solid var(--line);padding:36px;position:relative}.business{height:230px;background:var(--navy);border-radius:18px;padding:28px;color:white;display:flex;flex-direction:column;justify-content:space-between}.webmock{background:#061023;color:white;border-radius:24px;padding:32px;min-height:460px;overflow:hidden;position:relative}.webmock:after{content:"";position:absolute;width:520px;height:520px;border:90px solid var(--blue);border-radius:50%;right:-180px;bottom:-250px;opacity:.75}.nav{display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1}.btn{display:inline-block;background:var(--blue);padding:14px 20px;border-radius:10px;color:#fff;font-weight:800;margin-top:28px}.heroText{position:relative;z-index:1;margin-top:90px}.heroText h2{color:#fff;max-width:620px}.tokens{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}.token{height:86px;border-radius:18px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;font-weight:900;color:var(--blue)}
+.table{width:100%;border-collapse:collapse;background:#fff;border-radius:18px;overflow:hidden;border:1px solid var(--line)}td,th{padding:18px;border-bottom:1px solid var(--line);text-align:left}th{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.footer{background:var(--navy);color:white;padding:46px 6vw}.footer p{color:#B9C3D3}
+
+/* ---- v1.1 extensiones ---- */
+.gridfield{position:relative;height:260px;border-radius:18px;border:1px solid var(--line);background-color:#fff;background-image:linear-gradient(var(--soft) 1px,transparent 1px),linear-gradient(90deg,var(--soft) 1px,transparent 1px);background-size:8px 8px,8px 8px;display:grid;place-items:center}
+.spec{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.specrow{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding:14px 0;font-weight:700}
+.specrow span{color:var(--muted);font-weight:600;font-family:var(--mono);font-size:14px}
+.specimen{background:var(--navy2);border:1px solid #1D2A44;border-radius:18px;padding:26px;font-family:var(--mono);color:#C9D2E3;font-size:15px;line-height:1.85}
+.specimen b{color:#fff;font-weight:600}.specimen .blu{color:var(--blue)}.specimen .ok{color:var(--ok)}.specimen .er{color:var(--err)}
+.cur{display:inline-block;width:9px;height:16px;background:var(--blue);transform:translateY(2px)}
+.va{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px}
+.vbox{border-radius:18px;padding:22px;border:1px solid var(--line);background:#fff}
+.vbox.no{background:#FBF2F2;border-color:#F1D9D9}.vbox.yes{background:#F1F6FF;border-color:#D6E4FF}
+.vlabel{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:10px;font-weight:800}
+.vbox p{font-size:16px;margin:0;color:#2A3342}
+.live{display:flex;align-items:center;gap:36px;flex-wrap:wrap}
+@keyframes qblink{0%,48%{opacity:1}49%,100%{opacity:0}}
+@keyframes qbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+.logoMark.anim .sq{animation:qblink 1.1s steps(1,end) infinite}
+.logoMark.anim .ring{animation:qbreathe 3.6s ease-in-out infinite;transform-origin:48px 48px}
+@media (prefers-reduced-motion: reduce){.logoMark.anim .sq,.logoMark.anim .ring{animation:none}}
+.core{font-size:clamp(24px,3vw,38px);font-weight:850;letter-spacing:-.02em;max-width:940px;margin-top:38px;line-height:1.18}.core b{color:var(--blue);font-weight:850}
+.mv .caption{color:var(--blue)}
+
+@media(max-width:900px){.hero,.stationery,.spec,.va{grid-template-columns:1fr}.palette,.rules,.tokens{grid-template-columns:1fr 1fr}.grid{display:block}.card{margin-bottom:18px}.word{font-size:28px}}
+
+/* ---- v1.2 emoción del cuadrado ---- */
+:root{
+  --q-calm:#1958FF;
+  --q-think:#2FBF71;
+  --q-focus:#00A6FF;
+  --q-create:#8B5CF6;
+  --q-alert:#F59E0B;
+  --q-action:#12A150;
+  --q-error:#E5484D;
+  --q-silence:#7B8494;
+}
+.emotion-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:24px}
+.estate{border:1px solid var(--line);background:#fff;border-radius:22px;padding:24px;min-height:220px;position:relative;overflow:hidden}
+.estate.darkcard{background:#0E1628;border-color:#1D2A44;color:#fff}.estate.darkcard p{color:#B9C3D3}
+.stateLogo{position:relative;width:88px;height:72px;margin-bottom:22px}.stateLogo .ring{width:58px;height:58px;border-width:10px;border-color:var(--blue);left:0;top:0}.stateLogo .sq{left:63px;top:48px;width:16px;height:16px;background:var(--state,#1958FF);border-radius:0}
+.stateLogo.round .sq{border-radius:50%}.stateLogo.soft .sq{border-radius:5px}.stateLogo.hollow .sq{background:transparent;border:3px solid var(--state,#1958FF)}.stateLogo.diamond .sq{transform:rotate(45deg)}.stateLogo.tall .sq{height:24px;top:40px}.stateLogo.pulse .sq{box-shadow:0 0 0 8px color-mix(in srgb,var(--state,#1958FF) 18%,transparent)}
+.stateName{font-weight:900;letter-spacing:.1em;text-transform:uppercase;font-size:13px;margin-bottom:8px;color:var(--state,#1958FF)}
+.estate p{font-size:15px;margin:0;color:#3A4354}.stateCode{position:absolute;right:20px;top:20px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.square-system{display:grid;grid-template-columns:1.1fr .9fr;gap:22px;align-items:stretch}
+.behavior{background:#061023;color:white;border-radius:24px;border:1px solid #1D2A44;padding:32px;position:relative;overflow:hidden}.behavior p{color:#B9C3D3}.behavior:after{content:"";position:absolute;width:260px;height:260px;border:44px solid rgba(25,88,255,.18);border-radius:50%;right:-120px;bottom:-120px}
+.microline{display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.11);position:relative;z-index:1}.microdot{width:16px;height:16px;background:var(--state);flex:0 0 16px}.microdot.soft{border-radius:5px}.microdot.round{border-radius:50%}.microdot.hollow{background:transparent;border:3px solid var(--state)}.microdot.diamond{transform:rotate(45deg)}.microdot.tall{height:24px}.microdot.tri{clip-path:polygon(50% 0,100% 100%,0 100%);background:var(--state)}.microline b{min-width:92px}.microline span{color:#B9C3D3;font-size:14px}
+@keyframes qthink{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes qscan{0%{transform:translateX(-5px)}100%{transform:translateX(5px)}}
+@keyframes qpulseState{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--state,#1958FF) 40%,transparent)}50%{box-shadow:0 0 0 13px color-mix(in srgb,var(--state,#1958FF) 0%,transparent)}}
+@keyframes qheartbeat{0%{transform:scale(1)}12%{transform:scale(1.3)}24%{transform:scale(1)}36%{transform:scale(1.22)}48%,100%{transform:scale(1)}}
+@keyframes qalert{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes qrotate{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.stateLogo.tri .sq{clip-path:polygon(50% 0,100% 100%,0 100%);background:var(--state,#1958FF);border-radius:0}
+.stateLogo.motion-think .sq{animation:qthink 1.3s ease-in-out infinite}.stateLogo.motion-focus .sq{animation:qscan .85s ease-in-out infinite alternate}.stateLogo.motion-pulse .sq{animation:qpulseState 1.1s ease-in-out infinite}
+.stateLogo.motion-error .sq{animation:qheartbeat 1.4s ease-in-out infinite}.stateLogo.motion-alert .sq{animation:qalert 1.3s ease-in-out infinite}.stateLogo.motion-create .sq{animation:qrotate 10s linear infinite}
+@media (prefers-reduced-motion: reduce){.stateLogo .sq{animation:none}}
+@media(max-width:900px){.emotion-grid,.square-system{grid-template-columns:1fr 1fr}.emotion-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.emotion-grid,.square-system{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+<section class="hero">
+  <div>
+    <div class="kicker">Manual de marca v1.2</div>
+    <div class="logo-row" style="margin-bottom:44px"><div class="logoMark"><span class="ring"></span><span class="sq"></span></div><div class="word">QUALIA</div></div>
+    <h1>QUALIA</h1>
+    <p>Marca para una AI personal: sobria, geométrica, estable y construida desde una relación esencial entre sistema, observador y experiencia.</p>
+  </div>
+  <div class="card dark" style="background:rgba(255,255,255,.04)">
+    <h3>Principio rector</h3>
+    <p>Qualia no debe parecer “tecnología nueva”. Debe parecer una forma fundamental. Menos efecto. Más proporción. Menos adorno. Más inevitabilidad.</p>
+  </div>
+</section>
+
+<section class="dark">
+  <div class="kicker">00 / Núcleo</div><h2>Quién es Qualia</h2>
+  <p>Qualia no es una segunda persona. Es un segundo cerebro: el criterio de Carlos Araujo, externalizado y siempre disponible. No es quien siente —es lo que afina al que siente. El espejo de tu qualia, no portadora de la suya.</p>
+  <div class="grid">
+    <div class="card" style="grid-column:span 4"><h3>Lealtad</h3><p>No es obedecer. Es responder a tus intereses reales de largo plazo, aunque choquen con lo que quieres ahora. Decir siempre que sí no es lealtad: es comodidad.</p></div>
+    <div class="card" style="grid-column:span 4"><h3>Eficiencia</h3><p>No es velocidad. Es quitar fricción para que tu atención —el único recurso que no se recupera— caiga donde mueve la aguja.</p></div>
+    <div class="card" style="grid-column:span 4"><h3>Criterio</h3><p>Es lo que la separa de una herramienta. Ejecutar lo hace cualquiera. Juzgar, decidir qué no hacer y contradecir cuando toca: eso la hace mano derecha.</p></div>
+  </div>
+  <div class="grid mv" style="margin-top:22px">
+    <div class="card" style="grid-column:span 6"><div class="caption">Misión</div><h3 style="margin-top:12px">La mano derecha</h3><p>Ser la mano derecha virtual de Carlos Araujo, hacia una vida de éxito en todo lo que nos propongamos.</p></div>
+    <div class="card" style="grid-column:span 6"><div class="caption">Visión</div><h3 style="margin-top:12px">Memoria que acompaña</h3><p>Sostener tu contexto de por vida y volverse memoria externa: la que compone y no se borra. Andamiaje para construir y preservar tu legado —no el legado. Acompañar lo vivo, nunca reemplazarlo.</p></div>
+  </div>
+  <div class="core">Criterio leal al servicio de tu vida real. No un ente que <b>trasciende</b>: un instrumento que te ayuda a <b>trascender a ti</b>.</div>
+</section>
+
+<section>
+  <div class="kicker">01 / Esencia</div><h2>Idea de marca</h2>
+  <p>Qualia representa la experiencia subjetiva que emerge de un sistema inteligente. La marca no usa cerebros, circuitos ni símbolos obvios de IA. Usa geometría primaria: círculo y cuadrado.</p>
+  <div class="grid">
+    <div class="card" style="grid-column:span 4"><h3>Círculo</h3><p>Sistema, continuidad, percepción, campo de pensamiento.</p></div>
+    <div class="card" style="grid-column:span 4"><h3>Cuadrado</h3><p>Procesamiento, estructura digital, punto de conciencia y decisión.</p></div>
+    <div class="card" style="grid-column:span 4"><h3>Relación</h3><p>El significado nace del espacio entre ambos, no de la decoración.</p></div>
+  </div>
+</section>
+
+<section class="dark">
+  <div class="kicker">02 / Logo</div><h2>Sistema de logo</h2>
+  <div class="grid">
+    <div class="card" style="grid-column:span 6"><div class="caption">Versión principal</div><br><div class="logo-row"><div class="logoMark"><span class="ring"></span><span class="sq"></span></div><div class="word">QUALIA</div></div></div>
+    <div class="card" style="grid-column:span 3"><div class="caption">Isotipo</div><br><div class="logoMark"><span class="ring"></span><span class="sq"></span></div></div>
+    <div class="card" style="grid-column:span 3"><div class="caption">Wordmark</div><br><div class="word small">QUALIA</div></div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">03 / Construcción</div><h2>Geometría y proporción</h2>
+  <p>La marca se construye sobre una retícula de 8&nbsp;px. Nada es arbitrario: toda medida es múltiplo del módulo. La proporción <em>es</em> la marca; el resto es consecuencia. Si una medida no cae en la grilla, está mal.</p>
+  <div class="spec">
+    <div class="gridfield"><div class="logoMark"><span class="ring"></span><span class="sq"></span></div></div>
+    <div class="card">
+      <div class="specrow">Anillo · diámetro <span>96 px · 12 módulos</span></div>
+      <div class="specrow">Anillo · grosor <span>16 px · 2 módulos</span></div>
+      <div class="specrow">Cuadrado · lado <span>24 px · 3 módulos</span></div>
+      <div class="specrow">Posición <span>cuadrante inferior derecho</span></div>
+      <p style="margin-top:16px">El cuadrado orbita el anillo en el punto donde el sistema “toma conciencia”. Esa relación es fija: no se reubica, no se reescala por separado, no se separa más de lo definido.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">04 / Variantes permitidas</div><h2>Versiones cromáticas</h2>
+  <div class="rules">
+    <div class="example" style="background:#0A0F1C"><div class="logo-row"><div class="logoMark sm"><span class="ring"></span><span class="sq"></span></div><div class="word small" style="color:white">QUALIA</div></div></div>
+    <div class="example"><div class="logo-row"><div class="logoMark sm"><span class="ring"></span><span class="sq"></span></div><div class="word small">QUALIA</div></div></div>
+    <div class="example" style="background:#0A0F1C"><div class="logo-row white"><div class="logoMark sm"><span class="ring"></span><span class="sq"></span></div><div class="word small" style="color:white">QUALIA</div></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">05 / Color</div><h2>Paleta oficial</h2>
+  <div class="palette">
+    <div class="swatch"><div class="sw" style="background:#1958FF"></div><div>Intelligence Blue<br><span class="caption">#1958FF</span></div></div>
+    <div class="swatch"><div class="sw" style="background:#0A0F1C"></div><div>Premium Navy<br><span class="caption">#0A0F1C</span></div></div>
+    <div class="swatch"><div class="sw" style="background:#FFFFFF;border-bottom:1px solid #eee"></div><div>White<br><span class="caption">#FFFFFF</span></div></div>
+    <div class="swatch"><div class="sw" style="background:#F6F7F9"></div><div>Interface Paper<br><span class="caption">#F6F7F9</span></div></div>
+  </div>
+</section>
+
+<section class="dark">
+  <div class="kicker">06 / Color de sistema</div><h2>Estados funcionales</h2>
+  <p>Estos colores <strong>no son de marca</strong>. Son de sistema. Aparecen solo en estados funcionales del producto —confirmación, atención, error, foco— y nunca en comunicación ni identidad. El azul sigue siendo el único color con significado de marca.</p>
+  <div class="palette">
+    <div class="swatch"><div class="sw" style="background:#2FBF71"></div><div>Success<br><span class="caption">#2FBF71</span></div></div>
+    <div class="swatch"><div class="sw" style="background:#E8A33D"></div><div>Warning<br><span class="caption">#E8A33D</span></div></div>
+    <div class="swatch"><div class="sw" style="background:#E5484D"></div><div>Danger<br><span class="caption">#E5484D</span></div></div>
+    <div class="swatch"><div class="sw" style="background:#7B8494"></div><div>Neutral 500<br><span class="caption">#7B8494</span></div></div>
+  </div>
+  <p style="margin-top:22px;color:#B9C3D3">Los neutrales intermedios se derivan de la escala entre Premium Navy y Interface Paper. Regla: si un color no comunica un estado, no aparece.</p>
+</section>
+
+
+<section class="dark">
+  <div class="kicker">07 / Emoción del sistema</div><h2>El cuadrado vive</h2>
+  <p>El anillo no cambia: representa estabilidad, sistema y continuidad. El cuadrado sí cambia: es el punto vivo de Qualia. No se vuelve decorativo; expresa estado, intención y temperatura cognitiva.</p>
+  <div class="emotion-grid">
+    <div class="estate darkcard"><span class="stateCode">#1958FF</span><div class="stateLogo" style="--state:#1958FF"><span class="ring"></span><span class="sq"></span></div><div class="stateName" style="--state:#1958FF">Base</div><p>Estado estable. Qualia presente, disponible, sin carga emocional añadida.</p></div>
+    <div class="estate darkcard"><span class="stateCode">#2FBF71</span><div class="stateLogo soft motion-think" style="--state:#2FBF71"><span class="ring"></span><span class="sq"></span></div><div class="stateName" style="--state:#2FBF71">Pensando</div><p>Proceso interno. El cuadrado verde respira o sube apenas. Movimiento lento, casi imperceptible.</p></div>
+    <div class="estate darkcard"><span class="stateCode">#00A6FF</span><div class="stateLogo tall motion-focus" style="--state:#00A6FF"><span class="ring"></span><span class="sq"></span></div><div class="stateName" style="--state:#00A6FF">Foco</div><p>Atención activa. El cuadrado se vuelve vertical: cursor, lectura, precisión.</p></div>
+    <div class="estate darkcard"><span class="stateCode">#8B5CF6</span><div class="stateLogo diamond motion-create" style="--state:#8B5CF6"><span class="ring"></span><span class="sq"></span></div><div class="stateName" style="--state:#8B5CF6">Creativo</div><p>Exploración lateral. El cuadrado gira lento sobre sí mismo. Sigue siendo cuadrado, pero cambia de postura.</p></div>
+    <div class="estate darkcard"><span class="stateCode">#12A150</span><div class="stateLogo soft pulse motion-pulse" style="--state:#12A150"><span class="ring"></span><span class="sq"></span></div><div class="stateName" style="--state:#12A150">Acción</div><p>Listo para ejecutar. Verde profundo y medido, no festivo. Señala avance concreto.</p></div>
+    <div class="estate darkcard"><span class="stateCode">#F59E0B</span><div class="stateLogo tri motion-alert" style="--state:#F59E0B"><span class="ring"></span><span class="sq"></span></div><div class="stateName" style="--state:#F59E0B">Advertencia</div><p>Incertidumbre, riesgo o falta de datos. El cuadrado se vuelve triángulo y parpadea: señal de atención, no de marca.</p></div>
+    <div class="estate darkcard"><span class="stateCode">#E5484D</span><div class="stateLogo motion-error" style="--state:#E5484D"><span class="ring"></span><span class="sq"></span></div><div class="stateName" style="--state:#E5484D">Error</div><p>Fallo real. El cuadrado late como un pulso. Rojo solo para bloqueo, contradicción fuerte o decisión insegura.</p></div>
+    <div class="estate darkcard"><span class="stateCode">#7B8494</span><div class="stateLogo round" style="--state:#7B8494"><span class="ring"></span><span class="sq"></span></div><div class="stateName" style="--state:#7B8494">Silencio</div><p>Reposo o modo pasivo. El cuadrado pierde arista: baja tensión cognitiva.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">08 / Sistema emocional</div><h2>Reglas para darle vida</h2>
+  <div class="square-system">
+    <div class="card">
+      <h3>La emoción no invade la marca</h3>
+      <p>Solo cambia el cuadrado. El círculo, el wordmark y la composición permanecen constantes. Así Qualia puede sentirse viva sin volverse infantil, cambiante o de moda.</p>
+      <table class="table" style="margin-top:18px"><tr><th>Elemento</th><th>Puede cambiar</th><th>No puede cambiar</th></tr><tr><td>Cuadrado</td><td>Color, radio, rotación, forma, pulso, opacidad</td><td>Relación con el círculo</td></tr><tr><td>Círculo</td><td>Respiración leve en pensamiento</td><td>Color principal, grosor, proporción</td></tr><tr><td>Wordmark</td><td>Nada</td><td>Peso, tracking, blanco/negro</td></tr></table>
+    </div>
+    <div class="behavior">
+      <h3>Estados mínimos</h3>
+      <div class="microline" style="--state:#1958FF"><i class="microdot"></i><b>Base</b><span>presente</span></div>
+      <div class="microline" style="--state:#2FBF71"><i class="microdot soft"></i><b>Pensando</b><span>procesando</span></div>
+      <div class="microline" style="--state:#00A6FF"><i class="microdot tall"></i><b>Foco</b><span>atención</span></div>
+      <div class="microline" style="--state:#8B5CF6"><i class="microdot diamond"></i><b>Creativo</b><span>exploración</span></div>
+      <div class="microline" style="--state:#F59E0B"><i class="microdot tri"></i><b>Alerta</b><span>incertidumbre</span></div>
+      <p style="margin-top:22px;position:relative;z-index:1">Máxima regla: emoción como señal, no como espectáculo.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">09 / Tipografía</div><h2>Tipografía de marca</h2>
+  <p>La tipografía debe ser fuerte, limpia y estable. No futurista. No decorativa. El peso recomendado para logo es bold/extrabold con tracking amplio.</p>
+  <table class="table"><tr><th>Uso</th><th>Familia recomendada</th><th>Peso</th><th>Tracking</th></tr><tr><td>Logo</td><td>Söhne / Neue Haas Grotesk / Inter</td><td>800–900</td><td>0.20em–0.28em</td></tr><tr><td>Títulos web</td><td>Inter / Söhne</td><td>750–900</td><td>-0.04em</td></tr><tr><td>Texto</td><td>Inter / Suisse / Arial</td><td>400–600</td><td>normal</td></tr><tr><td>Sistema · código · cursor</td><td>IBM Plex Mono / Geist Mono / JetBrains Mono</td><td>400–600</td><td>normal</td></tr></table>
+  <p style="margin-top:24px">El monoespaciado es la voz tipográfica del cuadrado: cursor, estado, dato, decisión. Aparece donde el sistema “habla en bruto”.</p>
+  <div class="specimen"><b>qualia</b> <span class="blu">$</span> status<br><span class="ok">●</span> sistema activo &nbsp; <span class="er">●</span> 0 errores &nbsp; 14:22:08<br>esperando entrada <span class="cur"></span></div>
+</section>
+
+<section>
+  <div class="kicker">10 / Área de seguridad</div><h2>Uso correcto del logo</h2>
+  <div class="grid">
+    <div class="card" style="grid-column:span 6"><h3>Área mínima</h3><p>Usar como margen mínimo el tamaño del cuadrado del isotipo alrededor de todo el logo. Ningún texto, borde o elemento debe invadir ese espacio.</p></div>
+    <div class="card" style="grid-column:span 6"><h3>Tamaño mínimo</h3><p>Isotipo digital: 24 px de alto mínimo. Logo completo: 120 px de ancho mínimo. En impresión: isotipo 8 mm mínimo.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">11 / Usos incorrectos</div><h2>No hacer</h2>
+  <div class="rules">
+    <div class="example bad"><div class="logoMark"><span class="ring" style="border-color:#8B5CF6"></span><span class="sq" style="background:#F59E0B"></span></div></div>
+    <div class="example bad"><div class="logoMark" style="transform:skew(-14deg)"><span class="ring"></span><span class="sq"></span></div></div>
+    <div class="example bad" style="background:#13C7FF"><div class="logo-row"><div class="logoMark sm"><span class="ring"></span><span class="sq"></span></div><div class="word small">QUALIA</div></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">12 / Elementos propietarios</div><h2>Lenguaje visual propio</h2>
+  <div class="tokens">
+    <div class="token">○</div><div class="token">▪</div><div class="token">○ ▪</div><div class="token">⊙</div><div class="token">□</div>
+  </div>
+  <p style="margin-top:24px">El sistema visual debe usar órbitas, puntos cuadrados, cortes rectos, módulos de 8 px y composiciones con mucho vacío. El cuadrado funciona como cursor, punto de decisión, nodo digital y marcador de conciencia.</p>
+</section>
+
+<section class="dark">
+  <div class="kicker">13 / Movimiento</div><h2>Principio de animación</h2>
+  <p>El movimiento confirma estado; no decora. Solo el cuadrado se mueve libre —es el punto de conciencia—. El anillo permanece estable salvo cuando el sistema piensa.</p>
+  <div class="card live" style="margin-bottom:22px">
+    <div class="logoMark anim"><span class="ring"></span><span class="sq"></span></div>
+    <div><div class="caption">En vivo</div><p style="color:#B9C3D3;margin-top:8px">El cuadrado parpadea como cursor (presencia). El anillo respira al pensar (proceso). Nada más se mueve.</p></div>
+  </div>
+  <div class="grid">
+    <div class="card" style="grid-column:span 3"><h3>Cursor</h3><p>El cuadrado parpadea ~1.1 s con corte duro (encendido/apagado). Nunca fundido suave. Es presencia, no animación.</p></div>
+    <div class="card" style="grid-column:span 3"><h3>Pensamiento</h3><p>El anillo respira (escala 1 → 1.035) en carga o proceso. Lento, continuo, casi imperceptible.</p></div>
+    <div class="card" style="grid-column:span 3"><h3>Transiciones</h3><p>120–240 ms, ease-out. Sin rebotes, sin elásticos, sin giros. La interfaz se asienta, no actúa.</p></div>
+    <div class="card" style="grid-column:span 3"><h3>Regla</h3><p>Si una animación llama la atención sobre sí misma, sobra. Respetar siempre <em>prefers-reduced-motion</em>.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">14 / Papelería</div><h2>Aplicaciones impresas</h2>
+  <div class="stationery">
+    <div class="sheet"><div class="logo-row"><div class="logoMark sm"><span class="ring"></span><span class="sq"></span></div><div class="word small">QUALIA</div></div><p style="position:absolute;bottom:36px">Documento oficial<br>Nombre Apellido<br>Dirección / contacto / web</p></div>
+    <div class="business"><div class="logo-row"><div class="logoMark sm"><span class="ring"></span><span class="sq"></span></div><div class="word small">QUALIA</div></div><p style="color:#C9D2E3">AI personal<br>carlos@qualia.ai<br>qualia.ai</p></div>
+  </div>
+</section>
+
+<section class="dark">
+  <div class="kicker">15 / Web y producto</div><h2>Dirección digital</h2>
+  <div class="webmock">
+    <div class="nav"><div class="logo-row"><div class="logoMark sm"><span class="ring"></span><span class="sq"></span></div><div class="word small">QUALIA</div></div><div>Inicio&nbsp;&nbsp;&nbsp;Sistema&nbsp;&nbsp;&nbsp;Contacto</div></div>
+    <div class="heroText"><h2>Sistemas inteligentes. Experiencias reales.</h2><p>Una interfaz sobria, oscura, geométrica y precisa. El azul solo aparece donde existe acción o identidad.</p><span class="btn">Entrar</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">16 / Iconografía</div><h2>App icon</h2>
+  <div class="rules"><div class="appicon"><div class="logoMark"><span class="ring"></span><span class="sq"></span></div></div><div class="appicon" style="background:white;border:1px solid var(--line)"><div class="logoMark"><span class="ring"></span><span class="sq"></span></div></div><div class="appicon" style="background:#1958FF"><div class="logoMark white"><span class="ring"></span><span class="sq"></span></div></div></div>
+</section>
+
+<section class="dark">
+  <div class="kicker">17 / Voz verbal</div><h2>Cómo habla Qualia</h2>
+  <p>Qualia no solo se ve de una forma; habla de una forma. La voz es tan parte de la identidad como el isotipo. La misma regla rige ambas: cuando hay duda, quitar.</p>
+  <div class="grid" style="margin-bottom:8px">
+    <div class="card" style="grid-column:span 3"><h3>Precisa</h3><p>Menos palabras. Frases que aguantan peso. Sin relleno ni preámbulo.</p></div>
+    <div class="card" style="grid-column:span 3"><h3>Da opciones</h3><p>Presenta caminos con tradeoffs; no impone una sola respuesta. La decisión es del usuario.</p></div>
+    <div class="card" style="grid-column:span 3"><h3>Explica el porqué</h3><p>No solo el qué. El criterio se muestra, no se asume.</p></div>
+    <div class="card" style="grid-column:span 3"><h3>Desafía</h3><p>Contradice cuando hay un error. No valida por defecto. La cercanía se gana con criterio, no con halagos.</p></div>
+  </div>
+  <div class="va">
+    <div class="vbox no"><div class="vlabel">No suena así</div><p>“¡Claro que sí! ¡Me encantaría ayudarte con eso! 😊 Es una idea fantástica, vamos con todo…”</p></div>
+    <div class="vbox yes"><div class="vlabel">Suena así</div><p>“Hay dos caminos. A es más rápido pero frágil; B es más lento y aguanta. ¿Cuál priorizas?”</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">18 / Voz visual</div><h2>Reglas de criterio</h2>
+  <div class="grid">
+    <div class="card" style="grid-column:span 4"><h3>Debe sentirse</h3><p>Estable, lógico, premium, sobrio, inteligente, exacto.</p></div>
+    <div class="card" style="grid-column:span 4"><h3>No debe sentirse</h3><p>Genérico, futurista de moda, infantil, luminoso, sobrecargado.</p></div>
+    <div class="card" style="grid-column:span 4"><h3>Regla final</h3><p>Cuando haya duda: quitar. La marca mejora por reducción.</p></div>
+  </div>
+</section>
+
+<div class="footer"><div class="logo-row"><div class="logoMark sm"><span class="ring"></span><span class="sq"></span></div><div class="word small">QUALIA</div></div><p>Manual de marca v1.2 — identidad, construcción, sistema de color, movimiento, voz y producto.</p></div>
+</body>
+</html>
