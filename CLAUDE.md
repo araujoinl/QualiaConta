@@ -3,6 +3,10 @@
 Convenciones de este repo. La fuente de verdad del diseño es [SPEC.md](SPEC.md);
 el lenguaje del dominio, [CONTEXT.md](CONTEXT.md). Léelos antes de generar nada.
 
+> ⛔ **Antes de dibujar cualquier cosa visible, leé
+> [docs/brand/qualia_manual_marca_v2.html](docs/brand/qualia_manual_marca_v2.html).**
+> Es obligatorio y no admite excepción. Ver "El manual de marca manda" abajo.
+
 ## Qué es este repo
 
 QualiaConta no es una aplicación: es la **configuración, las skills y la memoria**
@@ -49,6 +53,65 @@ configura.
 7. **Secretos sólo en el `.env` de la empresa**, fuera de git. Nunca en la
    memoria, nunca en el libro, nunca en un log.
 8. **Ninguna empresa se conecta sin su rol de ADM Cloud recortado.**
+9. **El manual de marca manda sobre todo lo visible.** Ningún color, tipografía,
+   radio, sombra, espaciado, ícono, forma ni animación se inventa: se toma del
+   manual. Si el manual no lo tiene, el manual se cambia primero — y recién
+   entonces se dibuja. Ver la sección siguiente.
+
+## El manual de marca manda
+
+**Fuente única:** [docs/brand/qualia_manual_marca_v2.html](docs/brand/qualia_manual_marca_v2.html).
+Lo anterior (`docs/brand/archivo/`) es histórico: no se cita, no se copia, no se
+consulta. Los 12 ejemplos vivos están en `docs/brand/pantallas/` y los assets
+oficiales en `docs/brand/assets/`.
+
+### Cómo se usa, en orden
+
+1. **Leer el manual antes de escribir la primera línea de HTML/JSX/CSS.** No de
+   memoria: abrir el archivo. Los tokens están en su bloque `:root`
+   (sección 1, "TOKENS"); la referencia copiable, en §33 (`#s33`); lo prohibido,
+   en §35 (`#s35`).
+2. **Buscar la pieza en `docs/brand/pantallas/`.** Si la pantalla nueva se
+   parece a una que ya existe (tabla → `movimientos.html`, formulario →
+   `configuracion.html`, panel → `resumen.html`), se copian **esos** patrones.
+   Recrear un componente que el manual ya define es un error.
+3. **Todo valor sale de una variable CSS.** `var(--blue)`, nunca `#1958FF`
+   escrito a mano. Un hex crudo en el diff es señal de que alguien inventó.
+4. **El espaciado es múltiplo de 8** (`--m:8px`, o mitades). Nada de 7, 13, 22.
+5. **Tipografía:** sólo `var(--sans)` (Inter) y `var(--mono)` (IBM Plex Mono).
+   Números en tablas y montos siempre `.tnum`. Ninguna fuente nueva, jamás.
+6. **Color:** el azul es el único color con significado (§7). Verde, ámbar y
+   rojo son estados de sistema, no decoración. El navy nunca es fondo de
+   pantalla. El fondo del producto es `--paper`.
+7. **Movimiento:** sólo del catálogo de §32, con `--t-*` y `--ease`. Sin rebote,
+   sin animación decorativa.
+8. **Accesibilidad no es opcional** (§31): foco visible con `--blue-focus`,
+   contraste verificado, nada que dependa sólo del color.
+
+### Lo que está prohibido, sin discusión
+
+- Un color, sombra, radio o espaciado que no esté en el bloque de tokens.
+- Una librería de UI nueva, un set de íconos nuevo, una fuente nueva.
+- Gradientes, glass o efectos fuera de los `--glass-*` definidos.
+- Formas fuera de las cuatro permitidas (§2) o el logo deformado (§3, §4, §6).
+- Modo oscuro improvisado: el manual v2 es modo claro. Si hace falta oscuro, se
+  agrega al manual primero.
+- Copiar estilos del manual v1 archivado.
+
+### Si el manual no cubre el caso
+
+Parás y me preguntás. La respuesta correcta nunca es improvisar: es agregar la
+pieza al manual (§36 dice cómo se cambia el documento), que yo la apruebe, y
+recién ahí dibujar. Un componente sin entrada en el manual no se commitea.
+
+### Antes de decir "listo" en cualquier tarea de UI
+
+1. `grep -nE '#[0-9a-fA-F]{3,8}\b' <archivos tocados>` → cero resultados fuera
+   del bloque `:root`.
+2. La pantalla nueva abierta al lado de su hermana de `docs/brand/pantallas/`:
+   mismo padding, misma tipografía, mismos botones, mismos estados.
+3. Estados de cargando, vacío y error presentes (§28). Sin eso no está hecha.
+4. Consola del browser sin errores.
 
 ## Al escribir skills
 
@@ -74,3 +137,5 @@ No hay typecheck ni tests todavía. Mientras tanto:
 2. Ninguna decisión nueva contradice las 18 de SPEC §1 sin decirlo explícito.
 3. `git status` para confirmar qué cambió.
 4. Ningún `.env` ni credencial en el diff.
+5. Si el diff toca algo visible: la lista de "Antes de decir listo en cualquier
+   tarea de UI" corrida entera, sin saltarse el grep de hex.
