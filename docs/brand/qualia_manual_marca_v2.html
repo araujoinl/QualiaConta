@@ -158,6 +158,10 @@ em{font-style:normal;color:var(--blue);font-weight:600}
 .sec{padding:78px clamp(24px,4.4vw,64px);border-bottom:1px solid var(--line);scroll-margin-top:24px}
 .sec:last-of-type{border-bottom:0}
 .sec>*{max-width:var(--maxw)}
+/* el ancho de columna manda sobre el ancho de seccion: 68ch, no 1080px */
+.sec>p{max-width:68ch}
+.sec>.lede{max-width:64ch}
+.sec>.note{max-width:66ch}
 .sec-head{margin-bottom:34px}
 .sec-head p{margin-top:14px}
 .rule{height:1px;background:var(--line);border:0;margin:40px 0}
@@ -219,10 +223,12 @@ em{font-style:normal;color:var(--blue);font-weight:600}
 .vlabel i{width:7px;height:7px;background:currentColor;flex:0 0 auto}
 
 /* Aviso pedagógico — el "porqué" contable */
-.cond{padding:11px 13px;border-radius:var(--r-md);display:flex;gap:10px;align-items:flex-start;
+/* display:block a proposito: en flex, un <b> o un <a> sueltos se vuelven items
+   y se apilan en columnas. El cuadrado se posiciona, el texto fluye. */
+.cond{padding:11px 13px 11px 32px;border-radius:var(--r-md);display:block;position:relative;
   background:rgba(25,88,255,.05);border:1px solid rgba(25,88,255,.2);
   font-size:12.5px;line-height:1.55;color:#2A3F7A;max-width:72ch}
-.cond i{width:7px;height:7px;background:var(--blue);flex:0 0 auto;margin-top:5px}
+.cond>i{position:absolute;left:13px;top:17px;width:7px;height:7px;background:var(--blue)}
 .cond b{color:var(--blue)}
 
 /* -------------------------------------------------------------- 8. EL LOGO */
@@ -351,7 +357,10 @@ em{font-style:normal;color:var(--blue);font-weight:600}
   box-shadow:0 6px 16px rgba(25,88,255,.18), 0 1px 3px rgba(10,15,28,.08), inset 0 1px 0 #fff}
 /* Neutra: segundo nivel, sin azul */
 .gtabs.neutral .pill{background:rgba(255,255,255,.72);border-color:var(--line-hi);box-shadow:0 4px 12px rgba(10,15,28,.07), inset 0 1px 0 #fff}
-.gtabs.neutral:has(input:checked) label{text-shadow:none;color:var(--ink2)}
+/* :nth-of-type(n) sube la especificidad a (0,4,2) para empatarle a la regla del
+   activo azul de mas arriba; al venir despues, gana. Sin esto la neutra queda
+   con pildora gris y texto azul: neutra a medias. */
+.gtabs.neutral:has(input:checked) label:nth-of-type(n){text-shadow:none;color:var(--ink2)}
 .gtabs.autodemo .pill{animation:autoslide 9s var(--ease) infinite}
 
 /* Barra superior del producto */
@@ -2256,10 +2265,11 @@ em{font-style:normal;color:var(--blue);font-weight:600}
 .s30-pill{position:absolute;z-index:1;top:5px;bottom:5px;left:5px;width:calc((100% - 10px)/2);
   border-radius:999px;background:rgba(25,88,255,.06);border:1px solid rgba(25,88,255,.4);
   transition:transform var(--t-slow) var(--ease)}
-.s30-dock:has(input:nth-of-type(1):checked) .s30-pill{transform:translateX(0)}
-.s30-dock:has(input:nth-of-type(2):checked) .s30-pill{transform:translateX(100%)}
-.s30-dock:has(input:nth-of-type(1):checked) label:nth-of-type(1),
-.s30-dock:has(input:nth-of-type(2):checked) label:nth-of-type(2){color:var(--blue)}
+/* combinador hermano y no :has(): el estado del radio invalida seguro */
+#s30d1:checked~.s30-pill{transform:translateX(0)}
+#s30d2:checked~.s30-pill{transform:translateX(100%)}
+#s30d1:checked~label:nth-of-type(1),
+#s30d2:checked~label:nth-of-type(2){color:var(--blue)}
 .s30-hint{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.04em;text-align:center}
 
 /* --- comparación táctil: escritorio vs móvil ------------------------------ */
@@ -2281,7 +2291,6 @@ em{font-style:normal;color:var(--blue);font-weight:600}
 .s31-verd{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.04em;white-space:nowrap}
 .s31-verd.aa{color:var(--ok-ink)}
 .s31-verd.grande{color:var(--warn-ink)}
-.s31-verd.falla{color:var(--err-ink)}
 
 /* --- foco: el anillo, congelado para poder mirarlo ------------------------ */
 .s31-ring{outline:2px solid var(--blue-focus);outline-offset:3px;border-radius:4px}
@@ -2322,7 +2331,9 @@ em{font-style:normal;color:var(--blue);font-weight:600}
 
 /* ===== p13.html ===== */
 /* s32 — catálogo de animaciones: fichas con cada animación corriendo sobre la pieza real */
-.s32-play{position:absolute;width:0;height:0;opacity:0;pointer-events:none}
+.s32-play{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+/* el checkbox está oculto pero sigue siendo focalizable: el foco se ve en su etiqueta */
+.s32-play:focus-visible~.s32-bar .s32-replay{outline:2px solid var(--blue-focus);outline-offset:3px}
 .s32-bar{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:20px}
 .s32-hint{flex:1 1 320px}
 .s32-replay{user-select:none}
@@ -2341,7 +2352,8 @@ em{font-style:normal;color:var(--blue);font-weight:600}
   color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 8px;line-height:1.5}
 .s32-time{font-family:var(--mono);font-size:11px;color:var(--blue);letter-spacing:.02em}
 .s32-where{font-size:12px;line-height:1.55;color:var(--ink2)}
-.code.s32-line{padding:8px 10px;font-size:10.5px;line-height:1.5;border-radius:var(--r-sm)}
+.code.s32-line{padding:8px 10px;font-size:10.5px;line-height:1.5;border-radius:var(--r-sm);
+  white-space:pre-wrap;overflow-x:visible;word-break:break-word}
 
 /* piezas vivas de las fichas */
 .plate.s32-mini{padding:12px 14px;text-align:left}
@@ -2352,8 +2364,8 @@ em{font-style:normal;color:var(--blue);font-weight:600}
 .s32-ok{position:relative;width:96px;height:96px;display:grid;place-items:center}
 .s32-ok span{display:block;width:62px;height:62px;border:8px solid var(--ok);border-radius:50%}
 .s32-lanes{width:100%;display:flex;flex-direction:column;gap:8px;
-  -webkit-mask:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%);
-  mask:linear-gradient(90deg,transparent 0,#000 10%,#000 90%,transparent 100%)}
+  -webkit-mask:linear-gradient(90deg,transparent 0,#000 14%,#000 86%,transparent 100%);
+  mask:linear-gradient(90deg,transparent 0,#000 14%,#000 86%,transparent 100%)}
 .s32-lane{position:relative;height:26px;overflow:hidden}
 .s32-train{position:absolute;top:0;height:100%;display:flex;align-items:center;gap:10px;width:max-content;
   animation:slide linear infinite}
@@ -10024,9 +10036,9 @@ mask:linear-gradient(90deg,transparent 0,
           </div>
         </div>
       </div>
-      <p class="note" style="margin-top:12px">El navy es la única superficie oscura autorizada
-        de todo el sistema, y sólo acá: dentro de un ícono de 120 px que el sistema operativo
-        va a poner junto a otros oscuros. No habilita nada más.</p>
+      <p class="note" style="margin-top:12px">El navy es la única superficie oscura que el
+        sistema dibuja, y sólo acá: dentro de un ícono de 120 px que el sistema operativo va a
+        poner junto a otros oscuros. No habilita nada más.</p>
     </div>
     <div class="c5">
       <div class="plate pad">
@@ -10834,7 +10846,7 @@ label svg{width:<b>17px</b>;height:17px}</div>
       <h3>Qué sobrevive al gris y qué no</h3>
       <p style="font-size:14.5px">Sobreviven el triángulo, el círculo, el rombo y la barra
         vertical: se distinguen de un vistazo sin un solo dato de color. Para quien no separa
-        rojo de verde —una de cada doce personas con cromosoma Y— esa tira sigue siendo
+        rojo de verde —alrededor de uno de cada doce hombres— esa tira sigue siendo
         legible.</p>
       <p style="font-size:14.5px"><b>No sobreviven Base y Error</b>: los dos son cuadrados
         llenos y en gris quedan casi iguales. Es el agujero real del sistema, y por eso el
@@ -10935,8 +10947,8 @@ label svg{width:<b>17px</b>;height:17px}</div>
         <div class="s32-time">.55 s · var(--ease) · una vez</div>
         <div class="code s32-line"><b>.rise</b> { animation:rise .55s var(--ease) both }</div>
         <p class="s32-where">Aparecer subiendo 14 px: la entrada estándar de todo. Sección, tarjeta, fila, KPI.
-          Con <b>.d1…d6</b> se escalona de a 60 ms. Las 12 pantallas la usan 43 veces — .25 s dentro de listas,
-          .55 s en bloques grandes.</p>
+          Con <b>.d1…d6</b> se escalona de a 60 ms. Las 12 pantallas la usan 43 veces: .55 s en la clase
+          utilitaria, .25 s cuando abre un menú y .4–.45 s en las filas de una lista, escalonadas.</p>
       </div>
     </div>
 
@@ -11219,14 +11231,14 @@ animation:<b>growx</b> .8s var(--ease) both</div>
       <div class="demo s32-stage"><span class="demolbl">sólo demo</span>
         <div class="gtabs autodemo compact" style="--n:4">
           <span class="pill"></span>
-          <label>Resumen</label><label>Bandeja</label><label>Movimientos</label><label>NCF</label>
+          <label>Mayo</label><label>Junio</label><label>Julio</label><label>Agosto</label>
         </div>
       </div>
       <div class="s32-body">
         <div class="s32-name">autoslide <span class="s32-prop">transform</span></div>
         <div class="s32-time">9 s · var(--ease) · infinita</div>
         <div class="code s32-line"><b>.gtabs.autodemo .pill</b> { animation:autoslide 9s var(--ease) infinite }</div>
-        <p class="s32-where">La píldora del selector recorriendo las cuatro posiciones sola. Existe únicamente
+        <p class="s32-where">La píldora del selector de período recorriendo las cuatro posiciones sola. Existe únicamente
           para mostrar el deslizador en este manual y en pantallas de demo. En producto la píldora la mueve el
           <b>:checked</b> con una transición de 240 ms: responde a un clic, no a un reloj.</p>
       </div>
@@ -11245,7 +11257,7 @@ animation:<b>growx</b> .8s var(--ease) both</div>
         <tr><th>Animación</th><th>Duración</th><th>Curva</th><th>Repite</th><th>Anima</th><th>Vive en</th></tr>
       </thead>
       <tbody>
-        <tr><td class="ref">rise</td><td class="ref">.55 s (.25 s en listas)</td><td class="ref">var(--ease)</td><td>una vez</td><td>transform + opacidad</td><td>toda entrada</td></tr>
+        <tr><td class="ref">rise</td><td class="ref">.55 s · .25 s al abrir un menú</td><td class="ref">var(--ease)</td><td>una vez</td><td>transform + opacidad</td><td>toda entrada</td></tr>
         <tr><td class="ref">qpop</td><td class="ref">140–240 ms</td><td class="ref">var(--ease)</td><td>una vez</td><td>transform + opacidad</td><td>el elemento chico que aparece</td></tr>
         <tr><td class="ref">qblink</td><td class="ref">1.1 s</td><td class="ref">steps(1,end)</td><td>infinita</td><td>opacidad</td><td>cursor, botón ocupado, trabajo vivo</td></tr>
         <tr><td class="ref">qbreathe</td><td class="ref">3.6 s (7 s en el login)</td><td class="ref">ease-in-out</td><td>infinita</td><td>transform</td><td>el anillo</td></tr>
