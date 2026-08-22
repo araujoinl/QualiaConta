@@ -158,6 +158,46 @@ b,strong{font-weight:700;color:var(--ink)}
 .kpi .val{font-family:var(--mono);font-size:27px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
 .kpi .hint{font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:6px}
 
+/* ── Diagrama ────────────────────────────────────────────────────────────────
+   Piezas copiadas de sus secciones del manual, no inventadas:
+   .ladder/.step  ← §03 (.s03-ladder/.s03-step)   escalera de pasos
+   .stem          ← §15 (.s15-stem)               tallo conector, 2px var(--line)
+   .tree/.node    ← §15 (.s15-tree/.s15-node)
+   .stair         ← §11 (.s11-stair)              tres pasos en grilla
+   .qcur          ← §12 (.qcur)  el cuadrado: procesamiento y decisión.
+                    Va QUIETO — el manual sólo lo anima cuando algo pasa ahora.
+   .cir           ← §12  el círculo relleno: dato en reposo, estado neutral.
+   .qcur.hueco    ← §12  el cuadrado hueco: existe pero todavía no pesa.
+   Las flechas son SVG inline con currentColor (§12 prohíbe glifos de texto). */
+.ladder{display:flex;flex-wrap:wrap;gap:14px;align-items:stretch;width:100%}
+.step{
+  flex:1 1 148px;min-width:132px;background:var(--white);border:1px solid var(--line);
+  border-radius:var(--r-lg);padding:14px 14px 16px;display:flex;flex-direction:column;gap:10px;
+}
+.step .lbl{
+  font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);
+}
+.step .t{font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.35}
+.step .d{font-size:12.5px;color:var(--muted);line-height:1.5}
+.step.on{border-color:rgba(25,88,255,.4);box-shadow:inset 2.5px 0 0 var(--blue)}
+.step.alto{border-color:rgba(232,163,61,.45);box-shadow:inset 2.5px 0 0 var(--warn)}
+.step.fin{background:var(--navy);border-color:var(--navy)}
+.step.fin .t{color:var(--white)}
+.step.fin .d{color:var(--dim2)}
+.step.fin .lbl{color:var(--blue-focus)}
+.stem{width:2px;height:26px;background:var(--line);flex:0 0 auto;align-self:center}
+.tree{width:100%;display:flex;flex-direction:column;align-items:stretch}
+.node{position:relative;min-width:0}
+.stair{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.qcur{width:9px;height:9px;background:var(--blue);display:inline-block;flex:0 0 auto}
+.qcur.hueco{background:none;box-shadow:inset 0 0 0 1.5px var(--dim)}
+.qcur.foco{background:var(--blue-focus)}
+.cir{width:9px;height:9px;border-radius:50%;background:var(--dim2);display:inline-block;flex:0 0 auto}
+.arrow{color:var(--dim);flex:0 0 auto;align-self:center}
+@media (max-width:900px){
+  .stair{grid-template-columns:1fr}
+}
 @media (max-width:900px){
   .c3,.c4,.c6{grid-column:span 12}
 }
@@ -233,20 +273,41 @@ b,strong{font-weight:700;color:var(--ink)}
     </p>
   </div>
 
-  <div class="plate pad">
-    <div class="spec">
-      <div class="specrow">Normas DGII + NIIF-PYMES · qué exige el fisco
-        <span>solo lectura · <b>rango y vigencia</b></span></div>
-      <div class="specrow">P-001 … P-005 · cómo se razona un asiento
-        <span>ratificados <b>2026-08-07</b></span></div>
-      <div class="specrow">H-01 … H-13 · este hecho lleva este asiento
-        <span>fijos de por vida · uno nuevo <b>se agrega</b></span></div>
-      <div class="specrow">C-001 … C-007 · lo que decide Blackbox
-        <span>nacen borrador · <b>los ratifica Carlos</b></span></div>
-      <div class="specrow">Libro de acción · qué se decidió tal día
-        <span>solo se agrega · <b>323 entradas</b></span></div>
-      <div class="specrow">Candados · lo que no se puede ni por error
-        <span>triggers en la base · <b>no es texto</b></span></div>
+  <div class="tree">
+    <div class="step">
+      <div class="row tight"><span class="cir"></span><span class="lbl">La ley</span></div>
+      <div class="row"><span class="t">Normas DGII + NIIF-PYMES</span><span class="mono">qué exige el fisco</span></div>
+      <div class="d">solo lectura · rango y vigencia</div>
+    </div>
+    <div class="stem"></div>
+    <div class="step">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">El método</span></div>
+      <div class="row"><span class="t">P-001 … P-005</span><span class="mono">cómo se razona un asiento</span></div>
+      <div class="d">ratificados 2026-08-07</div>
+    </div>
+    <div class="stem"></div>
+    <div class="step">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">Los hechos</span></div>
+      <div class="row"><span class="t">H-01 … H-13</span><span class="mono">este hecho lleva este asiento</span></div>
+      <div class="d">fijos de por vida</div>
+    </div>
+    <div class="stem"></div>
+    <div class="step">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">La empresa</span></div>
+      <div class="row"><span class="t">C-001 … C-007</span><span class="mono">lo que decide Blackbox</span></div>
+      <div class="d">nacen borrador, los ratifica Carlos</div>
+    </div>
+    <div class="stem"></div>
+    <div class="step">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">El diario</span></div>
+      <div class="row"><span class="t">Libro de acción</span><span class="mono">qué se decidió tal día</span></div>
+      <div class="d">solo se agrega · 323 entradas</div>
+    </div>
+    <div class="stem"></div>
+    <div class="step fin">
+      <div class="row tight"><span class="qcur foco"></span><span class="lbl">El candado</span></div>
+      <div class="row"><span class="t">Triggers en la base</span><span class="mono">lo que no se puede ni por error</span></div>
+      <div class="d">no es texto, es código</div>
     </div>
   </div>
 
@@ -293,33 +354,60 @@ b,strong{font-weight:700;color:var(--ink)}
   </div>
 
   <div class="grid">
-    <div class="plate pad c6">
-      <div class="row tight">
-        <span class="badge blue"><i></i>Memoria escrita</span>
-        <span class="mono">la escriben personas</span>
-      </div>
-      <h3>Lo que decidimos</h3>
-      <div class="spec">
-        <div class="specrow">Fuente <span>nucleo-contable/ · criterios.md · libro-de-accion/</span></div>
-        <div class="specrow">Se empaqueta <span>deploy/generar-tajadas.sh</span></div>
-        <div class="specrow">Viaja como <span>nucleo.ts + tajadas.ts · en el deploy</span></div>
-        <div class="specrow">La lee <span><b>qualia-contable</b></span></div>
-        <div class="specrow">Su trabajo <span>razonar el caso nuevo</span></div>
+    <div class="c6">
+      <div class="row tight"><span class="badge blue"><i></i>Memoria escrita</span><span class="mono">la escriben personas</span></div>
+      <div class="tree">
+        <div class="step ">
+          <div class="row tight"><span class="qcur"></span><span class="lbl">Fuente</span></div>
+          <div class="t">Doctrina escrita</div>
+          <div class="d">nucleo-contable/ · criterios.md · libro-de-accion/</div>
+        </div>
+        <div class="stem"></div>
+        <div class="step ">
+          <div class="row tight"><span class="qcur"></span><span class="lbl">Empaqueta</span></div>
+          <div class="t">generar-tajadas.sh</div>
+          <div class="d">Corre a mano, antes de desplegar.</div>
+        </div>
+        <div class="stem"></div>
+        <div class="step ">
+          <div class="row tight"><span class="qcur"></span><span class="lbl">Viaja como</span></div>
+          <div class="t">nucleo.ts + tajadas.ts</div>
+          <div class="d">Adentro del deploy de la función.</div>
+        </div>
+        <div class="stem"></div>
+        <div class="step fin">
+          <div class="row tight"><span class="qcur"></span><span class="lbl">La lee</span></div>
+          <div class="t">qualia-contable</div>
+          <div class="d">Razona el caso nuevo.</div>
+        </div>
       </div>
     </div>
-
-    <div class="plate pad c6">
-      <div class="row tight">
-        <span class="badge info"><i></i>Memoria destilada</span>
-        <span class="mono">la calcula una máquina</span>
-      </div>
-      <h3>Lo que de hecho hicimos</h3>
-      <div class="spec">
-        <div class="specrow">Fuente <span>vendor-bills-detalle.jsonl · 1 160 facturas</span></div>
-        <div class="specrow">Se destila <span>qualia-espejo · 02:00 RD</span></div>
-        <div class="specrow">Viaja como <span>proveedor-cuentas.json + rnc-tipo-gasto.json</span></div>
-        <div class="specrow">La lee <span><b>qualia-proponedor</b></span></div>
-        <div class="specrow">Su trabajo <span>clasificar la factura que entra</span></div>
+    <div class="c6">
+      <div class="row tight"><span class="badge info"><i></i>Memoria destilada</span><span class="mono">la calcula una máquina</span></div>
+      <div class="tree">
+        <div class="step ">
+          <div class="row tight"><span class="qcur foco"></span><span class="lbl">Fuente</span></div>
+          <div class="t">1 160 facturas de ADM</div>
+          <div class="d">vendor-bills-detalle.jsonl · el espejo crudo</div>
+        </div>
+        <div class="stem"></div>
+        <div class="step ">
+          <div class="row tight"><span class="qcur foco"></span><span class="lbl">Destila</span></div>
+          <div class="t">qualia-espejo</div>
+          <div class="d">Solo, cada madrugada a las 02:00 RD.</div>
+        </div>
+        <div class="stem"></div>
+        <div class="step ">
+          <div class="row tight"><span class="qcur foco"></span><span class="lbl">Viaja como</span></div>
+          <div class="t">proveedor-cuentas.json<br>rnc-tipo-gasto.json</div>
+          <div class="d">En el bucket qualia-espejos.</div>
+        </div>
+        <div class="stem"></div>
+        <div class="step fin">
+          <div class="row tight"><span class="qcur foco"></span><span class="lbl">La lee</span></div>
+          <div class="t">qualia-proponedor</div>
+          <div class="d">Clasifica la factura que entra.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -358,29 +446,22 @@ b,strong{font-weight:700;color:var(--ink)}
     </p>
   </div>
 
-  <div class="tblwrap">
-    <table class="tbl">
-      <thead>
-        <tr><th>Condición</th><th>Efecto</th><th>Qué significa</th></tr>
-      </thead>
-      <tbody>
-        <tr class="hot">
-          <td class="ref">usos &gt;= 3 &nbsp;Y&nbsp; pct &gt;= 70%</td>
-          <td><span class="badge blue"><i></i>Manda</span></td>
-          <td>Precedente citable: la cuenta sale de ahí sin razonar.</td>
-        </tr>
-        <tr>
-          <td class="ref">usos &lt; 3 &nbsp;Y&nbsp; pct &gt;= 5%</td>
-          <td><span class="badge warn"><i></i>Se ofrece</span></td>
-          <td>No decide, pero entra al menú de opciones del modelo.</td>
-        </tr>
-        <tr>
-          <td class="ref">sin precedente</td>
-          <td><span class="badge neutral"><i></i>Se razona</span></td>
-          <td>Va a la doctrina; si la doctrina calla, pregunta.</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="stair">
+    <div class="step on">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">usos &gt;= 3 · pct &gt;= 70%</span></div>
+      <div class="row tight"><span class="badge blue"><i></i>Manda</span></div>
+      <div class="d">Precedente citable: la cuenta sale de ahí sin razonar.</div>
+    </div>
+    <div class="step alto">
+      <div class="row tight"><span class="qcur hueco"></span><span class="lbl">usos &lt; 3 · pct &gt;= 5%</span></div>
+      <div class="row tight"><span class="badge warn"><i></i>Se ofrece</span></div>
+      <div class="d">No decide, pero entra al menú de opciones del modelo.</div>
+    </div>
+    <div class="step">
+      <div class="row tight"><span class="cir"></span><span class="lbl">sin precedente</span></div>
+      <div class="row tight"><span class="badge neutral"><i></i>Se razona</span></div>
+      <div class="d">Va a la doctrina; si la doctrina calla, pregunta.</div>
+    </div>
   </div>
 
   <p class="note">
@@ -400,58 +481,54 @@ b,strong{font-weight:700;color:var(--ink)}
     </p>
   </div>
 
-  <div class="tblwrap">
-    <table class="tbl">
-      <thead>
-        <tr><th>Paso</th><th>Qué pasa</th><th>Detalle</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="ref">1</td>
-          <td><b>Llega algo a la mesa</b></td>
-          <td>Una factura, un caso de conciliación, una nota de débito.</td>
-        </tr>
-        <tr>
-          <td class="ref">2</td>
-          <td><b>¿Qué documento es?</b></td>
-          <td>Primero el documento, después la cuenta. Lo decide el rol del hecho,
-              nunca el NCF: hay 96 contraejemplos medidos en el propio histórico.</td>
-        </tr>
-        <tr>
-          <td class="ref">3</td>
-          <td><b>¿Qué cuenta?</b></td>
-          <td>Hecho H aplicable + criterios C + precedente destilado + plan de cuentas vivo.</td>
-        </tr>
-        <tr>
-          <td class="ref">4</td>
-          <td><b>¿Qué exige la DGII?</b></td>
-          <td>NCF, retención, tipo de gasto 606.</td>
-        </tr>
-        <tr class="hot">
-          <td class="ref">—</td>
-          <td><b>Si ninguna capa contesta, no adivina</b></td>
-          <td>Abre una pregunta y espera el dictamen. Este freno es la pieza que
-              hace auditable al sistema.</td>
-        </tr>
-        <tr>
-          <td class="ref">5</td>
-          <td><b>Propuesta en la mesa</b></td>
-          <td>Carlos aprueba o rechaza. Un rechazo con motivo legisla; un rechazo
-              mudo no enseña nada.</td>
-        </tr>
-        <tr>
-          <td class="ref">6</td>
-          <td><b>Registro en ADM</b></td>
-          <td>Script por tipo de documento, con los candados puestos.</td>
-        </tr>
-        <tr>
-          <td class="ref">7</td>
-          <td><b>Si hubo dictamen nuevo, se escribe</b></td>
-          <td>Entrada en el libro siempre. Criterio C además, solo si vale para
-              siempre. Sin Alcance, documenta pero no automatiza.</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="ladder">
+    <div class="step ">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">01</span></div>
+      <div class="t">Llega a la mesa</div>
+      <div class="d">Factura, caso o nota de débito.</div>
+    </div>
+    <svg class="arrow" width="26" height="12" viewBox="0 0 26 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h22M19 2.2 23.2 6 19 9.8"/></svg>
+    <div class="step ">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">02</span></div>
+      <div class="t">¿Qué documento es?</div>
+      <div class="d">Lo decide el rol del hecho, nunca el NCF.</div>
+    </div>
+    <svg class="arrow" width="26" height="12" viewBox="0 0 26 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h22M19 2.2 23.2 6 19 9.8"/></svg>
+    <div class="step ">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">03</span></div>
+      <div class="t">¿Qué cuenta?</div>
+      <div class="d">Hecho H + criterios C + precedente + plan vivo.</div>
+    </div>
+    <svg class="arrow" width="26" height="12" viewBox="0 0 26 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h22M19 2.2 23.2 6 19 9.8"/></svg>
+    <div class="step ">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">04</span></div>
+      <div class="t">¿Qué exige la DGII?</div>
+      <div class="d">NCF, retención, tipo de gasto 606.</div>
+    </div>
+    <svg class="arrow" width="26" height="12" viewBox="0 0 26 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h22M19 2.2 23.2 6 19 9.8"/></svg>
+    <div class="step alto">
+      <div class="row tight"><span class="qcur hueco"></span><span class="lbl">—</span></div>
+      <div class="t">Si nada contesta: pregunta</div>
+      <div class="d">No adivina. Este freno es lo que lo hace auditable.</div>
+    </div>
+    <svg class="arrow" width="26" height="12" viewBox="0 0 26 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h22M19 2.2 23.2 6 19 9.8"/></svg>
+    <div class="step on">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">05</span></div>
+      <div class="t">Propuesta en la mesa</div>
+      <div class="d">Carlos aprueba o rechaza con motivo.</div>
+    </div>
+    <svg class="arrow" width="26" height="12" viewBox="0 0 26 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h22M19 2.2 23.2 6 19 9.8"/></svg>
+    <div class="step ">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">06</span></div>
+      <div class="t">Registro en ADM</div>
+      <div class="d">Script por tipo de documento, con candados.</div>
+    </div>
+    <svg class="arrow" width="26" height="12" viewBox="0 0 26 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h22M19 2.2 23.2 6 19 9.8"/></svg>
+    <div class="step on">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">07</span></div>
+      <div class="t">Se escribe lo dictado</div>
+      <div class="d">Libro siempre; criterio C si vale para siempre.</div>
+    </div>
   </div>
 
   <hr class="rule">
@@ -562,7 +639,7 @@ b,strong{font-weight:700;color:var(--ink)}
   <div class="stack">
     <div class="plate pad">
       <div class="row tight">
-        <span class="badge warn"><i></i>proveedores.md</span>
+        <span class="qcur hueco"></span><span class="badge warn"><i></i>proveedores.md</span>
         <span class="mono">sin generador</span>
       </div>
       <p class="note">
@@ -573,7 +650,7 @@ b,strong{font-weight:700;color:var(--ink)}
     </div>
     <div class="plate pad">
       <div class="row tight">
-        <span class="badge warn"><i></i>plan-cuentas.json</span>
+        <span class="qcur hueco"></span><span class="badge warn"><i></i>plan-cuentas.json</span>
         <span class="mono">congelado desde 2026-08-20</span>
       </div>
       <p class="note">
@@ -584,7 +661,7 @@ b,strong{font-weight:700;color:var(--ink)}
     </div>
     <div class="plate pad">
       <div class="row tight">
-        <span class="badge warn"><i></i>48 cuentas</span>
+        <span class="qcur hueco"></span><span class="badge warn"><i></i>48 cuentas</span>
         <span class="mono">semántica en borrador</span>
       </div>
       <p class="note">
@@ -594,7 +671,7 @@ b,strong{font-weight:700;color:var(--ink)}
     </div>
     <div class="plate pad">
       <div class="row tight">
-        <span class="badge warn"><i></i>1 factura</span>
+        <span class="qcur hueco"></span><span class="badge warn"><i></i>1 factura</span>
         <span class="mono">no se puede releer</span>
       </div>
       <p class="note">
@@ -616,35 +693,29 @@ b,strong{font-weight:700;color:var(--ink)}
     </p>
   </div>
 
-  <div class="grid">
-    <div class="plate pad c6">
-      <div class="row tight">
-        <span class="badge neutral"><i></i>Cada hora, al minuto 5</span>
-      </div>
-      <h3>Liviano</h3>
-      <p class="note">
-        Le pregunta a ADM si hay alguna factura que el espejo no tenga. Si no hay,
-        se va.
-      </p>
-      <div class="spec">
-        <div class="specrow">Tope de altas <span><b>200</b> por corrida</span></div>
-        <div class="specrow">Lo que sobra <span>entra en la siguiente</span></div>
-      </div>
+  <div class="ladder">
+    <div class="step on">
+      <div class="row tight"><span class="qcur"></span><span class="lbl">cada hora · :05</span></div>
+      <div class="t">¿Hay factura nueva?</div>
+      <div class="d">Si no hay, se va. Tope de 200 altas por corrida.</div>
     </div>
-
-    <div class="plate pad c6">
-      <div class="row tight">
-        <span class="badge blue"><i></i>02:00 RD · 06:00 UTC</span>
-      </div>
-      <h3>Pesado</h3>
-      <p class="note">
-        Además de lo anterior, relee la ventana reciente y regenera los dos agg.
-      </p>
-      <div class="spec">
-        <div class="specrow">Ventana de relectura <span><b>60</b> días · 118 facturas</span></div>
-        <div class="specrow">Tope de relecturas <span><b>150</b> por corrida</span></div>
-        <div class="specrow">Si recorta <span>lo avisa en el log</span></div>
-      </div>
+    <svg class="arrow" width="26" height="12" viewBox="0 0 26 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h22M19 2.2 23.2 6 19 9.8"/></svg>
+    <div class="step">
+      <div class="row tight"><span class="cir"></span><span class="lbl">¿son las 02:00 RD?</span></div>
+      <div class="t">No · termina acá</div>
+      <div class="d">El resto del día no hace nada más.</div>
+    </div>
+    <svg class="arrow" width="26" height="12" viewBox="0 0 26 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h22M19 2.2 23.2 6 19 9.8"/></svg>
+    <div class="step alto">
+      <div class="row tight"><span class="qcur foco"></span><span class="lbl">sí · relee</span></div>
+      <div class="t">Ventana de 60 días</div>
+      <div class="d">118 facturas, tope 150. Única forma de ver una corrección.</div>
+    </div>
+    <svg class="arrow" width="26" height="12" viewBox="0 0 26 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h22M19 2.2 23.2 6 19 9.8"/></svg>
+    <div class="step fin">
+      <div class="row tight"><span class="qcur foco"></span><span class="lbl">y destila</span></div>
+      <div class="t">Regenera los dos agg</div>
+      <div class="d">Los sube al bucket. El clasificador ya los usa.</div>
     </div>
   </div>
 
