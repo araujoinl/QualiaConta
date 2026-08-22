@@ -148,7 +148,7 @@ Cuentas por Pagar sola: **nunca se escribe la línea de CxP**.
 | A‑17 | Manejo de redes sociales | ─────► | `630.06` Manejo de Redes Sociales | 02 | 18% + retención | ✔ 6 usos |
 | A‑18 | Publicidad en medios tradicionales | ─────► | `630.03` Publicidad Medios Tradicionales | 02 | 18% | ✔ 1 uso |
 | A‑19 | Servicios de limpieza / tintorería | ─────► | `620.07` Servicios de Limpieza | 02 | 18% | ✔ 1 uso |
-| A‑20 | Comisión de corretaje / intermediación | ─────► | `611.02` Comisiones | 02 | 18% | ✔ FREEWAY |
+| A‑20 | Comisión de corretaje por conseguir inquilino/comprador de un inmueble que Blackbox alquila o vende (la nave) | ─────► | `511.07` Comisión Servicios Generales (costo) | **09** | 18% | ✔ FREEWAY FP00001068 (corregido de `611.02`/02 el 2026-08-20; `611.02` es comisiones de nómina, Familia I) |
 | A‑21 | Membresía de gimnasio / fitness | ─────► | `630.05` Gastos de Representación | 05 | 18% | ✔ ratificado (Pulse Harmony) |
 | A‑22 | Electricidad | ─────► | `620.04` Electricidad | 02 | según factura | ○ sin precedente |
 | A‑23 | Alquiler de local / nave que la empresa PAGA | ─────► | `620.01` Alquiler de Inmuebles | **03** | ver H‑05 (retenciones) | ○ sin precedente |

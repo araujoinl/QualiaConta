@@ -525,7 +525,15 @@ pasivo con un tercero (adelantos de clientes, depósitos en garantía) o una
 cuenta por cobrar, **no es un crédito bancario** — es plata de alguien que no
 es el banco, y ya perdiste en la pregunta 1. Eso salió como CB00000258.
 
-### El papel manda dos datos más: la tasa y el descuento
+### El papel manda tres datos más: la fecha, la tasa y el descuento
+
+- **Fecha** → `fecha` es la **fecha de emisión del NCF impresa** en el papel.
+  Ni la del período que factura (una póliza de julio emitida el 1-jul va con
+  1-jul), ni la del pago, ni la del movimiento del banco. Precedente del
+  error: FP00001130 (Humano Seguros) salió con 25-jun siendo emitida el
+  1-jul y la contable la corrigió a mano ya pagada. Si DGII verificó el
+  comprobante, el registrador compara tu fecha contra la de emisión de DGII
+  y frena si no coinciden.
 
 - **Moneda extranjera** → `moneda: "USD"` **y** `tasa_usd` = la tasa de cambio
   IMPRESA en el papel (Account One la imprime como «Tasa»). Sin `tasa_usd` el

@@ -35,7 +35,7 @@ Regenerar (la evidencia; la semántica dictada sobrevive):
 | `230.03` | Leasing 247355SDO071A | Pasivo | 18 | 1 | Banco Multiple Santa Cru | — (dictar en ratificación) |
 | `305` | Carga Inicial | Capital | 5 | 2 | Acomsa, LBY | — (dictar en ratificación) |
 | `511.04` | Fletes | Costo | 4 | 1 | Logistichause Internatio | — (dictar en ratificación) |
-| `611.02` | Comisiones | Gasto | 1 | 1 | FREEWAY ENTERPRISE SRL | — (dictar en ratificación) |
+| `611.02` | Comisiones | Gasto | 1 | 1 | FREEWAY ENTERPRISE SRL | Comisiones de NÓMINA a vendedores/empleados (Familia I, pieza 1). NO corretaje de terceros: la comisión a un corredor externo por conseguir inquilino de la nave es COSTO → `511.07` Comisión Servicios Generales, tipo 606 = 09 (libro 2026-08-22; el uso de FREEWAY acá fue un error corregido en ADM el 2026-08-20) |
 | `611.12` | Uniformes | Gasto | 4 | 1 | Valeco Print Solutions S | — (dictar en ratificación) |
 | `611.13` | Capacitación | Gasto | 2 | 2 | Edufinsa Escuela De Nego, Centro De Capacitacion E | — (dictar en ratificación) |
 | `611.14` | Otros gastos de personal | Gasto | 6 | 6 | Good Market Express Eg S, Bravo S A, The Money Coach | — (dictar en ratificación) |
